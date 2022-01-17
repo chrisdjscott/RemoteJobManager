@@ -1,0 +1,3 @@
+apoa1-out.vel
+apoa1-out.coor
+slurm.log
