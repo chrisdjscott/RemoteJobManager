@@ -3,6 +3,8 @@ import os
 import logging
 from datetime import datetime
 
+import requests
+
 from . import utils
 from . import globus_https_transferer
 
@@ -78,17 +80,34 @@ class RemoteJob:
 
     def upload_files(self):
         """Upload files to remote"""
-        for file in self._upload_files:
-            self._transfer.upload_file(file)
+        for fname in self._upload_files:
+            self._transfer.upload_file(fname)
+
+    def download_files(self, missing_ok=True):
+        """Download file from remote"""
+        for fname in self._download_files:
+            if missing_ok:
+                # don't fail if file doesn't exist, just print a warning
+                try:
+                    self._transfer.download_file(fname)
+                except requests.exceptions.HTTPError as exc:
+                    logger.warning(f"Failed to download file '{self._local_path}/{fname}': {exc}")
+            else:
+                self._transfer.download_file(fname)
+
+
+
 
 
 
 
 
 # TODO:
+#   - implement retries
 #   - check config is ok by uploading a temporary file with unique name and then use funcx to ls that file
 #   - maybe have a separate config module that does that checking
 #   - option to pass config as args to init and only load config file if not all args are passed
+#   - cleanup functions that deletes the remote directory
 
 if __name__ == "__main__":
     import sys
@@ -97,4 +116,7 @@ if __name__ == "__main__":
     logging.getLogger("globus_sdk").setLevel(logging.WARNING)
     rj = RemoteJob(sys.argv[1])
     print(rj)
+    print(">>> uploading files")
     rj.upload_files()
+    print(">>> downloading files")
+    rj.download_files()

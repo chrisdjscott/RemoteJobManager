@@ -2,6 +2,7 @@
 import logging
 import os
 import time
+import shutil
 
 import globus_sdk
 import requests
@@ -108,3 +109,26 @@ class GlobusHttpsTransferer(TransfererBase):
         r.raise_for_status()
         upload_time = time.perf_counter() - start_time
         self.log_transfer_time("Uploaded", local_file, upload_time)
+
+    def download_file(self, filename):
+        """Download a file from remote"""
+        # file to download and URL
+        download_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
+        logger.debug(f"Downloading file from: {download_url}")
+
+        # path to local file
+        local_file = os.path.join(self._local_path, filename)
+
+        # authorisation
+        headers = {
+            "Authorization": self._https_auth_header,
+        }
+
+        # download
+        start_time = time.perf_counter()
+        with requests.get(download_url, headers=headers, stream=True) as r:
+            with open(local_file, 'wb') as f:
+                shutil.copyfileobj(r.raw, f)
+        r.raise_for_status()
+        download_time = time.perf_counter() - start_time
+        self.log_transfer_time("Downloaded", local_file, download_time)
