@@ -7,6 +7,7 @@ import requests
 
 from . import utils
 from . import globus_https_transferer
+from . import funcx_slurm_runner
 
 
 logger = logging.getLogger(__name__)
@@ -59,20 +60,23 @@ class RemoteJob:
         # file transferer
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config)
 
-        # remote executor
-        # ...
+        # remote runner
+        self._runner = funcx_slurm_runner.FuncxSlurmRunner(config=config)
 
         # handle Globus here
         required_scopes = self._transfer.get_globus_scopes()
-        # TODO: extend with remote executor scopes too
-        globus_cli = utils.handle_globus_auth(required_scopes)
-        self._transfer.setup_globus_auth(globus_cli)
+        required_scopes.extend(self._runner.get_globus_scopes())
+        if len(required_scopes):
+            globus_cli = utils.handle_globus_auth(required_scopes)
+            self._transfer.setup_globus_auth(globus_cli)
+            self._runner.setup_globus_auth(globus_cli)
 
         # creating a remote directory for running in
         if remote_dir_prefix is None:
             remote_dir_prefix = datetime.now().strftime("rjm.%Y%m%dT%H%M%S")
         remote_work_dir = self._transfer.make_remote_directory(remote_dir_prefix)
         logger.info(f"Remote working directory: {remote_work_dir}")
+        self._runner.set_working_directory(remote_work_dir)
 
 
     def __repr__(self):
@@ -85,7 +89,7 @@ class RemoteJob:
 
     def download_files(self, missing_ok=True):
         """Download file from remote"""
-        for fname in self._download_files:
+        for fname in self._download_files + ["rjm_start_script.txt"]:
             if missing_ok:
                 # don't fail if file doesn't exist, just print a warning
                 try:
@@ -95,6 +99,10 @@ class RemoteJob:
             else:
                 self._transfer.download_file(fname)
 
+    def run_script(self, script_name):
+        """Run the given script"""
+        script_id = self._runner.start_script(script_name)
+        self._runner.wait_for_script(script_id)
 
 
 
@@ -103,6 +111,7 @@ class RemoteJob:
 
 
 # TODO:
+#   - storing progress in dir, e.g. files uploaded and dirpath, slurm job id, slurm job completed, files downloaded...
 #   - implement retries
 #   - check config is ok by uploading a temporary file with unique name and then use funcx to ls that file
 #   - maybe have a separate config module that does that checking
@@ -114,9 +123,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("globus_sdk").setLevel(logging.WARNING)
+    logging.getLogger("websockets").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
+
     rj = RemoteJob(sys.argv[1])
     print(rj)
     print(">>> uploading files")
     rj.upload_files()
+
+    print(">>> running script")
+    rj.run_script("run.sl")
+
     print(">>> downloading files")
     rj.download_files()

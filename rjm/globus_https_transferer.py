@@ -24,8 +24,8 @@ class GlobusHttpsTransferer(TransfererBase):
         super(GlobusHttpsTransferer, self).__init__(local_path, config=config)
 
         # the Globus endpoint for the remote guest collection
-        self._remote_endpoint = config.get("GLOBUS", "remote_endpoint")
-        self._remote_base_path = config.get("GLOBUS", "remote_path")
+        self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")
+        self._remote_base_path = self._config.get("GLOBUS", "remote_path")
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
 
         # https uploads/downloads

@@ -27,7 +27,7 @@ class TransfererBase:
         """If any Globus scopes are required, override this method and return them in a list"""
         return []
 
-    def setup_globus_auth(self, *args, **kwargs):
+    def setup_globus_auth(self, globus_cli):
         """Do any Globus auth setup here, if required"""
         pass
 

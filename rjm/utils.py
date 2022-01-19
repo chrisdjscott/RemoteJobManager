@@ -4,6 +4,7 @@ import math
 import configparser
 
 from fair_research_login import NativeClient, JSONTokenStorage
+from funcx.sdk.client import FuncXClient
 
 
 # default file locations
@@ -15,7 +16,7 @@ CLIENT_ID = "6ffc9c02-cf62-4268-a695-d9d100181962"
 
 # some Globus auth scopes
 SEARCH_SCOPE = "urn:globus:auth:scope:search.api.globus.org:all"
-FUNCX_SCOPE = "https://auth.globus.org/scopes/facd7ccc-c5f4-42aa-916b-a0e270e2c2a9/all"
+FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
 OPENID_SCOPE = "openid"
 TRANSFER_SCOPE = "urn:globus:auth:scope:transfer.api.globus.org:all"
 HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"

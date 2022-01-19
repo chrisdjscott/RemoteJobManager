@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=4G
 #SBATCH --hint=nomultithread
-#SBATCH --ouput=slurm.log
+#SBATCH --output=slurm.log
 
 # load the NAMD environment module
 ml purge
