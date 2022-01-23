@@ -78,7 +78,6 @@ class RemoteJob:
         logger.info(f"Remote working directory: {remote_work_dir}")
         self._runner.set_working_directory(remote_work_dir)
 
-
     def __repr__(self):
         return f'RemoteJob({self._job_name})'
 
@@ -89,7 +88,7 @@ class RemoteJob:
 
     def download_files(self, missing_ok=True):
         """Download file from remote"""
-        for fname in self._download_files + ["rjm_start_script.txt"]:
+        for fname in self._download_files:
             if missing_ok:
                 # don't fail if file doesn't exist, just print a warning
                 try:
@@ -100,7 +99,7 @@ class RemoteJob:
                 self._transfer.download_file(fname)
 
     def run_script(self, script_name):
-        """Run the given script"""
+        """Run the given script and wait for it to complete"""
         script_id = self._runner.start_script(script_name)
         self._runner.wait_for_script(script_id)
 
@@ -122,7 +121,8 @@ if __name__ == "__main__":
     import sys
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("globus_sdk").setLevel(logging.WARNING)
+    logging.getLogger("globus_sdk").setLevel(logging.INFO)
+    logging.getLogger("funcx").setLevel(logging.INFO)
     logging.getLogger("websockets").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
 
