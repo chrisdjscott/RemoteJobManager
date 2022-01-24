@@ -12,7 +12,7 @@ CONFIG_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_config.ini")
 TOKEN_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_tokens.json")
 
 # Globus client id for this app
-CLIENT_ID = "6ffc9c02-cf62-4268-a695-d9d100181962"
+CLIENT_ID = "b7f9ff16-4094-4d2a-8183-6dfd9362096a"
 
 # some Globus auth scopes
 SEARCH_SCOPE = "urn:globus:auth:scope:search.api.globus.org:all"
@@ -36,7 +36,7 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION):
     """Load the globus auth that should have already been configured"""
-    # TODO: detect if not already configured and exit with error
+    # TODO: make open browser tab optional
 
     cli = NativeClient(
         client_id=CLIENT_ID,

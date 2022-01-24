@@ -11,7 +11,12 @@ setup(
     license="MIT",
     packages=find_packages(),
     scripts=glob.glob("bin/*"),
-    install_requires=["funcx"],
+    install_requires=[
+        "requests",
+        "fair-research-login",
+        "globus-sdk",
+        "funcx==0.3.5",
+    ],
     classifiers=[
         "Development Status :: 1 - Planning",
         "Intended Audience :: Developers",
