@@ -1,0 +1,10 @@
+[GLOBUS]
+remote_endpoint = <GLOBUS_ENDPOINT_ID>
+remote_path = /path/to/shared/directory
+
+[FUNCX]
+remote_endpoint = <FUNCX_ENDPOINT_ID>
+
+[FILES]
+uploads_file = rjm_uploads.txt
+downloads_file = rjm_downloads.txt
