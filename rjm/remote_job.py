@@ -1,7 +1,6 @@
 
 import os
 import logging
-from datetime import datetime
 
 import requests
 
@@ -72,9 +71,7 @@ class RemoteJob:
             self._runner.setup_globus_auth(globus_cli)
 
         # creating a remote directory for running in
-        if remote_dir_prefix is None:
-            remote_dir_prefix = datetime.now().strftime("rjm.%Y%m%dT%H%M%S")
-        remote_work_dir = self._transfer.make_remote_directory(remote_dir_prefix)
+        remote_work_dir = self._transfer.make_remote_directory(self._local_path)
         logger.info(f"Remote working directory: {remote_work_dir}")
         self._runner.set_working_directory(remote_work_dir)
 
@@ -100,7 +97,7 @@ class RemoteJob:
 
     def run_script(self, script_name):
         """Run the given script and wait for it to complete"""
-        script_id = self._runner.start_script(script_name)
+        script_id = self._runner.start_script()
         self._runner.wait_for_script(script_id)
 
 
@@ -116,6 +113,7 @@ class RemoteJob:
 #   - maybe have a separate config module that does that checking
 #   - option to pass config as args to init and only load config file if not all args are passed
 #   - cleanup functions that deletes the remote directory
+#   - move log levels to config file
 
 if __name__ == "__main__":
     import sys

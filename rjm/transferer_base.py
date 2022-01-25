@@ -1,6 +1,7 @@
 
 import os
 import logging
+from datetime import datetime
 
 from . import utils
 
@@ -27,6 +28,43 @@ class TransfererBase:
         """If any Globus scopes are required, override this method and return them in a list"""
         return []
 
+    def list_directory(self, path):
+        """List the contents (just names) of the provided path (directory)"""
+        raise NotImplementedError
+
+    def make_directory(self, path):
+        """Create a directory at the specified path"""
+        raise NotImplementedError
+
+    def make_remote_directory(self, prefix):
+        """
+        Create a directory on the remote end, for running the job in, trying to
+        ensure it is unique.
+
+        """
+        # add date to prefix
+        prefix = datetime.now().strftime(f"{prefix}-%Y%m%dT%H%M%S")
+
+        # get a unique directory name based on the prefix
+        workdirname = prefix
+        got_dirname = False
+        existing_names = self.list_directory(path="/")
+        count = 0
+        while not got_dirname:
+            # check the directory does not already exist
+            if workdirname in existing_names:
+                count += 1
+                workdirname = f"{prefix}-{count:06d}"
+            else:
+                got_dirname = True
+
+        # create the directory
+        logger.debug(f"Creating remote directory: {workdirname}")
+        self.make_directory(workdirname)
+        self._remote_path = workdirname
+
+        return os.path.join(self._remote_base_path, self._remote_path)
+
     def setup_globus_auth(self, globus_cli):
         """Do any Globus auth setup here, if required"""
         pass
@@ -37,14 +75,6 @@ class TransfererBase:
         file_size, file_size_units = utils.pretty_size_from_bytes(file_size)
         log = getattr(logger, log_method)
         log(f"{text} {local_file}: {file_size:.1f} {file_size_units} in {elapsed_time:.1f} s ({file_size / elapsed_time:.1f} {file_size_units}/s)")
-
-    def make_remote_directory(self, prefix):
-        """
-        Create a directory on the remote end, for running the job in, trying to
-        ensure it is unique.
-
-        """
-        raise NotImplementedError
 
     def upload_file(self, filename):
         """Method to be extended"""

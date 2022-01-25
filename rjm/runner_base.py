@@ -21,6 +21,10 @@ class RunnerBase:
 
         self._cwd = None
 
+    def get_upload_files(self):
+        """If any files are required to be uploaded by this runner, list them here"""
+        return []
+
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
         return []

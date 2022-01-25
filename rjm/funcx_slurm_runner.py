@@ -29,6 +29,9 @@ class FuncxSlurmRunner(RunnerBase):
         # the FuncX endpoint on the remote machine
         self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")
 
+        # the name of the Slurm script
+        self._slurm_script = self._config.get("SLURM", "slurm_script")
+
         # funcx client and executor
         self._funcx_client = None
         self._funcx_executor = None
@@ -76,11 +79,11 @@ class FuncxSlurmRunner(RunnerBase):
 
         return result
 
-    def start_script(self, slurm_script_name):
-        """Starts running the given script and returns an id to identify the script"""
-        logger.debug(f"Submitting Slurm script: {slurm_script_name}")
+    def start_script(self):
+        """Starts running the Slurm script. Returns jobid which should be passed to wait_for_script"""
+        logger.debug(f"Submitting Slurm script: {self._slurm_script}")
         try:
-            jobid = self.run_function(submit_slurm_job, slurm_script_name, work_dir=self._cwd)
+            jobid = self.run_function(submit_slurm_job, self._slurm_script, submit_dir=self._cwd)
         except CalledProcessError as exc:
             logger.error(f'submitting job failed in remote directory "{self._cwd}":')
             logger.error(f"    return code: {exc.returncode}")
@@ -88,7 +91,7 @@ class FuncxSlurmRunner(RunnerBase):
             logger.error(f"    output: {exc.stdout}")
             raise exc
         else:
-            logger.debug(f"Slurm job submitted: {jobid}")
+            logger.info(f"Slurm job submitted: {jobid}")
 
         return jobid
 
@@ -99,12 +102,16 @@ class FuncxSlurmRunner(RunnerBase):
         job_finished = False
         while not job_finished:
             job_status = self.run_function(check_slurm_job_status, slurm_job_id)
-            logger.debug(f"Current job status is: {job_status}")
+            logger.debug(f"Current job status is: '{job_status}'")
+            if not len(job_status):  # try again after short break in case there was an issue first time
+                time.sleep(5)
+                job_status = self.run_function(check_slurm_job_status, slurm_job_id)
+            assert len(job_status)
             if job_status not in ("RUNNING", "PENDING"):
                 job_finished = True
             else:
                 time.sleep(POLL_INTERVAL)
-        logger.debug(f"Slurm job {slurm_job_id} has finished")
+        logger.info(f"Slurm job {slurm_job_id} has finished")
 
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)

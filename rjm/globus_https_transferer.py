@@ -45,31 +45,13 @@ class GlobusHttpsTransferer(TransfererBase):
 
         return required_scopes
 
-    def make_remote_directory(self, prefix):
-        """
-        Create a directory on the remote end, for running the job in, trying to
-        ensure it is unique.
+    def list_directory(self, path="/"):
+        """List the contents (just names) of the provided path (directory)"""
+        return [[item["name"] for item in self._tc.operation_ls(self._remote_endpoint, path=path)]]
 
-        """
-        # get a unique directory name based on the prefix
-        workdirname = prefix
-        got_dirname = False
-        existing_names = [item["name"] for item in self._tc.operation_ls(self._remote_endpoint, path="/")]
-        count = 0
-        while not got_dirname:
-            # check the directory does not already exist
-            if workdirname in existing_names:
-                count += 1
-                workdirname = f"{prefix}.{count:06d}"
-            else:
-                got_dirname = True
-
-        # create the directory
-        logger.debug(f"Creating remote directory: {workdirname}")
-        self._tc.operation_mkdir(self._remote_endpoint, workdirname)
-        self._remote_path = workdirname
-
-        return os.path.join(self._remote_base_path, self._remote_path)
+    def make_directory(self, path):
+        """Create a directory at the specified path"""
+        self._tc.operation_mkdir(self._remote_endpoint, path)
 
     def setup_globus_auth(self, globus_cli):
         """Setting up Globus authentication."""
