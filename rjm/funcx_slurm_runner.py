@@ -108,31 +108,28 @@ class FuncxSlurmRunner(RunnerBase):
 
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
-def submit_slurm_job(submit_script, work_dir=None):
+def submit_slurm_job(submit_script, submit_dir=None):
     import os
     import subprocess
 
-    # change to working directory
-    if work_dir is not None:
-        if os.path.isdir(work_dir):
-            with open("rjm_start_script.txt", "w") as fout:
-                fout.write(f"INFO: Changing to directory: {work_dir}\n")
-            os.chdir(work_dir)
-        else:
-            with open("rjm_start_script.txt", "w") as fout:
-                fout.write(f"ERROR: could not change to directory: {work_dir}\n")
+    # if submit_dir is specified, it must exist
+    if submit_dir is not None:
+        if not os.path.exists(submit_dir):
+            raise ValueError(f"working directory does not exist: '{submit_dir}'")
+        print(f"Working directory is: {submit_dir}")
+        submit_script_path = os.path.join(submit_dir, submit_script)
+    else:
+        submit_script_path = submit_script
+    # submit script must also exist
+    if not os.path.exists(submit_script_path):
+        raise ValueError(f"submit_script does not exist: '{submit_script_path}'")
 
     # submit the Slurm job and return the job id
-    with open("rjm_start_script.txt", "w") as fout:
-        submit_cmd = f'sbatch {submit_script}'
-        fout.write(f"{submit_cmd}\n")
-        result = subprocess.run(submit_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                shell=True, universal_newlines=True, check=True)
-        output = result.stdout
-        fout.write(output.strip() + "\n")
+    result = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            universal_newlines=True, check=True, cwd=submit_dir)
 
     # the job id
-    jobid = output.split()[-1]
+    jobid = result.stdout.split()[-1]
 
     return jobid
 
@@ -144,10 +141,10 @@ def check_slurm_job_status(jobid):
     import subprocess
 
     # query the status of the job using sacct
-    cmd = f'sacct -j {jobid} -X -o State -n'
-    output = subprocess.check_output(cmd, shell=True, universal_newlines=True)
+    result = subprocess.run(['sacct', '-j', jobid, '-X', '-o', 'State', '-n'], universal_newlines=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
 
-    return output.strip()
+    return result.stdout.strip()
 
 
 if __name__ == "__main__":
