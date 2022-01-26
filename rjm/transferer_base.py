@@ -1,7 +1,6 @@
 
 import os
 import logging
-from datetime import datetime
 
 from . import utils
 
@@ -42,9 +41,6 @@ class TransfererBase:
         ensure it is unique.
 
         """
-        # add date to prefix
-        prefix = datetime.now().strftime(f"{prefix}-%Y%m%dT%H%M%S")
-
         # get a unique directory name based on the prefix
         workdirname = prefix
         got_dirname = False

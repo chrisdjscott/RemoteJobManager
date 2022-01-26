@@ -1,6 +1,7 @@
 
 import os
 import logging
+from datetime import datetime
 
 import requests
 
@@ -21,13 +22,17 @@ class RemoteJob:
     - output files are downloaded and stored in the local directory
 
     """
-    def __init__(self, local_dir, remote_dir_prefix=None):
+    def __init__(self, local_dir, timestamp=None):
         # the local directory this job is based on
         if not os.path.isdir(local_dir):
             raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
         self._local_path = local_dir
         self._job_name = os.path.basename(local_dir)
         logger.info(f"Creating remote job: {self._job_name}")
+
+        # timestamp for working directory name
+        if timestamp is None:
+            timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
         # load the config
         config = utils.load_config()
@@ -60,7 +65,7 @@ class RemoteJob:
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config)
 
         # remote runner
-        self._runner = funcx_slurm_runner.FuncxSlurmRunner(config=config)
+        self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config)
 
         # handle Globus here
         required_scopes = self._transfer.get_globus_scopes()
@@ -71,7 +76,7 @@ class RemoteJob:
             self._runner.setup_globus_auth(globus_cli)
 
         # creating a remote directory for running in
-        remote_work_dir = self._transfer.make_remote_directory(self._local_path)
+        remote_work_dir = self._transfer.make_remote_directory(f"{self._local_path}-{timestamp}")
         logger.info(f"Remote working directory: {remote_work_dir}")
         self._runner.set_working_directory(remote_work_dir)
 
@@ -95,34 +100,33 @@ class RemoteJob:
             else:
                 self._transfer.download_file(fname)
 
-    def run_script(self, script_name):
-        """Run the given script and wait for it to complete"""
-        script_id = self._runner.start_script()
-        self._runner.wait_for_script(script_id)
+    def run_start(self):
+        """Start running the processing"""
+        self._runner.start()
 
+    def run_wait(self):
+        """Wait for the processing to complete"""
+        self._runner.wait()
 
-
-
-
+    def workflow(self):
+        """do everything: upload, run, download"""
+        self.upload_files()
+        self.run_start()
+        self.run_wait()
+        self.download_files()
 
 
 # TODO:
 #   - storing progress in dir, e.g. files uploaded and dirpath, slurm job id, slurm job completed, files downloaded...
 #   - implement retries
 #   - check config is ok by uploading a temporary file with unique name and then use funcx to ls that file
-#   - maybe have a separate config module that does that checking
 #   - option to pass config as args to init and only load config file if not all args are passed
-#   - cleanup functions that deletes the remote directory
-#   - move log levels to config file
+#   - cleanup function that deletes the remote directory
 
 if __name__ == "__main__":
     import sys
-    logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("globus_sdk").setLevel(logging.INFO)
-    logging.getLogger("funcx").setLevel(logging.INFO)
-    logging.getLogger("websockets").setLevel(logging.WARNING)
-    logging.getLogger("asyncio").setLevel(logging.WARNING)
+
+    utils.setup_logging()
 
     rj = RemoteJob(sys.argv[1])
     print(rj)
@@ -130,7 +134,8 @@ if __name__ == "__main__":
     rj.upload_files()
 
     print(">>> running script")
-    rj.run_script("run.sl")
+    rj.run_start()
+    rj.run_wait()
 
     print(">>> downloading files")
     rj.download_files()

@@ -12,7 +12,9 @@ class RunnerBase:
     Base class for runner objects
 
     """
-    def __init__(self, config=None):
+    def __init__(self, local_path, config=None):
+        self._local_path = local_path
+
         # load config
         if config is None:
             self._config = utils.load_config()
@@ -48,12 +50,12 @@ class RunnerBase:
         """Run the given function and pass back the return value"""
         raise NotImplementedError
 
-    def start_script(self, script_name):
-        """Starts running the given script and returns an id to identify the script"""
+    def start(self):
+        """Starts running the processing asynchronously"""
         raise NotImplementedError
 
-    def wait_for_script(self, script_id):
-        """Wait fof the script to stop running"""
+    def wait(self):
+        """Blocks until the processing has finished"""
         raise NotImplementedError
 
 

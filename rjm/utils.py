@@ -1,6 +1,7 @@
 
 import os
 import math
+import logging
 import configparser
 
 from fair_research_login import NativeClient, JSONTokenStorage
@@ -21,6 +22,23 @@ OPENID_SCOPE = "openid"
 TRANSFER_SCOPE = "urn:globus:auth:scope:transfer.api.globus.org:all"
 HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
 
+# default logging levels
+LOG_LEVEL_RJM = logging.INFO
+LOG_LEVEL_OTHER = logging.WARNING
+
+
+def setup_logging():
+    # set the default levels
+    logging.basicConfig(level=LOG_LEVEL_OTHER)
+    logging.getLogger("rjm").setLevel(LOG_LEVEL_RJM)
+
+    # check if specific levels are set in log file
+    config = load_config()
+    if "LOGGING" in config:
+        for logger_name, level_name in config.items("LOGGING"):
+            level = getattr(logging, level_name, None)
+            if level is not None:
+                logging.getLogger(logger_name).setLevel(level)
 
 def load_config(config_file=CONFIG_FILE_LOCATION):
     """Load the config file and return the configparser object"""
