@@ -23,8 +23,8 @@ class FuncxSlurmRunner(RunnerBase):
     The default FuncX endpoint running on the login node is sufficient.
 
     """
-    def __init__(self, local_path, config=None):
-        super(FuncxSlurmRunner, self).__init__(local_path, config=config)
+    def __init__(self, local_path, config=None, max_threads=5):
+        super(FuncxSlurmRunner, self).__init__(local_path, config=config, max_threads=max_threads)
 
         # the FuncX endpoint on the remote machine
         self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")

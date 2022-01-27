@@ -3,6 +3,8 @@ import logging
 import os
 import time
 import shutil
+import concurrent.futures
+from typing import List
 
 import globus_sdk
 import requests
@@ -20,8 +22,8 @@ class GlobusHttpsTransferer(TransfererBase):
     using HTTPS.
 
     """
-    def __init__(self, local_path, config=None):
-        super(GlobusHttpsTransferer, self).__init__(local_path, config=config)
+    def __init__(self, local_path, config=None, max_threads=5):
+        super(GlobusHttpsTransferer, self).__init__(local_path, config=config, max_threads=max_threads)
 
         # the Globus endpoint for the remote guest collection
         self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")
@@ -70,8 +72,14 @@ class GlobusHttpsTransferer(TransfererBase):
         #a = authorisers[self._https_scope]  # Globus SDK v3???
         #self._https_auth_header = a.get_authorization_header()
 
-    def upload_file(self, filename):
-        """Upload file to remote"""
+    def _upload_file(self, filename: str):
+        """
+        Upload file to remote.
+
+        :param filename: File name relative to `local_path`
+        :type filename: str
+
+        """
         # make the URL to upload file to
         upload_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
         logger.debug(f"Uploading file to: {upload_url}")
@@ -92,8 +100,60 @@ class GlobusHttpsTransferer(TransfererBase):
         upload_time = time.perf_counter() - start_time
         self.log_transfer_time("Uploaded", local_file, upload_time)
 
-    def download_file(self, filename):
-        """Download a file from remote"""
+    def upload_files(self, filenames: List[str]):
+        """
+        Upload the given files (which should be relative to `local_path`) to
+        the remote directory.
+
+        :param filenames: List of file names relative to the `local_path`
+            directory to upload to the remote directory.
+        :type filenames: iterable of str
+
+        """
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_threads) as executor:
+            # start the uploads and mark each future with its filename
+            future_to_fname = {executor.submit(self._upload_file, fname): fname for fname in filenames}
+
+            # wait for completion
+            for future in concurrent.futures.as_completed(future_to_fname):
+                fname = future_to_fname[future]
+                future.result()
+                logger.debug(f"Finished uploading file: {fname}")
+
+    def download_files(self, filenames: List[str]):
+        """
+        Download the given files (which should be relative to `remote_path`) to
+        the local directory.
+
+        :param filenames: List of file names relative to the `remote_path`
+            directory to download to the local directory.
+        :type filenames: iterable of str
+
+        """
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_threads) as executor:
+            # start the uploads and mark each future with its filename
+            future_to_fname = {executor.submit(self._download_file, fname): fname for fname in filenames}
+
+            # wait for completion
+            for future in concurrent.futures.as_completed(future_to_fname):
+                fname = future_to_fname[future]
+                try:
+                    future.result()
+                except requests.exceptions.HTTPError as exc:
+                    # if fail to download, just print warning
+                    logger.warning(f"Failed to download file '{fname}': {exc}")
+                else:
+                    logger.debug(f"Successfully downloaded file: {fname}")
+
+
+    def _download_file(self, filename: str):
+        """
+        Download a file from remote.
+
+        :param filename: File name relative to `remote_path`
+        :type filename: str
+
+        """
         # file to download and URL
         download_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
         logger.debug(f"Downloading file from: {download_url}")

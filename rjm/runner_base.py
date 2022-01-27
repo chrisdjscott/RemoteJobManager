@@ -12,8 +12,9 @@ class RunnerBase:
     Base class for runner objects
 
     """
-    def __init__(self, local_path, config=None):
+    def __init__(self, local_path, config=None, max_threads=5):
         self._local_path = local_path
+        self._max_threads = max_threads
 
         # load config
         if config is None:

@@ -31,6 +31,9 @@ class RemoteJobManager:
                 logger.warning(f'Local directory does not exist: "{local_dir}" (skipping)')
         logger.debug(f"Remote jobs: {self._remote_jobs}")
 
+    def run(self):
+        """Run all remote jobs from start to finish"""
+
 
 
 if __name__ == "__main__":

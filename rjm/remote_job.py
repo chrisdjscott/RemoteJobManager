@@ -2,6 +2,8 @@
 import os
 import logging
 from datetime import datetime
+import concurrent.futures
+import time
 
 import requests
 
@@ -22,13 +24,16 @@ class RemoteJob:
     - output files are downloaded and stored in the local directory
 
     """
-    def __init__(self, local_dir, timestamp=None):
+    def __init__(self, local_dir, timestamp=None, max_threads=5):
         # the local directory this job is based on
         if not os.path.isdir(local_dir):
             raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
         self._local_path = local_dir
         self._job_name = os.path.basename(local_dir)
         logger.info(f"Creating remote job: {self._job_name}")
+
+        # max number of threads
+        self._max_threads = max_threads
 
         # timestamp for working directory name
         if timestamp is None:
@@ -62,10 +67,10 @@ class RemoteJob:
         logger.info(f"Download files: {self._download_files}")
 
         # file transferer
-        self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config)
+        self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config, max_threads=max_threads)
 
         # remote runner
-        self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config)
+        self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config, max_threads=max_threads)
 
         # handle Globus here
         required_scopes = self._transfer.get_globus_scopes()
@@ -85,20 +90,19 @@ class RemoteJob:
 
     def upload_files(self):
         """Upload files to remote"""
-        for fname in self._upload_files:
-            self._transfer.upload_file(fname)
+        logger.info("Uploading files...")
+        upload_time = time.perf_counter()
+        self._transfer.upload_files(self._upload_files)
+        upload_time = time.perf_counter() - upload_time
+        logger.debug(f"Uploaded files in {upload_time:.1f} seconds")
 
-    def download_files(self, missing_ok=True):
+    def download_files(self):
         """Download file from remote"""
-        for fname in self._download_files:
-            if missing_ok:
-                # don't fail if file doesn't exist, just print a warning
-                try:
-                    self._transfer.download_file(fname)
-                except requests.exceptions.HTTPError as exc:
-                    logger.warning(f"Failed to download file '{self._local_path}/{fname}': {exc}")
-            else:
-                self._transfer.download_file(fname)
+        logger.info("Downloading files...")
+        download_time = time.perf_counter()
+        self._transfer.download_files(self._download_files)
+        download_time = time.perf_counter() - download_time
+        logger.debug(f"Downloaded files in {download_time:.1f} seconds")
 
     def run_start(self):
         """Start running the processing"""
