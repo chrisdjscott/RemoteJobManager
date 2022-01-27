@@ -42,6 +42,19 @@ class FuncxSlurmRunner(RunnerBase):
     def __repr__(self):
         return f"FuncxSlurmRunner({self._funcx_endpoint})"
 
+    def save_state(self):
+        """Append state to state_dict if required for restarting"""
+        state_dict = {}
+        if self._jobid is not None:
+            state_dict["slurm_job_id"] = self._jobid
+
+        return state_dict
+
+    def load_state(self, state_dict):
+        """Get saved state if required for restarting"""
+        if "slurm_job_id" in state_dict:
+            self._jobid = state_dict["slurm_job_id"]
+
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
         self._required_scopes = [

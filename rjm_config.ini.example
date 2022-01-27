@@ -11,3 +11,8 @@ slurm_script = run.sl
 [FILES]
 uploads_file = rjm_uploads.txt
 downloads_file = rjm_downloads.txt
+
+[LOGGING]
+rjm = DEBUG
+globus_sdk = INFO
+funcx = INFO

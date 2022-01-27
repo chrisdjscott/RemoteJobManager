@@ -25,6 +25,14 @@ class TransfererBase:
         self._local_path = local_path
         self._max_threads = max_threads
 
+    def save_state(self):
+        """Return state dict if required for restarting"""
+        return {}
+
+    def load_state(self, state_dict):
+        """Get saved state if required for restarting"""
+        pass
+
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
         return []

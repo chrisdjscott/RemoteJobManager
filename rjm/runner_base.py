@@ -24,6 +24,14 @@ class RunnerBase:
 
         self._cwd = None
 
+    def save_state(self):
+        """Return state dict if required for restarting"""
+        return {}
+
+    def load_state(self, state_dict):
+        """Get saved state if required for restarting"""
+        pass
+
     def get_upload_files(self):
         """If any files are required to be uploaded by this runner, list them here"""
         return []
