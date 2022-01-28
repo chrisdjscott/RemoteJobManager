@@ -3,7 +3,7 @@ import os
 import logging
 from typing import List
 
-from . import utils
+from .. import utils
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ class TransfererBase:
     Base class for objects that transfer files between local and remote.
 
     """
-    def __init__(self, local_path, config=None, max_threads=5):
+    def __init__(self, local_path, config=None):
         # load config
         if config is None:
             self._config = utils.load_config()
@@ -23,15 +23,21 @@ class TransfererBase:
 
         self._remote_path = None
         self._local_path = local_path
-        self._max_threads = max_threads
 
     def save_state(self):
         """Return state dict if required for restarting"""
-        return {}
+        state_dict = {}
+
+        # need the remote path
+        if self._remote_path is not None:
+            state_dict["remote_path"] = self._remote_path
+
+        return state_dict
 
     def load_state(self, state_dict):
         """Get saved state if required for restarting"""
-        pass
+        if "remote_path" in state_dict:
+            self._remote_path = state_dict["remote_path"]
 
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
@@ -69,7 +75,11 @@ class TransfererBase:
         self.make_directory(workdirname)
         self._remote_path = workdirname
 
-        return os.path.join(self._remote_base_path, self._remote_path)
+        return self.get_remote_directory()
+
+    def get_remote_directory(self):
+        """Return full path to remote directory"""
+        return None if self._remote_path is None else os.path.join(self._remote_base_path, self._remote_path)
 
     def setup_globus_auth(self, globus_cli):
         """Do any Globus auth setup here, if required"""

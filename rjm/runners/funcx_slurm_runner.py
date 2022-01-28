@@ -7,7 +7,7 @@ from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
 
 from .runner_base import RunnerBase
-from . import utils
+from .. import utils
 
 
 POLL_INTERVAL = 5  # how often to check Slurm job status, seconds  # TODO: move to config file?
@@ -23,8 +23,8 @@ class FuncxSlurmRunner(RunnerBase):
     The default FuncX endpoint running on the login node is sufficient.
 
     """
-    def __init__(self, local_path, config=None, max_threads=5):
-        super(FuncxSlurmRunner, self).__init__(local_path, config=config, max_threads=max_threads)
+    def __init__(self, local_path, config=None):
+        super(FuncxSlurmRunner, self).__init__(local_path, config=config)
 
         # the FuncX endpoint on the remote machine
         self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")
@@ -44,7 +44,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def save_state(self):
         """Append state to state_dict if required for restarting"""
-        state_dict = {}
+        state_dict = super(FuncxSlurmRunner, self).save_state()
         if self._jobid is not None:
             state_dict["slurm_job_id"] = self._jobid
 
@@ -52,6 +52,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def load_state(self, state_dict):
         """Get saved state if required for restarting"""
+        super(FuncxSlurmRunner, self).load_state(state_dict)
         if "slurm_job_id" in state_dict:
             self._jobid = state_dict["slurm_job_id"]
 

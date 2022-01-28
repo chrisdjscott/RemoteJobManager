@@ -10,7 +10,7 @@ import globus_sdk
 import requests
 
 from .transferer_base import TransfererBase
-from . import utils
+from .. import utils
 
 
 logger = logging.getLogger(__name__)
@@ -22,8 +22,8 @@ class GlobusHttpsTransferer(TransfererBase):
     using HTTPS.
 
     """
-    def __init__(self, local_path, config=None, max_threads=5):
-        super(GlobusHttpsTransferer, self).__init__(local_path, config=config, max_threads=max_threads)
+    def __init__(self, local_path, config=None):
+        super(GlobusHttpsTransferer, self).__init__(local_path, config=config)
 
         # the Globus endpoint for the remote guest collection
         self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")
@@ -110,9 +110,11 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filenames: iterable of str
 
         """
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_threads) as executor:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             # start the uploads and mark each future with its filename
-            future_to_fname = {executor.submit(self._upload_file, fname): fname for fname in filenames}
+            future_to_fname = {
+                executor.submit(self._upload_file, fname): fname for fname in filenames
+            }
 
             # wait for completion
             for future in concurrent.futures.as_completed(future_to_fname):
@@ -130,9 +132,11 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filenames: iterable of str
 
         """
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_threads) as executor:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
             # start the uploads and mark each future with its filename
-            future_to_fname = {executor.submit(self._download_file, fname): fname for fname in filenames}
+            future_to_fname = {
+                executor.submit(self._download_file, fname): fname for fname in filenames
+            }
 
             # wait for completion
             for future in concurrent.futures.as_completed(future_to_fname):
@@ -144,7 +148,6 @@ class GlobusHttpsTransferer(TransfererBase):
                     logger.warning(f"Failed to download file '{fname}': {exc}")
                 else:
                     logger.debug(f"Successfully downloaded file: {fname}")
-
 
     def _download_file(self, filename: str):
         """

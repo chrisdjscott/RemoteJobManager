@@ -1,7 +1,7 @@
 
 import logging
 
-from . import utils
+from .. import utils
 
 
 logger = logging.getLogger(__name__)
@@ -12,9 +12,8 @@ class RunnerBase:
     Base class for runner objects
 
     """
-    def __init__(self, local_path, config=None, max_threads=5):
+    def __init__(self, local_path, config=None):
         self._local_path = local_path
-        self._max_threads = max_threads
 
         # load config
         if config is None:
@@ -26,11 +25,18 @@ class RunnerBase:
 
     def save_state(self):
         """Return state dict if required for restarting"""
-        return {}
+        state_dict = {}
+
+        # save working directory
+        if self._cwd is not None:
+            state_dict["working_directory"] = self._cwd
+
+        return state_dict
 
     def load_state(self, state_dict):
         """Get saved state if required for restarting"""
-        pass
+        if "working_directory" in state_dict:
+            self._cwd = state_dict["working_directory"]
 
     def get_upload_files(self):
         """If any files are required to be uploaded by this runner, list them here"""

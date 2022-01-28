@@ -2,15 +2,12 @@
 import os
 import logging
 from datetime import datetime
-import concurrent.futures
 import time
 import json
 
-import requests
-
 from . import utils
-from . import globus_https_transferer
-from . import funcx_slurm_runner
+from .transferers import globus_https_transferer
+from .runners import funcx_slurm_runner
 
 
 logger = logging.getLogger(__name__)
@@ -27,16 +24,13 @@ class RemoteJob:
     """
     STATE_FILE = "remote_job.json"
 
-    def __init__(self, local_dir, timestamp=None, max_threads=5):
+    def __init__(self, local_dir, timestamp=None):
         # the local directory this job is based on
         if not os.path.isdir(local_dir):
             raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
         self._local_path = local_dir
         self._job_name = os.path.basename(local_dir)
         logger.info(f"Creating remote job: {self._job_name}")
-
-        # max number of threads
-        self._max_threads = max_threads
 
         # timestamp for working directory name
         if timestamp is None:
@@ -52,7 +46,6 @@ class RemoteJob:
         self._downloaded = False
         self._run_started = False
         self._run_completed = False
-        self._remote_path = None
         self._state_file = os.path.join(local_dir, self.STATE_FILE)
 
         # reading upload files
@@ -79,10 +72,10 @@ class RemoteJob:
         logger.info(f"Download files: {self._download_files}")
 
         # file transferer
-        self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config, max_threads=max_threads)
+        self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config)
 
         # remote runner
-        self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config, max_threads=max_threads)
+        self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config)
 
         # load saved state if any
         self._load_state()
@@ -96,10 +89,9 @@ class RemoteJob:
             self._runner.setup_globus_auth(globus_cli)
 
         # creating a remote directory for running in
-        if self._remote_path is None:
-            self._remote_path = self._transfer.make_remote_directory(f"{self._local_path}-{timestamp}")
-        logger.info(f"Remote working directory: {self._remote_path}")
-        self._runner.set_working_directory(self._remote_path)
+        if self._transfer.get_remote_directory() is None:
+            remote_path = self._transfer.make_remote_directory(f"{self._local_path}-{timestamp}")
+            self._runner.set_working_directory(remote_path)
 
         # save state and making remote dir
         self._save_state()
@@ -118,7 +110,6 @@ class RemoteJob:
                 state_dict = json.load(fh)
             logger.debug(f"Loading state: {state_dict}")
 
-            self._remote_path = state_dict["remote_directory"]
             self._uploaded = state_dict["uploaded"]
             self._run_started = state_dict["started_run"]
             self._run_completed = state_dict["finished_run"]
@@ -135,7 +126,6 @@ class RemoteJob:
 
         """
         state_dict = {
-            "remote_directory": self._remote_path,
             "uploaded": self._uploaded,
             "started_run": self._run_started,
             "finished_run": self._run_completed,
@@ -200,19 +190,30 @@ class RemoteJob:
             self._run_completed = True
             self._save_state()
 
-    def workflow(self):
-        """do everything: upload, run, download"""
+    def upload_and_start(self):
+        """
+        Complete the upload files and start running steps.
+
+        """
         self.upload_files()
         self.run_start()
+
+    def wait_and_download(self):
+        """
+        Wait for the run to complete and then download files.
+
+        """
         self.run_wait()
         self.download_files()
 
+    def workflow(self):
+        """do everything: upload, run, download"""
+        self._upload_and_start()
+        self.wait_and_download()
+
 
 # TODO:
-#   - storing progress in dir, e.g. files uploaded and dirpath, slurm job id, slurm job completed, files downloaded...
 #   - implement retries
-#   - check config is ok by uploading a temporary file with unique name and then use funcx to ls that file
-#   - option to pass config as args to init and only load config file if not all args are passed
 #   - cleanup function that deletes the remote directory
 
 if __name__ == "__main__":

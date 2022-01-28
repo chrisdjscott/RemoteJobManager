@@ -10,7 +10,12 @@ setup(
     author_email="chris.scott@nesi.org.nz",
     license="MIT",
     packages=find_packages(),
-    scripts=glob.glob("bin/*"),
+    entry_points={
+        'console_scripts': [
+            'rjm_batch_submit = rjm.cli:batch_submit',
+            'rjm_batch_wait = rjm.cli:batch_wait',
+        ]
+    },
     install_requires=[
         "requests",
         "fair-research-login",
