@@ -23,22 +23,28 @@ jobs:
       - name: Build the package
         run: python -m pip install .
 
+      - name: Check rjm_batch_submit command installed
+        run: rjm_batch_submit --help
+
+      - name: Check rjm_batch_wait command installed
+        run: rjm_batch_wait --help
+
       - name: Install cx_Freeze
         run: python -m pip install cx_Freeze
-      - name: Freeze the package
-        run: |
-          cd extra/cx_Freeze
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            python setup.py build
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            python setup.py bdist_msi
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            python setup.py bdist_dmg
-          else
-            echo "$RUNNER_OS not supported"
-            exit 1
-          fi
-        shell: bash
+
+      - name: Build the frozen package
+        run: python setup.py build
+        working-directory: ./extra/cx_Freeze
+
+      - name: Create macOS disk image
+        run: python setup.py bdist_dmg
+        working-directory:  ./extra/cx_Freeze
+        if: runner.os == 'macOS'
+
+      - name: Create Windows installer
+        run: python setup.py bdist_msi
+        working-directory:  ./extra/cx_Freeze
+        if: runner.os == 'Windows'
 
       - uses: actions/upload-artifact@v2
         with:
@@ -55,5 +61,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: Windows artifacts
-          path: extra/cx_Freeze
+          path: extra/cx_Freeze/dist/RemoteJobManager-*.msi
         if: runner.os == 'Windows'
