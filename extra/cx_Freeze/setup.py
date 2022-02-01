@@ -24,7 +24,7 @@ setup(
     executables=[
         Executable(
             script=rjm_batch_submit,
-            targetName='rjm_batch_submit',
+            target_name='rjm_batch_submit',
         ),
         Executable(
             script=rjm_batch_wait,
