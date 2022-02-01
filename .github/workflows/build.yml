@@ -28,7 +28,20 @@ jobs:
       - name: Freeze the package
         run: |
           cd extra/cx_Freeze
-          python setup.py build
-          ls
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            python setup.py build
+          elif [ "$RUNNER_OS" == "Windows"]; then
+            python setup.py build_msi
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            python setup.py build_dmg
+          else
+            echo "$RUNNER_OS not supported"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Upload artifacts
+        run: |
           ls build
-          ls build/*
+          echo "--------"
+          ls build/exe.*
