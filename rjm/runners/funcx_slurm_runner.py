@@ -75,6 +75,7 @@ class FuncxSlurmRunner(RunnerBase):
             fx_authorizer=authorisers[utils.FUNCX_SCOPE],
             search_authorizer=authorisers[utils.SEARCH_SCOPE],
             openid_authorizer=authorisers[utils.OPENID_SCOPE],
+            use_offprocess_checker=False,  # not working well with freezing...
         )
 
         # create a funcX executor
