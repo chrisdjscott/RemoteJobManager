@@ -49,8 +49,7 @@ jobs:
           ls build/exe.*/
           if [ "$RUNNER_OS" == "Windows" ]; then
             echo "--------"
-            ls build/bdist.*/
-            zip rjm-windows.zip build/exe.*/rjm_batch_*.exe
+            ls build/bdist.win-amd64
           elif [ "$RUNNER_OS" == "macOS" ]; then
             echo "--------"
             ls build/dist
@@ -72,5 +71,5 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: Windows artifacts
-          path: extra/cx_Freeze/rjm-windows.zip
+          path: extra/cx_Freeze/build/exe.*/rjm_batch_*
         if: runner.os == 'Windows'
