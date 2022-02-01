@@ -57,20 +57,20 @@ jobs:
           fi
         shell: bash
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: Linux artifacts
-        path: extra/cx_Freeze/rjm-linux.tar
-      if: runner.os == 'Linux'
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux artifacts
+          path: extra/cx_Freeze/rjm-linux.tar
+        if: runner.os == 'Linux'
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: macOS artifacts
-        path: extra/cx_Freeze/build/RemoteJobManager*.dmg
-      if: runner.os == 'macOS'
+      - uses: actions/upload-artifact@v2
+        with:
+          name: macOS artifacts
+          path: extra/cx_Freeze/build/RemoteJobManager*.dmg
+        if: runner.os == 'macOS'
 
-    - uses: actions/upload-artifact@v2
-      with:
-        name: Windows artifacts
-        path: extra/cx_Freeze/rjm-windows.zip
-      if: runner.os == 'Windows'
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Windows artifacts
+          path: extra/cx_Freeze/rjm-windows.zip
+        if: runner.os == 'Windows'
