@@ -46,4 +46,11 @@ jobs:
           ls build
           echo "--------"
           ls build/exe.*
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "--------"
+            ls build/bdist.win*
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            echo "--------"
+            ls build/dist
+          fi
         shell: bash
