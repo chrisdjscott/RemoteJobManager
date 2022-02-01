@@ -30,7 +30,6 @@ jobs:
           cd extra/cx_Freeze
           if [ "$RUNNER_OS" == "Linux" ]; then
             python setup.py build
-            tar -cvf rjm-linux.tar build/exe.linux*/rjm_batch_*
           elif [ "$RUNNER_OS" == "Windows" ]; then
             python setup.py bdist_msi
           elif [ "$RUNNER_OS" == "macOS" ]; then
@@ -41,35 +40,20 @@ jobs:
           fi
         shell: bash
 
-      - name: Listing
-        run: |
-          cd extra/cx_Freeze
-          ls build
-          echo "--------"
-          ls build/exe.*/
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            echo "--------"
-            ls build/bdist.win-amd64
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            echo "--------"
-            ls build/dist
-          fi
-        shell: bash
-
       - uses: actions/upload-artifact@v2
         with:
           name: Linux artifacts
-          path: extra/cx_Freeze/rjm-linux.tar
+          path: build
         if: runner.os == 'Linux'
 
       - uses: actions/upload-artifact@v2
         with:
           name: macOS artifacts
-          path: extra/cx_Freeze/build/RemoteJobManager*.dmg
+          path: build
         if: runner.os == 'macOS'
 
       - uses: actions/upload-artifact@v2
         with:
           name: Windows artifacts
-          path: extra/cx_Freeze/build/exe.*/rjm_batch_*
+          path: build
         if: runner.os == 'Windows'
