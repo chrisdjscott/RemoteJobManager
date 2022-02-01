@@ -28,7 +28,7 @@ setup(
         ),
         Executable(
             script=rjm_batch_wait,
-            targetName='rjm_batch_wait',
+            target_name='rjm_batch_wait',
         ),
     ],
 )
