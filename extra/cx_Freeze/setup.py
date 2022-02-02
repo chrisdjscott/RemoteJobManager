@@ -4,7 +4,7 @@ import os
 from cx_Freeze import setup, Executable
 
 
-script_dir = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "scripts")
+script_dir = os.path.join(os.path.dirname(__file__), os.pardir, "scripts")
 rjm_batch_submit = os.path.join(script_dir, "rjm_batch_submit.py")
 print(rjm_batch_submit)
 rjm_batch_wait = os.path.join(script_dir, "rjm_batch_wait.py")

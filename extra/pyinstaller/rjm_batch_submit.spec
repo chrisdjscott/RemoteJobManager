@@ -3,7 +3,7 @@
 import os
 
 
-script_dir = os.path.join(os.pardir, os.pardir, "scripts")
+script_dir = os.path.join(os.pardir, "scripts")
 rjm_batch_submit = os.path.join(script_dir, "rjm_batch_submit.py")
 print(rjm_batch_submit)
 
