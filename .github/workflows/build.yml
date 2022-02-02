@@ -36,27 +36,27 @@ jobs:
         run: python setup.py build
         working-directory: ./extra/cx_Freeze
 
-      - name: Create macOS disk image
-        run: python setup.py bdist_dmg
-        working-directory:  ./extra/cx_Freeze
-        if: runner.os == 'macOS'
+#      - name: Create macOS disk image
+#        run: python setup.py bdist_dmg
+#        working-directory:  ./extra/cx_Freeze
+#        if: runner.os == 'macOS'
 
       - name: Create Windows installer
         run: python setup.py bdist_msi
         working-directory:  ./extra/cx_Freeze
         if: runner.os == 'Windows'
 
-      - uses: actions/upload-artifact@v2
-        with:
-          name: Linux artifacts
-          path: extra/cx_Freeze/build
-        if: runner.os == 'Linux'
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: Linux artifacts
+#          path: extra/cx_Freeze/build
+#        if: runner.os == 'Linux'
 
-      - uses: actions/upload-artifact@v2
-        with:
-          name: macOS artifacts
-          path: extra/cx_Freeze/build/RemoteJobManager-*.dmg
-        if: runner.os == 'macOS'
+#      - uses: actions/upload-artifact@v2
+#        with:
+#          name: macOS artifacts
+#          path: extra/cx_Freeze/build/RemoteJobManager-*.dmg
+#        if: runner.os == 'macOS'
 
       - uses: actions/upload-artifact@v2
         with:
