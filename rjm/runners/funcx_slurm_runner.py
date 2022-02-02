@@ -1,4 +1,5 @@
 
+import sys
 import time
 import logging
 from subprocess import CalledProcessError
@@ -9,8 +10,6 @@ from funcx.sdk.executor import FuncXExecutor
 from .runner_base import RunnerBase
 from .. import utils
 
-
-POLL_INTERVAL = 5  # how often to check Slurm job status, seconds  # TODO: move to config file?
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +30,9 @@ class FuncxSlurmRunner(RunnerBase):
 
         # the name of the Slurm script
         self._slurm_script = self._config.get("SLURM", "slurm_script")
+
+        # how often to poll for Slurm job completion
+        self._poll_interval = self._config.get("SLURM", "poll_interval")
 
         # funcx client and executor
         self._funcx_client = None
@@ -69,13 +71,21 @@ class FuncxSlurmRunner(RunnerBase):
 
     def setup_globus_auth(self, globus_cli):
         """Do any Globus auth setup here, if required"""
+        # offprocess checker not working well with freezing currently
+        if getattr(sys, "frozen", False):
+            # application is frozen
+            use_offprocess_checker = False
+            logger.debug("Disabling offprocess_checker when frozen")
+        else:
+            use_offprocess_checker = True
+
         # setting up the FuncX client
         authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
         self._funcx_client = FuncXClient(
             fx_authorizer=authorisers[utils.FUNCX_SCOPE],
             search_authorizer=authorisers[utils.SEARCH_SCOPE],
             openid_authorizer=authorisers[utils.OPENID_SCOPE],
-            use_offprocess_checker=False,  # not working well with freezing...
+            use_offprocess_checker=use_offprocess_checker,
         )
 
         # create a funcX executor
@@ -130,7 +140,7 @@ class FuncxSlurmRunner(RunnerBase):
             if job_status not in ("RUNNING", "PENDING"):
                 job_finished = True
             else:
-                time.sleep(POLL_INTERVAL)
+                time.sleep(self._poll_interval)
         logger.info(f"Slurm job {self._jobid} has finished")
 
 

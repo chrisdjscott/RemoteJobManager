@@ -40,6 +40,7 @@ def setup_logging():
             if level is not None:
                 logging.getLogger(logger_name).setLevel(level)
 
+
 def load_config(config_file=CONFIG_FILE_LOCATION):
     """Load the config file and return the configparser object"""
     # load the config
