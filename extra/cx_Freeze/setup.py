@@ -1,7 +1,23 @@
 
 import os
+import codecs
 
 from cx_Freeze import setup, Executable
+
+
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname(__file__))
+    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
+        return fp.read()
+
+
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 
 script_dir = os.path.join(os.path.dirname(__file__), os.pardir, "scripts")
@@ -18,7 +34,7 @@ build_exe_options = {
 
 setup(
     name='RemoteJobManager',
-    version='0.0.1',
+    version=get_version("../../rjm/__init__.py"),
     description='Remote Job Manager',
     options={"build_exe": build_exe_options},
     executables=[

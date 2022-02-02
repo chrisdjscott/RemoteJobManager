@@ -4,6 +4,7 @@ import logging
 import argparse
 from datetime import datetime
 
+from . import __version__
 from . import utils
 from .remote_job import RemoteJob
 
@@ -37,7 +38,12 @@ def batch_submit():
     parser = argparse.ArgumentParser(description="Upload files and start jobs")
     parser.add_argument('-f', '--localjobdirfile', default="localdirs.txt", type=str,
                         help="file that contains the names of the local job directories, one name per line (default: %(default)s).")
+    parser.add_argument('-v', '--version', action="store_true", help='Print the version and exit')
     args = parser.parse_args()
+
+    if args.version:
+        print(f"RemoteJobManager {__version__}")
+        return
 
     # setup
     utils.setup_logging()
@@ -59,7 +65,12 @@ def batch_wait():
     parser = argparse.ArgumentParser(description="Wait for jobs to complete and download files")
     parser.add_argument('-f', '--localjobdirfile', default="localdirs.txt", type=str,
                         help="file that contains the names of the local job directories, one name per line (default: %(default)s).")
+    parser.add_argument('-v', '--version', action="store_true", help='Print the version and exit')
     args = parser.parse_args()
+
+    if args.version:
+        print(f"RemoteJobManager {__version__}")
+        return
 
     # setup
     utils.setup_logging()
