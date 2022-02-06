@@ -45,6 +45,7 @@ jobs:
           dest: RemoteJobManager-${{ runner.os }}.zip
       - uses: actions/upload-artifact@v2
         with:
+          name: RemoteJobManager-${{ runner.os }}
           path: RemoteJobManager-*.zip
 
 
