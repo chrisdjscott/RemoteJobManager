@@ -37,16 +37,16 @@ jobs:
       - name: Build rjm_batch_wait
         run: pyinstaller -F --additional-hooks-dir=. ../scripts/rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
-      - name: Zip binaries
-        uses: vimtor/action-zip@v1
+      - name: Archive binaries
+        uses: thedoctor0/zip-release@master
         with:
-          files: extra/pyinstaller/dist
-          recursive: false
-          dest: RemoteJobManager-${{ runner.os }}.zip
+          type: zip
+          directory: extra/pyinstaller/dist
+          filename: RemoteJobManager-${{ runner.os }}.zip
       - uses: actions/upload-artifact@v2
         with:
           name: RemoteJobManager-${{ runner.os }}
-          path: RemoteJobManager-*.zip
+          path: extra/pyinstaller/dist/RemoteJobManager-*.zip
 
 
 
