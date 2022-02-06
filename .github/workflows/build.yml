@@ -42,7 +42,7 @@ jobs:
         with:
           files: extra/pyinstaller/dist
           recursive: false
-          dest: RemoteJobManager-{{ runner.os }}.zip
+          dest: RemoteJobManager-${RUNNER_OS}.zip
       - uses: actions/upload-artifact@v2
         with:
           name: Upload artifacts
