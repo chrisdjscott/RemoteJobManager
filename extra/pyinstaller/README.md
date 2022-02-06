@@ -1,4 +1,9 @@
 # pyinstaller
 
-Not working - funcx can't extract the source from a function when running
-under pyinstaller exe.
+Build with:
+
+```
+pip install pyinstaller
+pyinstaller --additional-hooks-dir=. -F ../scripts/rjm_batch_submit.py
+pyinstaller --additional-hooks-dir=. -F ../scripts/rjm_batch_wait.py
+```
