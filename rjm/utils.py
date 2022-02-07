@@ -27,9 +27,13 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 
-def setup_logging():
+def setup_logging(log_file=None):
     # set the default levels
-    logging.basicConfig(level=LOG_LEVEL_OTHER)
+    logging.basicConfig(
+        level=LOG_LEVEL_OTHER,
+        filename=log_file,
+        format='%(asctime)s|%(levelname)s|%(name)s|%(message)s',
+    )
     logging.getLogger("rjm").setLevel(LOG_LEVEL_RJM)
 
     # check if specific levels are set in log file

@@ -36,17 +36,14 @@ def batch_submit():
     """
     # command line args
     parser = argparse.ArgumentParser(description="Upload files and start jobs")
-    parser.add_argument('-f', '--localjobdirfile', default="localdirs.txt", type=str,
-                        help="file that contains the names of the local job directories, one name per line (default: %(default)s).")
-    parser.add_argument('-v', '--version', action="store_true", help='Print the version and exit')
+    parser.add_argument('-f', '--localjobdirfile', required=True,
+                        help="file that contains the names of the local job directories, one name per line")
+    parser.add_argument('-l','--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
+    parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
     args = parser.parse_args()
 
-    if args.version:
-        print(f"RemoteJobManager {__version__}")
-        return
-
     # setup
-    utils.setup_logging()
+    utils.setup_logging(log_file=args.logfile)
     local_dirs = load_local_dirs(args.localjobdirfile)
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
@@ -63,17 +60,14 @@ def batch_wait():
     """
     # command line args
     parser = argparse.ArgumentParser(description="Wait for jobs to complete and download files")
-    parser.add_argument('-f', '--localjobdirfile', default="localdirs.txt", type=str,
-                        help="file that contains the names of the local job directories, one name per line (default: %(default)s).")
-    parser.add_argument('-v', '--version', action="store_true", help='Print the version and exit')
+    parser.add_argument('-f', '--localjobdirfile', required=True, type=str,
+                        help="file that contains the names of the local job directories, one name per line")
+    parser.add_argument('-l','--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
+    parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
     args = parser.parse_args()
 
-    if args.version:
-        print(f"RemoteJobManager {__version__}")
-        return
-
     # setup
-    utils.setup_logging()
+    utils.setup_logging(log_file=args.logfile)
     local_dirs = load_local_dirs(args.localjobdirfile)
 
     # loop over local directories
