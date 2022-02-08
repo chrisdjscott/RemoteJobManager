@@ -38,7 +38,9 @@ jobs:
         run: pyinstaller -F --additional-hooks-dir=. rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
       - name: Dump license files
-        run: python bundle_licenses.py dist/bundled_licenses.txt
+        run: |
+          pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt
+          echo "\nPython license: https://docs.python.org/3/license.html" >> dist/bundled_licenses.txt
         working-directory: ./extra/pyinstaller
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
