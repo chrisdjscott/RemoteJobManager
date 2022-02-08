@@ -40,7 +40,7 @@ jobs:
       - name: Dump license files
         run: |
           pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt
-          echo "\nPython license: https://docs.python.org/3/license.html" >> dist/bundled_licenses.txt
+          echo "Python license: https://docs.python.org/3/license.html" >> dist/bundled_licenses.txt
         working-directory: ./extra/pyinstaller
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
