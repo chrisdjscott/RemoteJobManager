@@ -30,12 +30,12 @@ jobs:
         run: rjm_batch_wait --help
 
       - name: Install pyinstaller
-        run: python -m pip install pyinstaller pip-licenses defopt
+        run: python -m pip install pyinstaller pip-licenses
       - name: Build rjm_batch_submit
-        run: pyinstaller -F --additional-hooks-dir=. rjm_batch_submit.py
+        run: pyinstaller -F rjm_batch_submit.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_batch_wait
-        run: pyinstaller -F --additional-hooks-dir=. rjm_batch_wait.py
+        run: pyinstaller -F rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
       - name: Dump license files
         run: |
