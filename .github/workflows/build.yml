@@ -41,11 +41,11 @@ jobs:
         run: pyinstaller -F rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
         if: runner.os == 'Windows'
-      - name: Build rjm_batch_wait
+      - name: Build rjm_authenticate
         run: pyinstaller -F rjm_authenticate.py
         working-directory:  ./extra/pyinstaller
         if: runner.os == 'Windows'
-      - name: Build rjm_batch_wait
+      - name: Build rjm_configure
         run: pyinstaller -F rjm_configure.py
         working-directory:  ./extra/pyinstaller
         if: runner.os == 'Windows'
