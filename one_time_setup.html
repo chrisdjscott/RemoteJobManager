@@ -35,7 +35,17 @@
             
   <section id="one-time-setup">
 <h1>One-time setup<a class="headerlink" href="#one-time-setup" title="Permalink to this headline">¶</a></h1>
-<p>This guide has been tested on NeSI.</p>
+<div class="contents local topic" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#remote-machine" id="id1">Remote machine</a></p>
+<ul>
+<li><p><a class="reference internal" href="#globus-guest-collection" id="id2">Globus Guest Collection</a></p></li>
+<li><p><a class="reference internal" href="#funcx-endpoint" id="id3">funcX endpoint</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<p>This guide has been tested with NeSI as the remote.</p>
 <p>A Globus account is required: <a class="reference external" href="https://app.globus.org/">https://app.globus.org/</a></p>
 <section id="remote-machine">
 <h2>Remote machine<a class="headerlink" href="#remote-machine" title="Permalink to this headline">¶</a></h2>
@@ -47,7 +57,7 @@ Globus has the following guide on how to create a Guest Collection:</p>
 <p>You must have write access to the Guest Collection. On NeSI, this means you
 should create the shared directory on the <em>nobackup</em> file system.</p>
 <ol class="arabic">
-<li><p>Open the <a class="reference external" href="https://app.globus.org/">Globus Web App</a></p></li>
+<li><p>Open the <a class="reference external" href="https://app.globus.org/file-manager">Globus Web App file manager</a></p></li>
 <li><p>Connect to the “NeSI Wellington DTN v5” endpoint (requires NeSI 2 factor
 authentication); create, if required, and navigate to the directory
 you wish to use for remote jobs; and select the <em>Share</em> option</p>
@@ -56,9 +66,9 @@ you wish to use for remote jobs; and select the <em>Share</em> option</p>
 <li><p>On the share settings page, select <em>Add a Guest Collection</em></p>
 <a class="reference external image-reference" href="_static/images/01_sharescreen.png"><img alt="_images/01_sharescreen.png" src="_images/01_sharescreen.png" /></a>
 </li>
-<li><p>On the <em>Create New Guest Collection</em> page, make sure the path is correct
-and give the share a name (make a note of the path as this will be required
-during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>)</p>
+<li><p>On the <em>Create New Guest Collection</em> page, make sure the <em>Path</em> is correct
+and give the share a name (also make a note of the <em>Path</em> as this will be
+required during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>)</p>
 <a class="reference external image-reference" href="_static/images/02_create_guest_collection.png"><img alt="_images/02_create_guest_collection.png" src="_images/02_create_guest_collection.png" /></a>
 </li>
 <li><p>Make a note of the guest collection endpoint id as this will be required
@@ -66,6 +76,7 @@ during <a class="reference internal" href="configuration.html"><span class="doc"
 <a class="reference external image-reference" href="_static/images/03_endpointid.png"><img alt="_images/03_endpointid.png" src="_images/03_endpointid.png" /></a>
 </li>
 </ol>
+<p><strong>TODO:</strong> how to share a globus guest collection with others…</p>
 </section>
 <section id="funcx-endpoint">
 <h3>funcX endpoint<a class="headerlink" href="#funcx-endpoint" title="Permalink to this headline">¶</a></h3>
@@ -85,14 +96,26 @@ funcx-endpoint configure
 <span class="c1"># start the default endpoint</span>
 funcx-endpoint start
 
-<span class="c1"># verify the endpoint is running</span>
+<span class="c1"># verify the endpoint is running and obtain the endpoint id</span>
 funcx-endpoint list
 </pre></div>
 </div>
-<p>We are effectively just using funcX as a Slurm API (running Slurm commands
+<p>Make a note of the endpoint id that shows up in the list command, you will
+need it during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>. The output from list will look something
+like follows:</p>
+<p>Note: we are effectively just using funcX as a Slurm API (running Slurm commands
 on the remote machine), so the <em>default</em> endpoint running on a login node is
-appropriate and sufficient.</p>
-<p><strong>TODO</strong>: where to get the endpoint id</p>
+entirely appropriate and sufficient.</p>
+<p>Also note: after running the above commands, it is safe to close the
+window, SSH connection, Jupyter session, etc. - funcX daemonises the process
+running the endpoint so it is no longer attached to the running session.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>+---------------+---------+--------------------------------------+
+<span class="p">|</span> Endpoint Name <span class="p">|</span> Status  <span class="p">|</span>             Endpoint ID              <span class="p">|</span>
++<span class="o">===============</span>+<span class="o">=========</span>+<span class="o">======================================</span>+
+<span class="p">|</span> default       <span class="p">|</span> Running <span class="p">|</span> ffd77d5c-b65f-4479-bbc3-66a2f7346858 <span class="p">|</span>
++---------------+---------+--------------------------------------+
+</pre></div>
+</div>
 <p>It may sometimes be necessary to restart the endpoint, for example if the
 login node was rebooted or some other issue occurred. The following would
 achieve this:</p>
@@ -104,7 +127,7 @@ achieve this:</p>
 ml funcx-endpoint
 
 <span class="c1"># restart the default endpoint</span>
-funcx_endpoint restart
+funcx-endpoint restart
 
 <span class="c1"># verify the endpoint is running</span>
 funcx-endpoint list
