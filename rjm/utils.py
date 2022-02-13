@@ -37,12 +37,13 @@ def setup_logging(log_file=None, log_level=None):
     logging.getLogger("rjm").setLevel(LOG_LEVEL_RJM)
 
     # check if specific levels are set in log file
-    config = config_helper.load_config()
-    if "LOGGING" in config:
-        for logger_name, level_name in config.items("LOGGING"):
-            level = getattr(logging, level_name, None)
-            if level is not None:
-                logging.getLogger(logger_name).setLevel(level)
+    if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
+        config = config_helper.load_config()
+        if "LOGGING" in config:
+            for logger_name, level_name in config.items("LOGGING"):
+                level = getattr(logging, level_name, None)
+                if level is not None:
+                    logging.getLogger(logger_name).setLevel(level)
 
     # command line overrides rjm log level
     if log_level is not None:

@@ -81,7 +81,7 @@ def do_configuration():
             os.makedirs(os.path.dirname(CONFIG_FILE_LOCATION))
 
         # create empty config object
-        config = config.ConfigParser()
+        config = configparser.ConfigParser()
 
     logger.debug(f"Current config sections: {config.sections()}")
 
@@ -103,7 +103,7 @@ def do_configuration():
 
         # user input
         print()
-        msg = f"{text} [{value}]: "
+        msg = f"{text} [{value if value is not None else ''}]: "
         new_value = input(msg).strip()
         while value is None and not len(new_value):
             new_value = input(msg).strip()
@@ -112,6 +112,8 @@ def do_configuration():
 
         # store
         logger.debug(f"Storing value for {section}:{name} = {value}")
+        if not config.has_section(section):
+            config.add_section(section)
         config[section][name] = value
 
     # store configuration
