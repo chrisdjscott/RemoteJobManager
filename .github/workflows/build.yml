@@ -29,32 +29,33 @@ jobs:
       - name: Check rjm_batch_wait command installed
         run: rjm_batch_wait --help
 
+      # Build executables just on Windows
       - name: Install pyinstaller
         run: python -m pip install pyinstaller pip-licenses
-        if: runner.os != 'macOS'
+        if: runner.os == 'Windows'
       - name: Build rjm_batch_submit
         run: pyinstaller -F rjm_batch_submit.py
         working-directory:  ./extra/pyinstaller
-        if: runner.os != 'macOS'
+        if: runner.os == 'Windows'
       - name: Build rjm_batch_wait
         run: pyinstaller -F rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
-        if: runner.os != 'macOS'
+        if: runner.os == 'Windows'
       - name: Dump license files
         run: |
           pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt
           echo "Python license: https://docs.python.org/3/license.html" >> dist/bundled_licenses.txt
         working-directory: ./extra/pyinstaller
-        if: runner.os != 'macOS'
+        if: runner.os == 'Windows'
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
         with:
           type: zip
           directory: extra/pyinstaller/dist
           filename: RemoteJobManager-${{ runner.os }}.zip
-        if: runner.os != 'macOS'
+        if: runner.os == 'Windows'
       - uses: actions/upload-artifact@v2
         with:
           name: RemoteJobManager-${{ runner.os }}
           path: extra/pyinstaller/dist/RemoteJobManager-*.zip
-        if: runner.os != 'macOS'
+        if: runner.os == 'Windows'
