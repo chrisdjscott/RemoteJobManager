@@ -23,7 +23,7 @@ TRANSFER_SCOPE = "urn:globus:auth:scope:transfer.api.globus.org:all"
 HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
 
 # default logging levels
-LOG_LEVEL_RJM = logging.INFO
+LOG_LEVEL_RJM = logging.WARNING
 LOG_LEVEL_OTHER = logging.WARNING
 
 
@@ -46,7 +46,7 @@ def setup_logging(log_file=None, log_level=None):
 
     # command line overrides rjm log level
     if log_level is not None:
-        level = getattr(logging, level_name, None)
+        level = getattr(logging, log_level.upper(), None)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)
 

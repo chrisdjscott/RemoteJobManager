@@ -12,10 +12,46 @@ CONFIG_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_config.ini")
 CONFIG_OPTIONS = [
     {
         "section": "GLOBUS",
-        "name": "endpoint_id",
+        "name": "remote_endpoint",
         "default": None,
-        "help": "",
-    }
+        "help": "The endpoint id of the Globus guest collection on the remote machine",
+    },
+    {
+        "section": "GLOBUS",
+        "name": "remote_path",
+        "default": None,
+        "help": "Absolute path to the root of the Globus guest collection on the remote machine",
+    },
+    {
+        "section": "FUNCX",
+        "name": "remote_endpoint",
+        "default": None,
+        "help": "The endpoint id of the funcX endpoint running on the remote machine",
+    },
+    {
+        "section": "SLURM",
+        "name": "slurm_script",
+        "default": "run.sl",
+        "help": "Name of the Slurm script that will be included in the uploaded files",
+    },
+    {
+        "section": "SLURM",
+        "name": "poll_interval",
+        "default": 10,
+        "help": "How often to check whether the Slurm job has completed yet",
+    },
+    {
+        "section": "FILES",
+        "name": "uploads_file",
+        "default": "rjm_uploads.txt",
+        "help": "Name of the file in the local directory that lists files to be uploaded",
+    },
+    {
+        "section": "FILES",
+        "name": "downloads_file",
+        "default": "rjm_downloads.txt",
+        "help": "Name of the file in the local directory that lists files to be downloaded",
+    },
 ]
 
 
@@ -33,9 +69,11 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
 
 def do_configuration():
     """Run through configuration steps"""
+    logger.info("Doing configuration...")
+
     # load config file if it already exists
     if os.path.isfile(CONFIG_FILE_LOCATION):
-        logger.debug(f"Loading current config: {CONFIG_FILE_LOCATION}")
+        logger.info(f"Loading current config: {CONFIG_FILE_LOCATION}")
         config = load_config()
     else:
         if not os.path.isdir(os.path.dirname(CONFIG_FILE_LOCATION)):
@@ -45,10 +83,39 @@ def do_configuration():
         # create empty config object
         config = config.ConfigParser()
 
-    # Globus options
+    logger.debug(f"Current config sections: {config.sections()}")
 
+    # loop over the options, asking user for input
+    for optd in CONFIG_OPTIONS:
+        section = optd["section"]
+        name = optd["name"]
+        default = optd["default"]
+        text = optd["help"]
 
-    # funcx options
+        # current value if any
+        try:
+            logger.debug(f"looking for '{section}':'{name}' in config")
+            value = config[section][name]
+            logger.debug(f"  found '{value}'")
+        except KeyError:
+            value = default
+            logger.debug(f"  not found, using default if any: {value}")
 
+        # user input
+        print()
+        msg = f"{text} [{value}]: "
+        new_value = input(msg).strip()
+        while value is None and not len(new_value):
+            new_value = input(msg).strip()
+        if len(new_value):
+            value = new_value
 
-    # ...
+        # store
+        logger.debug(f"Storing value for {section}:{name} = {value}")
+        config[section][name] = value
+
+    # store configuration
+    logger.info(f"Writing config file to: {CONFIG_FILE_LOCATION}")
+    logger.info("Check that file to adjust other options directly")
+    with open(CONFIG_FILE_LOCATION, 'w') as cf:
+        config.write(cf)

@@ -41,7 +41,7 @@ def _batch_arg_parser(*args, **kwargs):
     parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
-                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
+                        choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
@@ -53,10 +53,15 @@ def configure():
 
     """
     parser = argparse.ArgumentParser(description="Walk through the configuration of RJM")
+    parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
+    parser.add_argument('-ll', '--loglevel', required=False,
+                        help="level of log verbosity (setting the level here overrides the config file)",
+                        choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument("-v", '--version', action='version', version='%(prog)s ' + __version__)
-    parser.parse_args()
+    args = parser.parse_args()
 
-    utils.do_configuration()
+    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
+    config_helper.do_configuration()
 
 
 def authenticate():
@@ -66,6 +71,10 @@ def authenticate():
     """
     # command line args
     parser = _batch_arg_parser(description="Perform required authentication (if any)")
+    parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
+    parser.add_argument('-ll', '--loglevel', required=False,
+                        help="level of log verbosity (setting the level here overrides the config file)",
+                        choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('--force', action="store_true",
                         help="Delete any stored tokens and force reauthentication")
     args = parser.parse_args()
