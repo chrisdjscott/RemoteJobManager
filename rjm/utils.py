@@ -2,14 +2,14 @@
 import os
 import math
 import logging
-import configparser
 
 from fair_research_login import NativeClient, JSONTokenStorage
 from funcx.sdk.client import FuncXClient
 
+from . import config as config_helper
+
 
 # default file locations
-CONFIG_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_config.ini")
 TOKEN_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_tokens.json")
 
 # Globus client id for this app
@@ -32,12 +32,12 @@ def setup_logging(log_file=None, log_level=None):
     logging.basicConfig(
         level=LOG_LEVEL_OTHER,
         filename=log_file,
-        format='%(asctime)s|%(levelname)s|%(name)s|%(message)s',
+        format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
     )
     logging.getLogger("rjm").setLevel(LOG_LEVEL_RJM)
 
     # check if specific levels are set in log file
-    config = load_config()
+    config = config_helper.load_config()
     if "LOGGING" in config:
         for logger_name, level_name in config.items("LOGGING"):
             level = getattr(logging, level_name, None)
@@ -49,18 +49,6 @@ def setup_logging(log_file=None, log_level=None):
         level = getattr(logging, level_name, None)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)
-
-
-def load_config(config_file=CONFIG_FILE_LOCATION):
-    """Load the config file and return the configparser object"""
-    # load the config
-    if os.path.exists(config_file):
-        config = configparser.ConfigParser()
-        config.read(config_file)
-    else:
-        raise RuntimeError(f"Config file does not exist: {config_file}")
-
-    return config
 
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION):

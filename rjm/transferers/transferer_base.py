@@ -4,6 +4,7 @@ import logging
 from typing import List
 
 from .. import utils
+from .. import config as config_helper
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ class TransfererBase:
     def __init__(self, local_path, config=None):
         # load config
         if config is None:
-            self._config = utils.load_config()
+            self._config = config_helper.load_config()
         else:
             self._config = config
 

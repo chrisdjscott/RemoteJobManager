@@ -6,6 +6,7 @@ import time
 import json
 
 from . import utils
+from . import config as config_helper
 from .transferers import globus_https_transferer
 from .runners import funcx_slurm_runner
 
@@ -33,11 +34,12 @@ class RemoteJob:
         logger.info(f"Creating remote job: {self._job_name}")
 
         # timestamp for working directory name
-        if timestamp is None:
-            timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+        self._timestamp = timestamp
+        if self._timestamp is None:
+            self._timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
         # load the config
-        config = utils.load_config()
+        config = config_helper.load_config()
         uploads_file = config.get("FILES", "uploads_file")
         downloads_file = config.get("FILES", "downloads_file")
 
@@ -104,7 +106,7 @@ class RemoteJob:
 
         # creating a remote directory for running in
         if self._transfer.get_remote_directory() is None:
-            remote_path = self._transfer.make_remote_directory(f"{self._local_path}-{timestamp}")
+            remote_path = self._transfer.make_remote_directory(f"{self._local_path}-{self._timestamp}")
             self._runner.set_working_directory(remote_path)
 
         # save state and making remote dir

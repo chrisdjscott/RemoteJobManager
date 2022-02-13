@@ -6,13 +6,14 @@ from datetime import datetime
 
 from . import __version__
 from . import utils
+from . import config as config_helper
 from .remote_job import RemoteJob
 
 
 logger = logging.getLogger(__name__)
 
 
-def load_local_dirs(dirsfile):
+def _load_local_dirs(dirsfile):
     with open(dirsfile) as fh:
         local_dirs = fh.readlines()
     local_dirs = [d.strip() for d in local_dirs]
@@ -46,6 +47,52 @@ def _batch_arg_parser(*args, **kwargs):
     return parser
 
 
+def configure():
+    """
+    Run through configuration steps
+
+    """
+    parser = argparse.ArgumentParser(description="Walk through the configuration of RJM")
+    parser.add_argument("-v", '--version', action='version', version='%(prog)s ' + __version__)
+    parser.parse_args()
+
+    utils.do_configuration()
+
+
+def authenticate():
+    """
+    Handle authentication
+
+    """
+    # command line args
+    parser = _batch_arg_parser(description="Perform required authentication (if any)")
+    parser.add_argument('--force', action="store_true",
+                        help="Delete any stored tokens and force reauthentication")
+    args = parser.parse_args()
+
+    # setup
+    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
+    local_dirs = _load_local_dirs(args.localjobdirfile)
+
+    # check config file exists (configure should have been done already)
+    if not os.path.isfile(config_helper.CONFIG_FILE_LOCATION):
+        logger.error("rjm_configure must be run before authenticate")
+        raise RuntimeError("rjm configure must be run before authenticate")
+
+    # delete token file if exists
+    if args.force:
+        if os.path.isfile(utils.TOKEN_FILE_LOCATION):
+            logger.info(f"Deleting token file: {utils.TOKEN_FILE_LOCATION}")
+            os.unlink(utils.TOKEN_FILE_LOCATION)
+
+    # just for first directory should be ok
+    rj = RemoteJob(local_dirs[0])
+    globus_scopes = rj.get_required_globus_scopes()
+    logger.debug(f"Requesting scopes: {globus_scopes}")
+    utils.handle_globus_auth(globus_scopes)
+    logger.info("Authentication completed")
+
+
 def batch_submit():
     """
     Upload files and start running for the given local directory
@@ -59,7 +106,7 @@ def batch_submit():
 
     # setup
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
-    local_dirs = load_local_dirs(args.localjobdirfile)
+    local_dirs = _load_local_dirs(args.localjobdirfile)
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     # loop over local directories
@@ -80,7 +127,7 @@ def batch_wait():
 
     # setup
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
-    local_dirs = load_local_dirs(args.localjobdirfile)
+    local_dirs = _load_local_dirs(args.localjobdirfile)
 
     # loop over local directories
     for local_dir in local_dirs:

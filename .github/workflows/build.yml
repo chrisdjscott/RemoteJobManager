@@ -41,6 +41,14 @@ jobs:
         run: pyinstaller -F rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
         if: runner.os == 'Windows'
+      - name: Build rjm_batch_wait
+        run: pyinstaller -F rjm_authenticate.py
+        working-directory:  ./extra/pyinstaller
+        if: runner.os == 'Windows'
+      - name: Build rjm_batch_wait
+        run: pyinstaller -F rjm_configure.py
+        working-directory:  ./extra/pyinstaller
+        if: runner.os == 'Windows'
       - name: Dump license files
         run: |
           pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt

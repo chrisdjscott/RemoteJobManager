@@ -1,7 +1,7 @@
 
 import logging
 
-from .. import utils
+from .. import config as config_helper
 
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class RunnerBase:
 
         # load config
         if config is None:
-            self._config = utils.load_config()
+            self._config = config_helper.load_config()
         else:
             self._config = config
 

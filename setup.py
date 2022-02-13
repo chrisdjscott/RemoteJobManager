@@ -31,6 +31,8 @@ setup(
         'console_scripts': [
             'rjm_batch_submit = rjm.cli:batch_submit',
             'rjm_batch_wait = rjm.cli:batch_wait',
+            'rjm_authenticate = rjm.cli:authenticate',
+            'rjm_configure = rjm.cli:configure',
         ],
         'pyinstaller40': [
             'hook-dirs = rjm.__pyinstaller:get_hook_dirs',
