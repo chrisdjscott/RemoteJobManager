@@ -42,8 +42,8 @@ setup(
     install_requires=[
         "requests",
         "fair-research-login",
-        "globus-sdk",
-        "funcx==0.3.5",
+        "globus-sdk>=3",
+        "funcx==0.3.6",
     ],
     classifiers=[
         "Development Status :: 1 - Planning",

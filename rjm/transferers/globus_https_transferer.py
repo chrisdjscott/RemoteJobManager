@@ -67,10 +67,8 @@ class GlobusHttpsTransferer(TransfererBase):
         self._https_base_url = endpoint['https_server']
         logger.debug(f"Remote endpoint HTTPS base URL: {self._https_base_url}")
         # HTTPS authentication header
-        https_token_dict = globus_cli.load_tokens_by_scope()[self._https_scope]  # Globus SDK v2
-        self._https_auth_header = f"{https_token_dict['token_type']} {https_token_dict['access_token']}"
-        #a = authorisers[self._https_scope]  # Globus SDK v3???
-        #self._https_auth_header = a.get_authorization_header()
+        a = authorisers[self._https_scope]
+        self._https_auth_header = a.get_authorization_header()
 
     def _upload_file(self, filename: str):
         """
