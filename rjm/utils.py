@@ -27,7 +27,7 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 
-def setup_logging(log_file=None):
+def setup_logging(log_file=None, log_level=None):
     # set the default levels
     logging.basicConfig(
         level=LOG_LEVEL_OTHER,
@@ -43,6 +43,12 @@ def setup_logging(log_file=None):
             level = getattr(logging, level_name, None)
             if level is not None:
                 logging.getLogger(logger_name).setLevel(level)
+
+    # command line overrides rjm log level
+    if log_level is not None:
+        level = getattr(logging, level_name, None)
+        if level is not None:
+            logging.getLogger("rjm").setLevel(level)
 
 
 def load_config(config_file=CONFIG_FILE_LOCATION):

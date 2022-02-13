@@ -29,27 +29,43 @@ def load_local_dirs(dirsfile):
     return local_dirs_exist
 
 
+def _batch_arg_parser(*args, **kwargs):
+    """
+    Create arg parser for batch_* commands
+
+    """
+    parser = argparse.ArgumentParser(*args, **kwargs)
+    parser.add_argument('-f', '--localjobdirfile', required=True,
+                        help="file that contains the names of the local job directories, one name per line")
+    parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
+    parser.add_argument('-ll', '--loglevel', required=False,
+                        help="level of log verbosity (setting the level here overrides the config file)",
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
+    parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
+
+    return parser
+
+
 def batch_submit():
     """
     Upload files and start running for the given local directory
 
     """
     # command line args
-    parser = argparse.ArgumentParser(description="Upload files and start jobs")
-    parser.add_argument('-f', '--localjobdirfile', required=True,
-                        help="file that contains the names of the local job directories, one name per line")
-    parser.add_argument('-l','--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
-    parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
+    parser = _batch_arg_parser(description="Upload files and start jobs")
+    parser.add_argument('--force', action="store_true",
+                        help="Ignore progress from previous runs stored in job directory, i.e. start from scratch")
     args = parser.parse_args()
 
     # setup
-    utils.setup_logging(log_file=args.logfile)
+    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
     local_dirs = load_local_dirs(args.localjobdirfile)
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
     # loop over local directories
     for local_dir in local_dirs:
-        rj = RemoteJob(local_dir, timestamp=timestamp)
+        rj = RemoteJob(local_dir, timestamp=timestamp, force=args.force)
+        rj.setup()
         rj.upload_and_start()
 
 
@@ -59,20 +75,17 @@ def batch_wait():
 
     """
     # command line args
-    parser = argparse.ArgumentParser(description="Wait for jobs to complete and download files")
-    parser.add_argument('-f', '--localjobdirfile', required=True, type=str,
-                        help="file that contains the names of the local job directories, one name per line")
-    parser.add_argument('-l','--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
-    parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
+    parser = _batch_arg_parser(description="Wait for jobs to complete and download files")
     args = parser.parse_args()
 
     # setup
-    utils.setup_logging(log_file=args.logfile)
+    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
     local_dirs = load_local_dirs(args.localjobdirfile)
 
     # loop over local directories
     for local_dir in local_dirs:
         rj = RemoteJob(local_dir)
+        rj.setup()
         rj.wait_and_download()
 
 

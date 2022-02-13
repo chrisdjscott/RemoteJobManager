@@ -24,7 +24,7 @@ class RemoteJob:
     """
     STATE_FILE = "remote_job.json"
 
-    def __init__(self, local_dir, timestamp=None):
+    def __init__(self, local_dir, timestamp=None, force=False):
         # the local directory this job is based on
         if not os.path.isdir(local_dir):
             raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
@@ -78,11 +78,25 @@ class RemoteJob:
         self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config)
 
         # load saved state if any
-        self._load_state()
+        self._load_state(force)
 
-        # handle Globus here
+    def get_required_globus_scopes(self):
+        """
+        Return list of Globus auth scopes required by the RemoteJob.
+
+        """
         required_scopes = self._transfer.get_globus_scopes()
         required_scopes.extend(self._runner.get_globus_scopes())
+
+        return required_scopes
+
+    def setup(self):
+        """
+        Set up the remote job (authentication, remote directory...)
+
+        """
+        # handle Globus here
+        required_scopes = self.get_required_globus_scopes()
         if len(required_scopes):
             globus_cli = utils.handle_globus_auth(required_scopes)
             self._transfer.setup_globus_auth(globus_cli)
@@ -96,15 +110,22 @@ class RemoteJob:
         # save state and making remote dir
         self._save_state()
 
+    def cleanup(self):
+        """
+        Cleanup the remote job (delete remote directory...)
+
+        """
+        raise NotImplementedError
+
     def __repr__(self):
         return f'RemoteJob({self._job_name})'
 
-    def _load_state(self):
+    def _load_state(self, force):
         """
         Load the saved state, if any.
 
         """
-        if os.path.exists(self._state_file):
+        if os.path.exists(self._state_file) and not force:
             logger.debug(f"Loading state from: {self._state_file}")
             with open(self._state_file) as fh:
                 state_dict = json.load(fh)
@@ -228,7 +249,9 @@ if __name__ == "__main__":
     utils.setup_logging()
 
     rj = RemoteJob(sys.argv[1])
+    rj.setup()
     print(rj)
+
     print(">>> uploading files")
     rj.upload_files()
 
