@@ -69,6 +69,10 @@ be created as follows:
     # load funcx endpoint software into the environment
     ml funcx-endpoint
 
+    # some versions of funcX had a bug where the config directory 
+    # must already exist before running configure
+    mkdir -p ~/.funcx
+
     # first time setup for funcx, will ask you to authenticate with
     # Globus and copy a code back to the terminal
     funcx-endpoint configure
