@@ -79,8 +79,12 @@ class TransfererBase:
         return self.get_remote_directory()
 
     def get_remote_directory(self):
-        """Return full path to remote directory"""
-        return None if self._remote_path is None else os.path.join(self._remote_base_path, self._remote_path)
+        """
+        Return tuple with two components: path to globus share and relative
+        path to remote directory within share
+
+        """
+        return None if self._remote_path is None else (self._remote_base_path, self._remote_path)
 
     def setup_globus_auth(self, globus_cli):
         """Do any Globus auth setup here, if required"""

@@ -50,10 +50,10 @@ class RunnerBase:
         """Do any Globus auth setup here, if required"""
         pass
 
-    def set_working_directory(self, working_dir):
+    def set_working_directory(self, working_dir_tuple):
         """Set the remote working directory"""
-        self._cwd = working_dir
-        logger.debug(f"Set remote working directory to: {working_dir}")
+        self._cwd = self.run_function(path_join, working_dir_tuple[0], working_dir_tuple[1])
+        logger.debug(f"Setting remote working directory to: {self._cwd}")
 
         # sanity check the directory exists on the remote
         dir_exists = self.run_function(check_dir_exists, self._cwd)
@@ -72,6 +72,12 @@ class RunnerBase:
     def wait(self):
         """Blocks until the processing has finished"""
         raise NotImplementedError
+
+
+# function for joining two paths on funcx endpoint
+def path_join(path1, path2):
+    import os.path
+    return os.path.join(path1, path2)
 
 
 # function for checking directory exists on funcx endpoint
