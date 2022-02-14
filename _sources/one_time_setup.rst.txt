@@ -25,7 +25,7 @@ You must have write access to the Guest Collection. On NeSI, this means you
 should create the shared directory on the *nobackup* file system.
 
 1. Open the `Globus Web App file manager`_
-2. Connect to the "NeSI Wellington DTN v5" endpoint (requires NeSI 2 factor
+2. Connect to the "NeSI Wellington DTN V5" endpoint (requires NeSI 2 factor
    authentication); create, if required, and navigate to the directory
    you wish to use for remote jobs; and select the *Share* option
 
