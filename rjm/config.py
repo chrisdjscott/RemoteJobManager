@@ -38,7 +38,7 @@ CONFIG_OPTIONS = [
         "section": "SLURM",
         "name": "poll_interval",
         "default": 10,
-        "help": "How often to check whether the Slurm job has completed yet",
+        "help": "Interval (in seconds) between checking whether the Slurm job has completed",
     },
     {
         "section": "FILES",

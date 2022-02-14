@@ -1,4 +1,3 @@
-theopdg.ctl
 theopdg_cmd1.ctl
 theopd.dat
 nonmem_wrap.sh
