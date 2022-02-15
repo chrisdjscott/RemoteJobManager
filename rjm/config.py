@@ -29,7 +29,7 @@ CONFIG_OPTIONS_REQUIRED = [
         "help": "Enter the endpoint id of the funcX endpoint running on the remote machine",
     },
 ]
-CONFIG_OPTIONS_OPTIONAL = [
+CONFIG_OPTIONS_OPTIONAL = [  # default values must be strings
     {
         "section": "SLURM",
         "name": "slurm_script",
@@ -39,7 +39,7 @@ CONFIG_OPTIONS_OPTIONAL = [
     {
         "section": "SLURM",
         "name": "poll_interval",
-        "default": 10,
+        "default": "10",
         "help": "Interval (in seconds) between checking whether the Slurm job has completed",
     },
     {
