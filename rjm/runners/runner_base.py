@@ -12,8 +12,8 @@ class RunnerBase:
     Base class for runner objects
 
     """
-    def __init__(self, local_path, config=None):
-        self._local_path = local_path
+    def __init__(self, config=None):
+        self._local_path = None
 
         # load config
         if config is None:
@@ -49,6 +49,10 @@ class RunnerBase:
     def setup_globus_auth(self, globus_cli):
         """Do any Globus auth setup here, if required"""
         pass
+
+    def set_local_directory(self, local_dir):
+        """Set the local directory"""
+        self._local_path = local_dir
 
     def set_working_directory(self, working_dir_tuple):
         """Set the remote working directory"""

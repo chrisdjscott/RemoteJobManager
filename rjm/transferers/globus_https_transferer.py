@@ -22,8 +22,8 @@ class GlobusHttpsTransferer(TransfererBase):
     using HTTPS.
 
     """
-    def __init__(self, local_path, config=None):
-        super(GlobusHttpsTransferer, self).__init__(local_path, config=config)
+    def __init__(self, config=None):
+        super(GlobusHttpsTransferer, self).__init__(config=config)
 
         # the Globus endpoint for the remote guest collection
         self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")

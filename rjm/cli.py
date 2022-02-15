@@ -18,7 +18,7 @@ def _load_local_dirs(dirsfile):
         local_dirs = fh.readlines()
     local_dirs = [d.strip() for d in local_dirs]
 
-    # list of RemoteJob objects based on local directories
+    # get list of local directories
     local_dirs_exist = []
     for local_dir in local_dirs:
         if os.path.isdir(local_dir):
@@ -64,33 +64,30 @@ def authenticate():
     Handle authentication
 
     """
+    print("Authenticating RJM...")
+
     # command line args
-    parser = _batch_arg_parser(description="Perform required authentication (if any)")
+    parser = argparse.ArgumentParser(description="Perform required authentication (if any)")
     parser.add_argument('--force', action="store_true",
                         help="Delete any stored tokens and force reauthentication")
     args = parser.parse_args()
 
-    # setup
-    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
-    local_dirs = _load_local_dirs(args.localjobdirfile)
-
     # check config file exists (configure should have been done already)
     if not os.path.isfile(config_helper.CONFIG_FILE_LOCATION):
-        logger.error("rjm_configure must be run before authenticate")
         raise RuntimeError("rjm configure must be run before authenticate")
 
     # delete token file if exists
     if args.force:
         if os.path.isfile(utils.TOKEN_FILE_LOCATION):
-            logger.info(f"Deleting token file: {utils.TOKEN_FILE_LOCATION}")
+            print(f"Deleting existing token file to force reauthentication: {utils.TOKEN_FILE_LOCATION}")
             os.unlink(utils.TOKEN_FILE_LOCATION)
 
     # just for first directory should be ok
-    rj = RemoteJob(local_dirs[0])
+    rj = RemoteJob()
     globus_scopes = rj.get_required_globus_scopes()
-    logger.debug(f"Requesting scopes: {globus_scopes}")
+    print("Requesting authentication - will open link in web browser if required...")
     utils.handle_globus_auth(globus_scopes)
-    logger.info("Authentication completed")
+    print("RJM authentication completed")
 
 
 def batch_submit():
@@ -111,8 +108,8 @@ def batch_submit():
 
     # loop over local directories
     for local_dir in local_dirs:
-        rj = RemoteJob(local_dir, timestamp=timestamp, force=args.force)
-        rj.setup()
+        rj = RemoteJob(timestamp=timestamp)
+        rj.setup(local_dir, force=args.force)
         rj.upload_and_start()
 
 
@@ -131,8 +128,8 @@ def batch_wait():
 
     # loop over local directories
     for local_dir in local_dirs:
-        rj = RemoteJob(local_dir)
-        rj.setup()
+        rj = RemoteJob()
+        rj.setup(local_dir)
         rj.wait_and_download()
 
 

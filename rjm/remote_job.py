@@ -25,13 +25,8 @@ class RemoteJob:
     """
     STATE_FILE = "remote_job.json"
 
-    def __init__(self, local_dir, timestamp=None, force=False):
-        # the local directory this job is based on
-        if not os.path.isdir(local_dir):
-            raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
-        self._local_path = local_dir
-        self._job_name = os.path.basename(local_dir)
-        logger.info(f"Creating remote job: {self._job_name}")
+    def __init__(self, timestamp=None):
+        self._local_path = None
 
         # timestamp for working directory name
         self._timestamp = timestamp
@@ -40,47 +35,14 @@ class RemoteJob:
 
         # load the config
         config = config_helper.load_config()
-        uploads_file = config.get("FILES", "uploads_file")
-        downloads_file = config.get("FILES", "downloads_file")
-
-        # state file
-        self._uploaded = False
-        self._downloaded = False
-        self._run_started = False
-        self._run_completed = False
-        self._state_file = os.path.join(local_dir, self.STATE_FILE)
-
-        # reading upload files
-        with open(os.path.join(self._local_path, uploads_file)) as fh:
-            upload_files = [fn.strip() for fn in fh.readlines() if len(fn.strip())]
-        self._upload_files = []
-        for fname in upload_files:
-            fpath = os.path.join(self._local_path, fname)
-            if os.path.exists(fpath):
-                if os.path.isfile(fpath):
-                    self._upload_files.append(fname)
-                else:
-                    logger.warning(f'Skipping upload file specified in "{uploads_file}" that is not a file: "{fpath}"')
-            else:
-                logger.warning(f'Skipping upload file specified in "{uploads_file}" that does not exist: "{fpath}"')
-        logger.info(f"Upload files: {self._upload_files}")
-
-        # reading download files
-        with open(os.path.join(self._local_path, downloads_file)) as fh:
-            self._download_files = [f.strip() for f in fh.readlines() if len(f.strip())]
-        for fn in self._download_files:
-            if os.path.exists(os.path.join(self._local_path, fn)):
-                logger.warning(f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
-        logger.info(f"Download files: {self._download_files}")
+        self._uploads_file = config.get("FILES", "uploads_file")
+        self._downloads_file = config.get("FILES", "downloads_file")
 
         # file transferer
-        self._transfer = globus_https_transferer.GlobusHttpsTransferer(self._local_path, config=config)
+        self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
-        self._runner = funcx_slurm_runner.FuncxSlurmRunner(self._local_path, config=config)
-
-        # load saved state if any
-        self._load_state(force)
+        self._runner = funcx_slurm_runner.FuncxSlurmRunner(config=config)
 
     def get_required_globus_scopes(self):
         """
@@ -92,11 +54,55 @@ class RemoteJob:
 
         return required_scopes
 
-    def setup(self):
+    def setup(self, local_dir, force=False):
         """
         Set up the remote job (authentication, remote directory...)
 
         """
+        # the local directory this job is based on
+        if not os.path.isdir(local_dir):
+            raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
+        self._local_path = local_dir
+        self._job_name = os.path.basename(local_dir)
+        logger.info(f"Setting up remote job: {self._job_name}")
+
+        # setting up transferer and runner
+        self._transfer.set_local_directory(self._local_path)
+        self._runner.set_local_directory(self._local_path)
+
+        # state file
+        self._uploaded = False
+        self._downloaded = False
+        self._run_started = False
+        self._run_completed = False
+        self._state_file = os.path.join(local_dir, self.STATE_FILE)
+
+        # reading upload files
+        with open(os.path.join(self._local_path, self._uploads_file)) as fh:
+            upload_files = [fn.strip() for fn in fh.readlines() if len(fn.strip())]
+        self._upload_files = []
+        for fname in upload_files:
+            fpath = os.path.join(self._local_path, fname)
+            if os.path.exists(fpath):
+                if os.path.isfile(fpath):
+                    self._upload_files.append(fname)
+                else:
+                    logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
+            else:
+                logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that does not exist: "{fpath}"')
+        logger.info(f"Upload files: {self._upload_files}")
+
+        # reading download files
+        with open(os.path.join(self._local_path, self._downloads_file)) as fh:
+            self._download_files = [f.strip() for f in fh.readlines() if len(f.strip())]
+        for fn in self._download_files:
+            if os.path.exists(os.path.join(self._local_path, fn)):
+                logger.warning(f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
+        logger.info(f"Download files: {self._download_files}")
+
+        # load saved state if any
+        self._load_state(force)
+
         # handle Globus here
         required_scopes = self.get_required_globus_scopes()
         if len(required_scopes):
@@ -250,8 +256,8 @@ if __name__ == "__main__":
 
     utils.setup_logging()
 
-    rj = RemoteJob(sys.argv[1])
-    rj.setup()
+    rj = RemoteJob()
+    rj.setup(sys.arv[1])
     print(rj)
 
     print(">>> uploading files")

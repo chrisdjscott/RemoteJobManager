@@ -15,7 +15,7 @@ class TransfererBase:
     Base class for objects that transfer files between local and remote.
 
     """
-    def __init__(self, local_path, config=None):
+    def __init__(self, config=None):
         # load config
         if config is None:
             self._config = config_helper.load_config()
@@ -23,7 +23,7 @@ class TransfererBase:
             self._config = config
 
         self._remote_path = None
-        self._local_path = local_path
+        self._local_path = None
 
     def save_state(self):
         """Return state dict if required for restarting"""
@@ -47,6 +47,10 @@ class TransfererBase:
     def list_directory(self, path):
         """List the contents (just names) of the provided path (directory)"""
         raise NotImplementedError
+
+    def set_local_directory(self, local_dir):
+        """Set the local directory"""
+        self._local_path = local_dir
 
     def make_directory(self, path):
         """Create a directory at the specified path"""
