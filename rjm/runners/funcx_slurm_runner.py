@@ -32,7 +32,7 @@ class FuncxSlurmRunner(RunnerBase):
         self._slurm_script = self._config.get("SLURM", "slurm_script")
 
         # how often to poll for Slurm job completion
-        self._poll_interval = self._config.get("SLURM", "poll_interval")
+        self._poll_interval = self._config.getint("SLURM", "poll_interval")
 
         # funcx client and executor
         self._funcx_client = None
