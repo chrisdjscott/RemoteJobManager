@@ -53,14 +53,9 @@ def configure():
 
     """
     parser = argparse.ArgumentParser(description="Walk through the configuration of RJM")
-    parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
-    parser.add_argument('-ll', '--loglevel', required=False,
-                        help="level of log verbosity (setting the level here overrides the config file)",
-                        choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument("-v", '--version', action='version', version='%(prog)s ' + __version__)
-    args = parser.parse_args()
+    parser.parse_args()
 
-    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
     config_helper.do_configuration()
 
 

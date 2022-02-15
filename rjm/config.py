@@ -9,25 +9,27 @@ logger = logging.getLogger(__name__)
 
 # settings
 CONFIG_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_config.ini")
-CONFIG_OPTIONS = [
+CONFIG_OPTIONS_REQUIRED = [
     {
         "section": "GLOBUS",
         "name": "remote_endpoint",
         "default": None,
-        "help": "The endpoint id of the Globus guest collection on the remote machine",
+        "help": "Enter the endpoint id of the Globus guest collection on the remote machine",
     },
     {
         "section": "GLOBUS",
         "name": "remote_path",
         "default": None,
-        "help": "Absolute path to the root of the Globus guest collection on the remote machine",
+        "help": "Enter the absolute path to the root of the Globus guest collection on the remote machine",
     },
     {
         "section": "FUNCX",
         "name": "remote_endpoint",
         "default": None,
-        "help": "The endpoint id of the funcX endpoint running on the remote machine",
+        "help": "Enter the endpoint id of the funcX endpoint running on the remote machine",
     },
+]
+CONFIG_OPTIONS_OPTIONAL = [
     {
         "section": "SLURM",
         "name": "slurm_script",
@@ -67,41 +69,20 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
     return config
 
 
-def do_configuration():
-    """Run through configuration steps"""
-    logger.info("Doing configuration...")
+def _process_option(config, optd, ask=True):
+    section = optd["section"]
+    name = optd["name"]
+    default = optd["default"]
+    text = optd["help"]
 
-    # load config file if it already exists
-    if os.path.isfile(CONFIG_FILE_LOCATION):
-        logger.info(f"Loading current config: {CONFIG_FILE_LOCATION}")
-        config = load_config()
-    else:
-        if not os.path.isdir(os.path.dirname(CONFIG_FILE_LOCATION)):
-            logger.debug(f"Creating rjm directory: {os.path.dirname(CONFIG_FILE_LOCATION)}")
-            os.makedirs(os.path.dirname(CONFIG_FILE_LOCATION))
+    # current value if any
+    try:
+        value = config[section][name]
+    except KeyError:
+        value = default
 
-        # create empty config object
-        config = configparser.ConfigParser()
-
-    logger.debug(f"Current config sections: {config.sections()}")
-
-    # loop over the options, asking user for input
-    for optd in CONFIG_OPTIONS:
-        section = optd["section"]
-        name = optd["name"]
-        default = optd["default"]
-        text = optd["help"]
-
-        # current value if any
-        try:
-            logger.debug(f"looking for '{section}':'{name}' in config")
-            value = config[section][name]
-            logger.debug(f"  found '{value}'")
-        except KeyError:
-            value = default
-            logger.debug(f"  not found, using default if any: {value}")
-
-        # user input
+    # user input
+    if ask:
         print()
         msg = f"{text} [{value if value is not None else ''}]: "
         new_value = input(msg).strip()
@@ -110,14 +91,48 @@ def do_configuration():
         if len(new_value):
             value = new_value
 
-        # store
-        logger.debug(f"Storing value for {section}:{name} = {value}")
-        if not config.has_section(section):
-            config.add_section(section)
-        config[section][name] = value
+    # store
+    if not config.has_section(section):
+        config.add_section(section)
+    config[section][name] = value
+
+
+
+def do_configuration():
+    """Run through configuration steps"""
+    print("Configurating RJM...")
+    print("Please enter configuration values below or accept the defaults (in square brackets)")
+
+    # load config file if it already exists
+    if os.path.isfile(CONFIG_FILE_LOCATION):
+        config = load_config()
+
+    else:
+        if not os.path.isdir(os.path.dirname(CONFIG_FILE_LOCATION)):
+            os.makedirs(os.path.dirname(CONFIG_FILE_LOCATION))
+
+        # create empty config object
+        config = configparser.ConfigParser()
+
+    # loop over the options, asking user for input
+    for optd in CONFIG_OPTIONS_REQUIRED:
+        _process_option(config, optd)
+
+    # do they want to configure the rest?
+    print()
+    use_defaults = ""
+    while not use_defaults in ("y", "n"):
+        use_defaults = input("Do you wish to use current/default values for the remaining options (y/n)? ")
+    if use_defaults == "y":
+        ask = False
+    else:
+        ask = True
+
+    for optd in CONFIG_OPTIONS_OPTIONAL:
+        _process_option(config, optd, ask=ask)
 
     # store configuration
-    logger.info(f"Writing config file to: {CONFIG_FILE_LOCATION}")
-    logger.info("Check that file to adjust other options directly")
     with open(CONFIG_FILE_LOCATION, 'w') as cf:
         config.write(cf)
+
+    print(f"Written config file to: {CONFIG_FILE_LOCATION}")
