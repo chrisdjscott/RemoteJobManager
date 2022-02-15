@@ -8,7 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 # settings
-CONFIG_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_config.ini")
+CONFIG_FILE_LOCATION = os.path.join(
+    os.path.expanduser("~"),
+    ".rjm",
+    "rjm_config.ini"
+)
 CONFIG_OPTIONS_REQUIRED = [
     {
         "section": "GLOBUS",

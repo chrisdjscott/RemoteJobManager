@@ -10,7 +10,11 @@ from . import config as config_helper
 
 
 # default file locations
-TOKEN_FILE_LOCATION = os.path.expanduser("~/.rjm/rjm_tokens.json")
+TOKEN_FILE_LOCATION = os.path.join(
+    os.path.expanduser("~"),
+    ".rjm",
+    "rjm_tokens.json"
+)
 
 # Globus client id for this app
 CLIENT_ID = "b7f9ff16-4094-4d2a-8183-6dfd9362096a"
