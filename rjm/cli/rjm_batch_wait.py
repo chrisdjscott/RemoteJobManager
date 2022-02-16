@@ -44,3 +44,7 @@ def batch_wait():
         rj = RemoteJob()
         rj.setup(local_dir)
         rj.wait_and_download(polling_interval=args.pollingintervalsec)
+
+
+if __name__ == "__main__":
+    batch_wait()

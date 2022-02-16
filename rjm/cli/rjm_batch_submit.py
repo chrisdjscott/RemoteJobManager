@@ -52,3 +52,7 @@ def batch_submit():
         rj = RemoteJob(timestamp=timestamp)
         rj.setup(local_dir, force=args.force)
         rj.upload_and_start()
+
+
+if __name__ == "__main__":
+    batch_submit()
