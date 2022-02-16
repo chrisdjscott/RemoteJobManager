@@ -7,8 +7,8 @@ from subprocess import CalledProcessError
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
 
-from .runner_base import RunnerBase
-from .. import utils
+from rjm.runners.runner_base import RunnerBase
+from rjm import utils
 
 
 logger = logging.getLogger(__name__)
@@ -122,13 +122,18 @@ class FuncxSlurmRunner(RunnerBase):
             logger.info(f"Slurm job submitted: {jobid}")
             self._jobid = jobid
 
-    def wait(self):
+    def wait(self, polling_interval=None):
         """Wait for the Slurm job to finish"""
         if self._jobid is None:
             raise ValueError("Must call 'run_start' before 'run_wait'")
 
+        # override polling interval from config file?
+        if polling_interval is None:
+            polling_interval = self._poll_interval
+
         # loop until job has finished
-        logger.debug(f"Waiting for Slurm job {self._jobid} to finish")
+        logger.info(f"Waiting for Slurm job {self._jobid} to finish")
+        logger.debug(f"Polling interval is: {polling_interval} seconds")
         job_finished = False
         while not job_finished:
             job_status = self.run_function(check_slurm_job_status, self._jobid)
@@ -140,7 +145,7 @@ class FuncxSlurmRunner(RunnerBase):
             if job_status not in ("RUNNING", "PENDING"):
                 job_finished = True
             else:
-                time.sleep(self._poll_interval)
+                time.sleep(polling_interval)
         logger.info(f"Slurm job {self._jobid} has finished")
 
 

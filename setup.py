@@ -29,10 +29,11 @@ setup(
     packages=find_packages(),
     entry_points={
         'console_scripts': [
-            'rjm_batch_submit = rjm.cli:batch_submit',
-            'rjm_batch_wait = rjm.cli:batch_wait',
-            'rjm_authenticate = rjm.cli:authenticate',
-            'rjm_configure = rjm.cli:configure',
+            'rjm_batch_submit = rjm.cli.rjm_batch_submit:batch_submit',
+            'rjm_batch_wait = rjm.cli.rjm_batch_wait:batch_wait',
+            'rjm_authenticate = rjm.cli.rjm_authenticate:authenticate',
+            'rjm_configure = rjm.cli.rjm_configure:configure',
+            'rjm_health_check = rjm.cli.rjm_health_check:health_check',
         ],
         'pyinstaller40': [
             'hook-dirs = rjm.__pyinstaller:get_hook_dirs',

@@ -6,7 +6,7 @@ import logging
 from fair_research_login import NativeClient, JSONTokenStorage
 from funcx.sdk.client import FuncXClient
 
-from . import config as config_helper
+from rjm import config as config_helper
 
 
 # default file locations
@@ -29,6 +29,9 @@ HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
 # default logging levels
 LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
+
+
+logger = logging.getLogger(__name__)
 
 
 def setup_logging(log_file=None, log_level=None):

@@ -3,8 +3,8 @@ import os
 import logging
 from typing import List
 
-from .. import utils
-from .. import config as config_helper
+from rjm import utils
+from rjm import config as config_helper
 
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class TransfererBase:
         """Create a directory at the specified path"""
         raise NotImplementedError
 
-    def make_remote_directory(self, prefix):
+    def make_unique_directory(self, prefix):
         """
         Create a directory on the remote end, for running the job in, trying to
         ensure it is unique.
