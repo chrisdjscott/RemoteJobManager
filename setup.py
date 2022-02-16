@@ -44,7 +44,7 @@ setup(
         "requests",
         "fair-research-login",
         "globus-sdk>=3",
-        "parsl==1.1.0",  # not actually used directly but possibly required, match version from funcx-endpoint
+        "parsl==1.2.0",  # not actually used directly but possibly required, match version from funcx-endpoint
         "funcx==0.3.6",
     ],
     classifiers=[
