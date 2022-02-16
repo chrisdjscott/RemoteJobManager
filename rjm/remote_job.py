@@ -5,10 +5,10 @@ from datetime import datetime
 import time
 import json
 
-from . import utils
-from . import config as config_helper
-from .transferers import globus_https_transferer
-from .runners import funcx_slurm_runner
+from rjm import utils
+from rjm import config as config_helper
+from rjm.transferers import globus_https_transferer
+from rjm.runners import funcx_slurm_runner
 
 
 logger = logging.getLogger(__name__)

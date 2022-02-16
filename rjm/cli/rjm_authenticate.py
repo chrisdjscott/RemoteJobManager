@@ -23,11 +23,11 @@ def authenticate():
     Handle authentication
 
     """
-    print("Authenticating RJM...")
-
     # command line args
     parser = make_parser()
     args = parser.parse_args()
+
+    print("Authenticating RJM...")
 
     # check config file exists (configure should have been done already)
     if not os.path.isfile(config_helper.CONFIG_FILE_LOCATION):

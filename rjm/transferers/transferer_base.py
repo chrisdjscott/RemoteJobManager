@@ -3,8 +3,8 @@ import os
 import logging
 from typing import List
 
-from .. import utils
-from .. import config as config_helper
+from rjm import utils
+from rjm import config as config_helper
 
 
 logger = logging.getLogger(__name__)

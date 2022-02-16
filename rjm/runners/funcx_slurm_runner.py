@@ -7,8 +7,8 @@ from subprocess import CalledProcessError
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
 
-from .runner_base import RunnerBase
-from .. import utils
+from rjm.runners.runner_base import RunnerBase
+from rjm import utils
 
 
 logger = logging.getLogger(__name__)

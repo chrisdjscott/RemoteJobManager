@@ -9,8 +9,8 @@ from typing import List
 import globus_sdk
 import requests
 
-from .transferer_base import TransfererBase
-from .. import utils
+from rjm.transferers.transferer_base import TransfererBase
+from rjm import utils
 
 
 logger = logging.getLogger(__name__)

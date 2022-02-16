@@ -1,7 +1,7 @@
 
 import logging
 
-from .. import config as config_helper
+from rjm import config as config_helper
 
 
 logger = logging.getLogger(__name__)
