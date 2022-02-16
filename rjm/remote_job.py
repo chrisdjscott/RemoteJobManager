@@ -90,7 +90,7 @@ class RemoteJob:
                     logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
             else:
                 logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that does not exist: "{fpath}"')
-        logger.info(f"Upload files: {self._upload_files}")
+        logger.info(f"File to be uploaded: {self._upload_files}")
 
         # reading download files
         with open(os.path.join(self._local_path, self._downloads_file)) as fh:
@@ -98,25 +98,29 @@ class RemoteJob:
         for fn in self._download_files:
             if os.path.exists(os.path.join(self._local_path, fn)):
                 logger.warning(f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
-        logger.info(f"Download files: {self._download_files}")
+        logger.info(f"Files to be downloaded: {self._download_files}")
 
         # load saved state if any
         self._load_state(force)
 
         # handle Globus here
+        self.do_globus_auth()
+
+        # creating a remote directory for running in
+        if self._transfer.get_remote_directory() is None:
+            remote_path_tuple = self._transfer.make_unique_directory(f"{self._local_path}-{self._timestamp}")
+            self._runner.set_working_directory(remote_path_tuple)
+
+        # save state and making remote dir
+        self._save_state()
+
+    def do_globus_auth(self):
+        """Handle globus auth here"""
         required_scopes = self.get_required_globus_scopes()
         if len(required_scopes):
             globus_cli = utils.handle_globus_auth(required_scopes)
             self._transfer.setup_globus_auth(globus_cli)
             self._runner.setup_globus_auth(globus_cli)
-
-        # creating a remote directory for running in
-        if self._transfer.get_remote_directory() is None:
-            remote_path_tuple = self._transfer.make_remote_directory(f"{self._local_path}-{self._timestamp}")
-            self._runner.set_working_directory(remote_path_tuple)
-
-        # save state and making remote dir
-        self._save_state()
 
     def cleanup(self):
         """
@@ -245,6 +249,14 @@ class RemoteJob:
         """do everything: upload, run, download"""
         self._upload_and_start()
         self.wait_and_download()
+
+    def get_transferer(self):
+        """Return transferer"""
+        return self._transfer
+
+    def get_runner(self):
+        """Return runner"""
+        return self._runner
 
 
 # TODO:
