@@ -31,9 +31,11 @@ jobs:
 
       - run: mkdir -p ~/.rjm
       - run: printf "${RJM_CONFIG}" > ~/.rjm_config.ini
+        shell: bash
         env:
           RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
       - run: printf "${RJM_TOKENS}" > ~/.rjm_tokens.json
+        shell: bash
         env:
           RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
       - name: Run batch_submit for nonmem example
