@@ -34,19 +34,23 @@ jobs:
         run: python -m pip install pyinstaller pip-licenses
         if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_submit
-        run: pyinstaller -F rjm_batch_submit.py
+        run: pyinstaller -F ../../rjm/cli/rjm_batch_submit.py
         working-directory:  ./extra/pyinstaller
         if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_wait
-        run: pyinstaller -F rjm_batch_wait.py
+        run: pyinstaller -F ../../rjm/cli/rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
         if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
       - name: Build rjm_authenticate
-        run: pyinstaller -F rjm_authenticate.py
+        run: pyinstaller -F ../../rjm/cli/rjm_authenticate.py
         working-directory:  ./extra/pyinstaller
         if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
       - name: Build rjm_configure
-        run: pyinstaller -F rjm_configure.py
+        run: pyinstaller -F ../../rjm/cli/rjm_configure.py
+        working-directory:  ./extra/pyinstaller
+        if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
+      - name: Build rjm_health_check
+        run: pyinstaller -F ../../rjm/cli/rjm_health_check.py
         working-directory:  ./extra/pyinstaller
         if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
       - name: Dump license files
