@@ -19,6 +19,8 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-z', '--pollingintervalsec', type=int,
+                        help="number of seconds to wait between attempts to poll for job status")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
@@ -41,4 +43,4 @@ def batch_wait():
     for local_dir in local_dirs:
         rj = RemoteJob()
         rj.setup(local_dir)
-        rj.wait_and_download()
+        rj.wait_and_download(polling_interval=args.pollingintervalsec)

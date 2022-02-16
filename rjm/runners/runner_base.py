@@ -73,7 +73,7 @@ class RunnerBase:
         """Starts running the processing asynchronously"""
         raise NotImplementedError
 
-    def wait(self):
+    def wait(self, polling_interval=None):
         """Blocks until the processing has finished"""
         raise NotImplementedError
 

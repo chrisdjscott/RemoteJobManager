@@ -213,7 +213,7 @@ class RemoteJob:
             self._run_started = True
             self._save_state()
 
-    def run_wait(self):
+    def run_wait(self, polling_interval=None):
         """Wait for the processing to complete"""
         if self._run_completed:
             logger.info("Run already completed")
@@ -221,7 +221,7 @@ class RemoteJob:
             logger.warning("Run must be started before it can complete")
         else:
             logger.info("Waiting for run to complete")
-            self._runner.wait()
+            self._runner.wait(polling_interval=polling_interval)
             self._run_completed = True
             self._save_state()
 
@@ -233,12 +233,12 @@ class RemoteJob:
         self.upload_files()
         self.run_start()
 
-    def wait_and_download(self):
+    def wait_and_download(self, polling_interval=None):
         """
         Wait for the run to complete and then download files.
 
         """
-        self.run_wait()
+        self.run_wait(polling_interval=polling_interval)
         self.download_files()
 
     def workflow(self):

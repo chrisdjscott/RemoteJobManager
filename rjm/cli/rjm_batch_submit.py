@@ -19,6 +19,15 @@ def make_parser():
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('--force', action="store_true",
                         help="Ignore progress from previous runs stored in job directory, i.e. start from scratch")
+
+    not_used_help = "not used; provided for compatibility with previous versions"
+    parser.add_argument('-c', '--cmd', help=not_used_help, action='append')
+    parser.add_argument('-d', '--remotedir', help=not_used_help)
+    parser.add_argument('-j', '--jobtype', help=not_used_help)
+    parser.add_argument('-m', '--mem', help=not_used_help)
+    parser.add_argument('-p', '--projectcode', help=not_used_help)
+    parser.add_argument('-w', '--walltime', help=not_used_help)
+
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
