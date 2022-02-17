@@ -182,7 +182,7 @@ def submit_slurm_job(submit_script, submit_dir=None):
     # replace CRLF line endings with LF, if any
     if shutil.which("dos2unix") is not None:
         with open("dos2unix.txt", "w") as fout:
-            for fn in glob.glob("*"):
+            for fn in glob.glob(os.path.join(submit_dir, "*")):
                 p = subprocess.run(["dos2unix", fn], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                    universal_newlines=True, cwd=submit_dir)
                 fout.write(p.stdout.strip() + "\n")
