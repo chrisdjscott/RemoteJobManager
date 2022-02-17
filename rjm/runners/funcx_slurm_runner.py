@@ -163,6 +163,7 @@ class FuncxSlurmRunner(RunnerBase):
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
 def submit_slurm_job(submit_script, submit_dir=None):
     import os
+    import glob
     import shutil
     import subprocess
 
@@ -180,10 +181,11 @@ def submit_slurm_job(submit_script, submit_dir=None):
 
     # replace CRLF line endings with LF, if any
     if shutil.which("dos2unix") is not None:
-        p = subprocess.run(["dos2unix", "*"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                           universal_newlines=True, cwd=submit_dir)
-        if p.returncode != 0:
-            return 1, f"dos2unix failed: {p.stdout}"
+        with open("dos2unix.txt", "w") as fout:
+            for fn in glob.glob("*"):
+                p = subprocess.run(["dos2unix", fn], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                   universal_newlines=True, cwd=submit_dir)
+                fout.write(p.stdout.strip() + "\n")
 
     # submit the Slurm job and return the job id
     p = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
