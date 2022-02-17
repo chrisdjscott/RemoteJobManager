@@ -26,10 +26,12 @@ def _remote_health_check(remote_root, remote_relpath, remote_file):
     import os.path
 
     full_path_dir = os.path.join(remote_root, remote_relpath)
-    assert os.path.isdir(full_path_dir), f"Remote directory does not exist: '{full_path_dir}'"
+    if not os.path.isdir(full_path_dir):
+        return f"Remote directory does not exist: '{full_path_dir}'"
 
     full_path_file = os.path.join(full_path_dir, remote_file)
-    assert os.path.isfile(full_path_file), f"Remote file does not exist: '{full_path_file}'"
+    if not os.path.isfile(full_path_file):
+        return f"Remote file does not exist: '{full_path_file}'"
 
 
 def health_check():
@@ -72,10 +74,14 @@ def health_check():
     # use runner to check the directory and file exists (tests funcx)
     print()
     print("Using runner to check directory and file exist...")
-    r.run_function(_remote_health_check, remote_root, remote_relpath, "test.txt")
-    print("Finished checking directory and file exist")
+    result = r.run_function(_remote_health_check, remote_root, remote_relpath, "test.txt")
+    if result is None:
+        print("Finished checking directory and file exist")
+    else:
+        print(f"ERROR: {result}")
 
     # cleanup remote directory
+
 
     print()
     print("If there were no errors above it looks like basic functionality is good")

@@ -110,17 +110,22 @@ class FuncxSlurmRunner(RunnerBase):
     def start(self):
         """Starts running the Slurm script."""
         logger.debug(f"Submitting Slurm script: {self._slurm_script}")
-        try:
-            jobid = self.run_function(submit_slurm_job, self._slurm_script, submit_dir=self._cwd)
-        except CalledProcessError as exc:
-            logger.error(f'submitting job failed in remote directory "{self._cwd}":')
-            logger.error(f"    return code: {exc.returncode}")
-            logger.error(f"    cmd: {exc.cmd}")
-            logger.error(f"    output: {exc.stdout}")
-            raise exc
+        returncode, stdout = self.run_function(submit_slurm_job, self._slurm_script, submit_dir=self._cwd)
+        logger.debug(f'returncode = {returncode}; output = {stdout}')
+
+        if returncode == 0:
+            # success
+            self._jobid = stdout.split()[-1]
+            logger.info(f"Submitted Slurm job with id: {self._jobid}")
+            started = True
+
         else:
-            logger.info(f"Slurm job submitted: {jobid}")
-            self._jobid = jobid
+            logger.error(f'submitting job failed in remote directory: "{self._cwd}"')
+            logger.error(f'return code: {returncode}')
+            logger.error(f'output: {stdout}')
+            started = False
+
+        return started
 
     def wait(self, polling_interval=None):
         """Wait for the Slurm job to finish"""
@@ -136,44 +141,56 @@ class FuncxSlurmRunner(RunnerBase):
         logger.debug(f"Polling interval is: {polling_interval} seconds")
         job_finished = False
         while not job_finished:
-            job_status = self.run_function(check_slurm_job_status, self._jobid)
-            logger.debug(f"Current job status is: '{job_status}'")
-            if not len(job_status):  # try again after short break in case there was an issue first time
-                time.sleep(5)
-                job_status = self.run_function(check_slurm_job_status, self._jobid)
-            assert len(job_status)
-            if job_status not in ("RUNNING", "PENDING"):
-                job_finished = True
+            returncode, job_status = self.run_function(check_slurm_job_status, self._jobid)
+            if returncode == 0:
+                logger.info(f"Current job status is: '{job_status}'")
+                if len(job_status) and job_status not in ("RUNNING", "PENDING"):
+                    job_finished = True
+                else:
+                    time.sleep(polling_interval)
             else:
-                time.sleep(polling_interval)
-        logger.info(f"Slurm job {self._jobid} has finished")
+                logger.error(f'Checking job status failed for {self._jobid}')
+                logger.error(f'return code: {returncode}')
+                logger.error(f'output: {job_status}')
+                break
+
+        if job_finished:
+            logger.info(f"Slurm job {self._jobid} has finished")
+
+        return job_finished
 
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
 def submit_slurm_job(submit_script, submit_dir=None):
     import os
+    import shutil
     import subprocess
 
     # if submit_dir is specified, it must exist
     if submit_dir is not None:
         if not os.path.exists(submit_dir):
-            raise ValueError(f"working directory does not exist: '{submit_dir}'")
-        print(f"Working directory is: {submit_dir}")
+            return 1, f"working directory does not exist: '{submit_dir}'"
         submit_script_path = os.path.join(submit_dir, submit_script)
     else:
         submit_script_path = submit_script
+
     # submit script must also exist
     if not os.path.exists(submit_script_path):
-        raise ValueError(f"submit_script does not exist: '{submit_script_path}'")
+        return 1, f"submit_script does not exist: '{submit_script_path}'"
+
+    # replace CRLF line endings with LF, if any
+    # TODO: only do this is CRLF are present
+    if shutil.which("dos2unix") is not None:
+        with open("dos2unix.txt", "w") as fout:
+            p = subprocess.run("dos2unix *", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               universal_newlines=True, cwd=submit_dir, shell=True)
+            fout.write(p.stdout.strip() + "\n")
 
     # submit the Slurm job and return the job id
-    result = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            universal_newlines=True, check=True, cwd=submit_dir)
+    p = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                       universal_newlines=True, check=False, cwd=submit_dir)
 
-    # the job id
-    jobid = result.stdout.split()[-1]
-
-    return jobid
+    return p.returncode, p.stdout.strip()
 
 
 # function that checks Slurm job status
@@ -183,10 +200,10 @@ def check_slurm_job_status(jobid):
     import subprocess
 
     # query the status of the job using sacct
-    result = subprocess.run(['sacct', '-j', jobid, '-X', '-o', 'State', '-n'], universal_newlines=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
+    p = subprocess.run(['sacct', '-j', jobid, '-X', '-o', 'State', '-n'], universal_newlines=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
 
-    return result.stdout.strip()
+    return p.returncode, p.stdout.strip()
 
 
 if __name__ == "__main__":

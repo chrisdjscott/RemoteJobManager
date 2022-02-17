@@ -29,6 +29,23 @@ jobs:
       - name: Check rjm_batch_wait command installed
         run: rjm_batch_wait --help
 
+      - run: mkdir -p ~/.rjm
+      - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini
+        shell: bash
+        env:
+          RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+      - run: printf "${RJM_TOKENS}" > ~/.rjm/rjm_tokens.json
+        shell: bash
+        env:
+          RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+      - name: Run batch_submit for nonmem example
+        run: rjm_batch_submit -f localdirs.txt -ll debug
+        working-directory: ./examples/nonmem
+      - name: Run batch_wait for nonmem example
+        run: rjm_batch_wait -f localdirs.txt -ll debug
+        working-directory: ./examples/nonmem
+      - run: rm ~/.rjm/*
+
       # Build executables just on Windows
       - name: Install pyinstaller
         run: python -m pip install pyinstaller pip-licenses

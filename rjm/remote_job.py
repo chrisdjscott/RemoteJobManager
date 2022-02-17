@@ -213,8 +213,7 @@ class RemoteJob:
             logger.warning("Files must be uploaded before starting the run")
         else:
             logger.info("Starting run")
-            self._runner.start()
-            self._run_started = True
+            self._run_started = self._runner.start()
             self._save_state()
 
     def run_wait(self, polling_interval=None):
@@ -225,8 +224,7 @@ class RemoteJob:
             logger.warning("Run must be started before it can complete")
         else:
             logger.info("Waiting for run to complete")
-            self._runner.wait(polling_interval=polling_interval)
-            self._run_completed = True
+            self._run_completed = self._runner.wait(polling_interval=polling_interval)
             self._save_state()
 
     def upload_and_start(self):
