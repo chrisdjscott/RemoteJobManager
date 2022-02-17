@@ -177,6 +177,15 @@ def submit_slurm_job(submit_script, submit_dir=None):
     if not os.path.exists(submit_script_path):
         return 1, f"submit_script does not exist: '{submit_script_path}'"
 
+    # replace CRLF line endings with LF, if any
+    windows_line_ending = b'\r\n'
+    linux_line_ending = b'\n'
+    with open(submit_script_path, 'rb') as fh:
+        content = fh.read()
+    content = content.replace(windows_line_ending, linux_line_ending)
+    with open(submit_script_path, 'wb') as fh:
+        fh.write(content)
+
     # submit the Slurm job and return the job id
     p = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                        universal_newlines=True, check=False, cwd=submit_dir)
