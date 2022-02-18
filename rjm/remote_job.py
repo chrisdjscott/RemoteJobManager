@@ -82,10 +82,15 @@ class RemoteJob:
             upload_files = [fn.strip() for fn in fh.readlines() if len(fn.strip())]
         self._upload_files = []
         for fname in upload_files:
-            fpath = os.path.join(self._local_path, fname)
+            # could be relative or absolute path
+            if os.path.isabs(fname):
+                fpath = fname
+            else:
+                fpath = os.path.join(self._local_path, fname)
+
             if os.path.exists(fpath):
                 if os.path.isfile(fpath):
-                    self._upload_files.append(fname)
+                    self._upload_files.append(fpath)
                 else:
                     logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
             else:
@@ -196,7 +201,7 @@ class RemoteJob:
         if self._downloaded:
             logger.info("Already downloaded files")
         elif not self._run_completed:
-            logger.warning("Run must be completed before downloading files")
+            logger.error("Run must be completed before downloading files")
         else:
             logger.info("Downloading files...")
             download_time = time.perf_counter()
@@ -210,8 +215,8 @@ class RemoteJob:
         """Start running the processing"""
         if self._run_started:
             logger.info("Run already started")
-        elif not self._upload_files:
-            logger.warning("Files must be uploaded before starting the run")
+        elif not self._uploaded:
+            logger.error("Files must be uploaded before starting the run")
         else:
             logger.info("Starting run")
             self._run_started = self._runner.start()
@@ -222,7 +227,7 @@ class RemoteJob:
         if self._run_completed:
             logger.info("Run already completed")
         elif not self._run_started:
-            logger.warning("Run must be started before it can complete")
+            logger.error("Run must be started before it can complete")
         else:
             logger.info("Waiting for run to complete")
             self._run_completed = self._runner.wait(polling_interval=polling_interval)
