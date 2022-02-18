@@ -78,12 +78,12 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filename: str
 
         """
-        # make the URL to upload file to
-        upload_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
-        logger.debug(f"Uploading file to: {upload_url}")
+        # basename for remote file name
+        basename = os.path.basename(filename)
 
-        # path to local file
-        local_file = os.path.join(self._local_path, filename)
+        # make the URL to upload file to
+        upload_url = f"{self._https_base_url}/{self._remote_path}/{basename}"
+        logger.debug(f"Uploading file to: {upload_url}")
 
         # authorisation
         headers = {
@@ -92,19 +92,18 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # upload
         start_time = time.perf_counter()
-        with open(local_file, 'rb') as f:
+        with open(filename, 'rb') as f:
             r = requests.put(upload_url, data=f, headers=headers)
         r.raise_for_status()
         upload_time = time.perf_counter() - start_time
-        self.log_transfer_time("Uploaded", local_file, upload_time)
+        self.log_transfer_time("Uploaded", filename, upload_time)
 
     def upload_files(self, filenames: List[str]):
         """
-        Upload the given files (which should be relative to `local_path`) to
-        the remote directory.
+        Upload the given files to the remote directory.
 
-        :param filenames: List of file names relative to the `local_path`
-            directory to upload to the remote directory.
+        :param filenames: List of files to upload to the
+            remote directory.
         :type filenames: iterable of str
 
         """
