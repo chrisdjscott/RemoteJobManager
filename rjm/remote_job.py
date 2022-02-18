@@ -108,7 +108,8 @@ class RemoteJob:
 
         # creating a remote directory for running in
         if self._transfer.get_remote_directory() is None:
-            remote_path_tuple = self._transfer.make_unique_directory(f"{self._local_path}-{self._timestamp}")
+            local_basename = os.path.basename(self._local_path)
+            remote_path_tuple = self._transfer.make_unique_directory(f"{local_basename}-{self._timestamp}")
             self._runner.set_working_directory(remote_path_tuple)
 
         # save state and making remote dir
