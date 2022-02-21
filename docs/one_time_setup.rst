@@ -81,6 +81,7 @@ Jupyter session times out.
     #    "ssh login.mahuika.nesi.org.nz before continuing")
 
     # load funcx endpoint software into the environment
+    ml purge
     ml funcx-endpoint
 
     # first time setup for funcx, will ask you to authenticate with
@@ -124,6 +125,7 @@ achieve this:
     #    "ssh login.mahuika.nesi.org.nz before continuing")
 
     # load funcx endpoint software into the environment
+    ml purge
     ml funcx-endpoint
 
     # restart the default endpoint
