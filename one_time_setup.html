@@ -46,52 +46,60 @@
 </ul>
 </div>
 <p>This guide has been tested with NeSI as the remote.</p>
-<p>A Globus account is required: <a class="reference external" href="https://app.globus.org/">https://app.globus.org/</a></p>
+<p>A Globus account is required: <a class="reference external" href="https://app.globus.org/">https://app.globus.org/</a> (you can usually use
+your institutional account to authenticate, e.g. University of Auckland).</p>
 <section id="remote-machine">
 <h2>Remote machine<a class="headerlink" href="#remote-machine" title="Permalink to this headline">¶</a></h2>
 <section id="globus-guest-collection">
 <h3>Globus Guest Collection<a class="headerlink" href="#globus-guest-collection" title="Permalink to this headline">¶</a></h3>
 <p>On the remote machine (e.g. NeSI), you need to have a Globus Guest Collection.
-Globus has the following guide on how to create a Guest Collection:</p>
-<p><a class="reference external" href="https://docs.globus.org/how-to/share-files/">https://docs.globus.org/how-to/share-files/</a></p>
-<p>You must have write access to the Guest Collection. On NeSI, this means you
-should create the shared directory on the <em>nobackup</em> file system.</p>
+In Globus terminology, a <em>Collection</em> is a set of files and/or directories
+that can be shared via Globus. In this section we are sharing a specific
+directory on the remote machine, via Globus, so that the RJM tool can upload
+and downloads files to and from that directory. You should roughly follow the
+steps below to set this up.</p>
+<p><strong>Note:</strong> you must have write access to the Guest Collection. On NeSI, this
+means you should create the shared directory on the <em>nobackup</em> file system.</p>
 <ol class="arabic">
 <li><p>Open the <a class="reference external" href="https://app.globus.org/file-manager">Globus Web App file manager</a></p></li>
-<li><p>Connect to the “NeSI Wellington DTN V5” endpoint (requires NeSI 2 factor
-authentication); create, if required, and navigate to the directory
-you wish to use for remote jobs; and select the <em>Share</em> option</p>
-<a class="reference external image-reference" href="_static/images/00_sharedir.png"><img alt="_images/00_sharedir.png" src="_images/00_sharedir.png" /></a>
+<li><p>Connect to the “NeSI Wellington DTN V5” <em>Collection</em> (requires NeSI 2 factor
+authentication)</p>
+<a class="reference external image-reference" href="_static/images/rjm_endpoint_auth.png"><img alt="_images/rjm_endpoint_auth.png" src="_images/rjm_endpoint_auth.png" /></a>
+</li>
+<li><p>Create and/or navigate to the directory you wish to use for remote jobs (on
+NeSI, it must be under <em>/nesi/nobackup/…</em>); and select the <em>Share</em>, then
+<em>Continue</em> on the “Authentication/Consent Required” page, if necessary</p>
+<a class="reference external image-reference" href="_static/images/rjm_share_dir.png"><img alt="_images/rjm_share_dir.png" src="_images/rjm_share_dir.png" /></a>
 </li>
 <li><p>On the share settings page, select <em>Add a Guest Collection</em></p>
 <a class="reference external image-reference" href="_static/images/01_sharescreen.png"><img alt="_images/01_sharescreen.png" src="_images/01_sharescreen.png" /></a>
 </li>
-<li><p>On the <em>Create New Guest Collection</em> page, make sure the <em>Path</em> is correct
-and give the share a name (also make a note of the <em>Path</em> as this will be
-required during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>)</p>
-<a class="reference external image-reference" href="_static/images/02_create_guest_collection.png"><img alt="_images/02_create_guest_collection.png" src="_images/02_create_guest_collection.png" /></a>
+<li><p>On the <em>Create New Guest Collection</em> page, make sure the <em>Directory</em> path
+is correct and give the collection a name (also make a note of the
+<em>Directory</em> as this will be required during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>)</p>
+<a class="reference external image-reference" href="_static/images/rjm_create_guest_collection.png"><img alt="_images/rjm_create_guest_collection.png" src="_images/rjm_create_guest_collection.png" /></a>
 </li>
-<li><p>Make a note of the guest collection endpoint id as this will be required
-during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a></p>
-<a class="reference external image-reference" href="_static/images/03_endpointid.png"><img alt="_images/03_endpointid.png" src="_images/03_endpointid.png" /></a>
+<li><p>Make a note of the guest collection <em>Endpoint UUID</em> as this will be
+required during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a></p>
+<a class="reference external image-reference" href="_static/images/rjm_globus_endpoint_id.png"><img alt="_images/rjm_globus_endpoint_id.png" src="_images/rjm_globus_endpoint_id.png" /></a>
 </li>
 </ol>
-<p><strong>TODO:</strong> how to share a globus guest collection with others…</p>
 </section>
 <section id="funcx-endpoint">
 <h3>funcX endpoint<a class="headerlink" href="#funcx-endpoint" title="Permalink to this headline">¶</a></h3>
-<p>A funcX endpoint is also required on the remote machine. On NeSI this could
-be created as follows:</p>
+<p>A <a class="reference external" href="https://funcx.readthedocs.io/en/latest/">funcX</a> endpoint is also required on the remote machine. This allows us to
+run commands on the remote system.</p>
+<p>On NeSI, first connect to a Mahuika login node. For example, using MobaXterm,
+JupyterLab or similar.</p>
+<p><strong>Note</strong>: if connecting via the JupyterLab terminal, make sure to <em>ssh</em> to a
+login node first, otherwise the funcX endpoint will be killed when your
+Jupyter session times out.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># the following should be run on a mahuika login node:</span>
 <span class="c1">#   (if using jupyter terminal, run</span>
 <span class="c1">#    &quot;ssh login.mahuika.nesi.org.nz before continuing&quot;)</span>
 
 <span class="c1"># load funcx endpoint software into the environment</span>
 ml funcx-endpoint
-
-<span class="c1"># some versions of funcX had a bug where the config directory</span>
-<span class="c1"># must already exist before running configure</span>
-mkdir -p ~/.funcx
 
 <span class="c1"># first time setup for funcx, will ask you to authenticate with</span>
 <span class="c1"># Globus and copy a code back to the terminal</span>
@@ -104,15 +112,9 @@ funcx-endpoint start
 funcx-endpoint list
 </pre></div>
 </div>
-<p>Make a note of the endpoint id that shows up in the list command, you will
+<p>Make a note of the <em>Endpoint ID</em> that shows up in the list command, you will
 need it during <a class="reference internal" href="configuration.html"><span class="doc">Configuration</span></a>. The output from list will look something
 like follows:</p>
-<p>Note: we are effectively just using funcX as a Slurm API (running Slurm commands
-on the remote machine), so the <em>default</em> endpoint running on a login node is
-entirely appropriate and sufficient.</p>
-<p>Also note: after running the above commands, it is safe to close the
-window, SSH connection, Jupyter session, etc. - funcX daemonises the process
-running the endpoint so it is no longer attached to the running session.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>+---------------+---------+--------------------------------------+
 <span class="p">|</span> Endpoint Name <span class="p">|</span> Status  <span class="p">|</span>             Endpoint ID              <span class="p">|</span>
 +<span class="o">===============</span>+<span class="o">=========</span>+<span class="o">======================================</span>+
@@ -120,6 +122,12 @@ running the endpoint so it is no longer attached to the running session.</p>
 +---------------+---------+--------------------------------------+
 </pre></div>
 </div>
+<p>Note: we are effectively just using funcX as a Slurm API (running Slurm commands
+on the remote machine), so the <em>default</em> endpoint running on a login node is
+entirely appropriate and sufficient.</p>
+<p>Also note: after running the above commands, it is safe to close the
+window, SSH connection, Jupyter session, etc. - funcX daemonises the process
+running the endpoint so it is no longer attached to the running session.</p>
 <p>It may sometimes be necessary to restart the endpoint, for example if the
 login node was rebooted or some other issue occurred. The following would
 achieve this:</p>
