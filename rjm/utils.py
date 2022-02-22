@@ -54,6 +54,8 @@ def setup_logging(log_file=None, log_level=None):
 
     # command line overrides rjm log level
     if log_level is not None:
+        if log_level == "warn":  # "warn" is deprecated
+            log_level = "warning"
         level = getattr(logging, log_level.upper(), None)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)

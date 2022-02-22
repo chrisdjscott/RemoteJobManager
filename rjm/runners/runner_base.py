@@ -1,4 +1,5 @@
 
+import os
 import logging
 
 from rjm import config as config_helper
@@ -14,6 +15,7 @@ class RunnerBase:
     """
     def __init__(self, config=None):
         self._local_path = None
+        self._label = ""
 
         # load config
         if config is None:
@@ -22,6 +24,10 @@ class RunnerBase:
             self._config = config
 
         self._cwd = None
+
+    def _log(self, level, message, *args, **kwargs):
+        """Add a label to log messages, identifying this specific RemoteJob"""
+        logger.log(level, self._label + message, *args, **kwargs)
 
     def save_state(self):
         """Return state dict if required for restarting"""
@@ -53,16 +59,17 @@ class RunnerBase:
     def set_local_directory(self, local_dir):
         """Set the local directory"""
         self._local_path = local_dir
+        self._label = f"[{os.path.basename(local_dir)}] "
 
     def set_working_directory(self, working_dir_tuple):
         """Set the remote working directory"""
         self._cwd = self.run_function(path_join, working_dir_tuple[0], working_dir_tuple[1])
-        logger.debug(f"Setting remote working directory to: {self._cwd}")
+        self._log(logging.DEBUG, f"Setting remote working directory to: {self._cwd}")
 
         # sanity check the directory exists on the remote
         dir_exists = self.run_function(check_dir_exists, self._cwd)
         if not dir_exists:
-            logger.error(f"The specified working directory does not exist on remote: {self._cwd}")
+            self._log(logging.ERROR, f"The specified working directory does not exist on remote: {self._cwd}")
             raise ValueError(f"The specified working directory does not exist on remote: {self._cwd}")
 
     def run_function(self, function, *args, **kwargs):

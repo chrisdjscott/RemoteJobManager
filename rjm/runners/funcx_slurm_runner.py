@@ -41,6 +41,10 @@ class FuncxSlurmRunner(RunnerBase):
         # Slurm job id
         self._jobid = None
 
+    def _log(self, level, message, *args, **kwargs):
+        """Add a label to log messages, identifying this specific RemoteJob"""
+        logger.log(level, self._label + message, *args, **kwargs)
+
     def __repr__(self):
         return f"FuncxSlurmRunner({self._funcx_endpoint})"
 
@@ -65,7 +69,7 @@ class FuncxSlurmRunner(RunnerBase):
             utils.SEARCH_SCOPE,
             utils.FUNCX_SCOPE,
         ]
-        logger.debug(f"Required Globus scopes are: {self._required_scopes}")
+        self._log(logging.DEBUG, f"Required Globus scopes are: {self._required_scopes}")
 
         return self._required_scopes
 
@@ -75,7 +79,7 @@ class FuncxSlurmRunner(RunnerBase):
         if getattr(sys, "frozen", False):
             # application is frozen
             use_offprocess_checker = False
-            logger.debug("Disabling offprocess_checker when frozen")
+            self._log(logging.DEBUG, "Disabling offprocess_checker when frozen")
         else:
             use_offprocess_checker = True
 
@@ -94,35 +98,35 @@ class FuncxSlurmRunner(RunnerBase):
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""
         if self._funcx_executor is None:
-            logger.error("Make sure you setup_globus_auth before trying to run something")
+            self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
             raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
 
         # start the function
-        logger.debug(f"Submitting function to FuncX executor: {function}")
+        self._log(logging.DEBUG, f"Submitting function to FuncX executor: {function}")
         future = self._funcx_executor.submit(function, *args, endpoint_id=self._funcx_endpoint, **kwargs)
 
         # wait for it to complete and get the result
-        logger.debug("Waiting for FuncX function to complete")
+        self._log(logging.DEBUG, "Waiting for FuncX function to complete")
         result = future.result()
 
         return result
 
     def start(self):
         """Starts running the Slurm script."""
-        logger.debug(f"Submitting Slurm script: {self._slurm_script}")
+        self._log(logging.DEBUG, f"Submitting Slurm script: {self._slurm_script}")
         returncode, stdout = self.run_function(submit_slurm_job, self._slurm_script, submit_dir=self._cwd)
-        logger.debug(f'returncode = {returncode}; output = {stdout}')
+        self._log(logging.DEBUG, f'returncode = {returncode}; output = {stdout}')
 
         if returncode == 0:
             # success
             self._jobid = stdout.split()[-1]
-            logger.info(f"Submitted Slurm job with id: {self._jobid}")
+            self._log(logging.INFO, f"Submitted Slurm job with id: {self._jobid}")
             started = True
 
         else:
-            logger.error(f'submitting job failed in remote directory: "{self._cwd}"')
-            logger.error(f'return code: {returncode}')
-            logger.error(f'output: {stdout}')
+            self._log(logging.ERROR, f'submitting job failed in remote directory: "{self._cwd}"')
+            self._log(logging.ERROR, f'return code: {returncode}')
+            self._log(logging.ERROR, f'output: {stdout}')
             started = False
 
         return started
@@ -137,25 +141,25 @@ class FuncxSlurmRunner(RunnerBase):
             polling_interval = self._poll_interval
 
         # loop until job has finished
-        logger.info(f"Waiting for Slurm job {self._jobid} to finish")
-        logger.debug(f"Polling interval is: {polling_interval} seconds")
+        self._log(logging.INFO, f"Waiting for Slurm job {self._jobid} to finish")
+        self._log(logging.DEBUG, f"Polling interval is: {polling_interval} seconds")
         job_finished = False
         while not job_finished:
             returncode, job_status = self.run_function(check_slurm_job_status, self._jobid)
             if returncode == 0:
-                logger.info(f"Current job status is: '{job_status}'")
+                self._log(logging.INFO, f"Current job status is: '{job_status}'")
                 if len(job_status) and job_status not in ("RUNNING", "PENDING"):
                     job_finished = True
                 else:
                     time.sleep(polling_interval)
             else:
-                logger.error(f'Checking job status failed for {self._jobid}')
-                logger.error(f'return code: {returncode}')
-                logger.error(f'output: {job_status}')
+                self._log(logging.ERROR, f'Checking job status failed for {self._jobid}')
+                self._log(logging.ERROR, f'return code: {returncode}')
+                self._log(logging.ERROR, f'output: {job_status}')
                 break
 
         if job_finished:
-            logger.info(f"Slurm job {self._jobid} has finished")
+            self._log(logging.INFO, f"Slurm job {self._jobid} has finished")
 
         return job_finished
 
