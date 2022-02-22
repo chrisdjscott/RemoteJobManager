@@ -27,6 +27,7 @@ class RemoteJob:
 
     def __init__(self, timestamp=None):
         self._local_path = None
+        self._label = ""
 
         # timestamp for working directory name
         self._timestamp = timestamp
@@ -44,6 +45,10 @@ class RemoteJob:
         # remote runner
         self._runner = funcx_slurm_runner.FuncxSlurmRunner(config=config)
 
+    def _log(self, level, message, *args, **kwargs):
+        """Add a label to log messages, identifying this specific RemoteJob"""
+        logger.log(level, self._label + message, *args, **kwargs)
+
     def get_required_globus_scopes(self):
         """
         Return list of Globus auth scopes required by the RemoteJob.
@@ -54,30 +59,8 @@ class RemoteJob:
 
         return required_scopes
 
-    def setup(self, local_dir, force=False):
-        """
-        Set up the remote job (authentication, remote directory...)
-
-        """
-        # the local directory this job is based on
-        if not os.path.isdir(local_dir):
-            raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
-        self._local_path = local_dir
-        self._job_name = os.path.basename(local_dir)
-        logger.info(f"Setting up remote job: {self._job_name}")
-
-        # setting up transferer and runner
-        self._transfer.set_local_directory(self._local_path)
-        self._runner.set_local_directory(self._local_path)
-
-        # state file
-        self._uploaded = False
-        self._downloaded = False
-        self._run_started = False
-        self._run_completed = False
-        self._state_file = os.path.join(local_dir, self.STATE_FILE)
-
-        # reading upload files
+    def _read_upload_files(self):
+        """Read the file that lists files to be uploaded"""
         with open(os.path.join(self._local_path, self._uploads_file)) as fh:
             upload_files = [fn.strip() for fn in fh.readlines() if len(fn.strip())]
         self._upload_files = []
@@ -92,18 +75,49 @@ class RemoteJob:
                 if os.path.isfile(fpath):
                     self._upload_files.append(fpath)
                 else:
-                    logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
+                    self._log(logging.WARNING, f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
             else:
-                logger.warning(f'Skipping upload file specified in "{self._uploads_file}" that does not exist: "{fpath}"')
-        logger.info(f"File to be uploaded: {self._upload_files}")
+                self._log(logging.WARNING, f'Skipping upload file specified in "{self._uploads_file}" that does not exist: "{fpath}"')
+        self._log(logging.DEBUG, f"File to be uploaded: {self._upload_files}")
 
-        # reading download files
+    def _read_downloads_file(self):
+        """Read file that lists files to be downloaded"""
         with open(os.path.join(self._local_path, self._downloads_file)) as fh:
             self._download_files = [f.strip() for f in fh.readlines() if len(f.strip())]
         for fn in self._download_files:
             if os.path.exists(os.path.join(self._local_path, fn)):
-                logger.warning(f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
-        logger.info(f"Files to be downloaded: {self._download_files}")
+                self._log(logging.WARNING, f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
+        self._log(logging.DEBUG, f"Files to be downloaded: {self._download_files}")
+
+    def setup(self, local_dir, force=False):
+        """
+        Set up the remote job (authentication, remote directory...)
+
+        """
+        # the local directory this job is based on
+        self._label = f"[{os.path.basename(local_dir)}] "
+        if not os.path.isdir(local_dir):
+            raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
+        self._local_path = local_dir
+        self._job_name = os.path.basename(local_dir)
+        self._log(logging.INFO, f"Setting up remote job: {self._job_name}")
+
+        # setting up transferer and runner
+        self._transfer.set_local_directory(self._local_path)
+        self._runner.set_local_directory(self._local_path)
+
+        # state file
+        self._uploaded = False
+        self._downloaded = False
+        self._run_started = False
+        self._run_completed = False
+        self._state_file = os.path.join(local_dir, self.STATE_FILE)
+
+        # reading upload files
+        self._read_upload_files()
+
+        # reading download files
+        self._read_downloads_file()
 
         # load saved state if any
         self._load_state(force)
@@ -136,7 +150,7 @@ class RemoteJob:
         raise NotImplementedError
 
     def __repr__(self):
-        return f'RemoteJob({self._job_name})'
+        return f'RemoteJob({self._label})'
 
     def _load_state(self, force):
         """
@@ -144,10 +158,10 @@ class RemoteJob:
 
         """
         if os.path.exists(self._state_file) and not force:
-            logger.debug(f"Loading state from: {self._state_file}")
+            self._log(logging.DEBUG, f"Loading state from: {self._state_file}")
             with open(self._state_file) as fh:
                 state_dict = json.load(fh)
-            logger.debug(f"Loading state: {state_dict}")
+            self._log(logging.DEBUG, f"Loading state: {state_dict}")
 
             self._uploaded = state_dict["uploaded"]
             self._run_started = state_dict["started_run"]
@@ -179,57 +193,60 @@ class RemoteJob:
         if len(runner_state):
             state_dict["runner"] = runner_state
 
-        logger.debug(f"Saving state: {state_dict}")
+        self._log(logging.DEBUG, f"Saving state: {state_dict}")
         with open(self._state_file, 'w') as fh:
             json.dump(state_dict, fh, indent=4)
 
     def upload_files(self):
         """Upload files to remote"""
         if self._uploaded:
-            logger.info("Already uploaded files")
+            self._log(logging.INFO, "Already uploaded files")
         else:
-            logger.info("Uploading files...")
+            self._log(logging.INFO, "Uploading files...")
             upload_time = time.perf_counter()
             self._transfer.upload_files(self._upload_files)
             upload_time = time.perf_counter() - upload_time
-            logger.debug(f"Uploaded files in {upload_time:.1f} seconds")
+            self._log(logging.DEBUG, f"Uploaded files in {upload_time:.1f} seconds")
             self._uploaded = True
             self._save_state()
 
     def download_files(self):
         """Download file from remote"""
         if self._downloaded:
-            logger.info("Already downloaded files")
+            self._log(logging.INFO, "Already downloaded files")
         elif not self._run_completed:
-            logger.error("Run must be completed before downloading files")
+            self._log(logging.ERROR, "Run must be completed before we can download files")
+            raise RuntimeError("Run must be completed before we can download files")
         else:
-            logger.info("Downloading files...")
+            self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
             self._transfer.download_files(self._download_files)
             download_time = time.perf_counter() - download_time
-            logger.debug(f"Downloaded files in {download_time:.1f} seconds")
+            self._log(logging.DEBUG, f"Downloaded files in {download_time:.1f} seconds")
             self._downloaded = True
             self._save_state()
 
     def run_start(self):
         """Start running the processing"""
         if self._run_started:
-            logger.info("Run already started")
+            self._log(logging.INFO, "Run already started")
         elif not self._uploaded:
-            logger.error("Files must be uploaded before starting the run")
+            self._log(logging.ERROR, "Files must be uploaded before we can start the run")
+            raise RuntimeError("Files must be uploaded before we can start the run")
         else:
-            logger.info("Starting run")
+            self._log(logging.INFO, "Starting run...")
             self._run_started = self._runner.start()
             self._save_state()
 
     def run_wait(self, polling_interval=None):
         """Wait for the processing to complete"""
         if self._run_completed:
-            logger.info("Run already completed")
+            self._log(logging.INFO, "Run already completed")
         elif not self._run_started:
-            logger.error("Run must be started before it can complete")
+            self._log(logging.ERROR, "Run must be started before we can wait for it to complete")
+            raise RuntimeError("Run must be started before we can wait for it to complete")
         else:
-            logger.info("Waiting for run to complete")
+            self._log(logging.INFO, "Waiting for run to complete...")
             self._run_completed = self._runner.wait(polling_interval=polling_interval)
             self._save_state()
 

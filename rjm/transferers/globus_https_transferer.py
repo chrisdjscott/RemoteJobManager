@@ -37,13 +37,17 @@ class GlobusHttpsTransferer(TransfererBase):
         # transfer client
         self._tc = None
 
+    def _log(self, level, message, *args, **kwargs):
+        """Add a label to log messages, identifying this specific RemoteJob"""
+        logger.log(level, self._label + message, *args, **kwargs)
+
     def get_globus_scopes(self):
         """Return list of required globus scopes."""
         required_scopes = [
             utils.TRANSFER_SCOPE,
             self._https_scope,
         ]
-        logger.debug(f"Required Globus scopes are: {required_scopes}")
+        self._log(logging.DEBUG, f"Required Globus scopes are: {required_scopes}")
 
         return required_scopes
 
@@ -65,7 +69,7 @@ class GlobusHttpsTransferer(TransfererBase):
         # get the base URL for uploads and downloads
         endpoint = self._tc.get_endpoint(self._remote_endpoint)
         self._https_base_url = endpoint['https_server']
-        logger.debug(f"Remote endpoint HTTPS base URL: {self._https_base_url}")
+        self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
         # HTTPS authentication header
         a = authorisers[self._https_scope]
         self._https_auth_header = a.get_authorization_header()
@@ -83,7 +87,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # make the URL to upload file to
         upload_url = f"{self._https_base_url}/{self._remote_path}/{basename}"
-        logger.debug(f"Uploading file to: {upload_url}")
+        self._log(logging.DEBUG, f"Uploading file: {basename}")
 
         # authorisation
         headers = {
@@ -115,9 +119,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
             # wait for completion
             for future in concurrent.futures.as_completed(future_to_fname):
-                fname = future_to_fname[future]
                 future.result()
-                logger.debug(f"Finished uploading file: {fname}")
 
     def download_files(self, filenames: List[str]):
         """
@@ -142,9 +144,7 @@ class GlobusHttpsTransferer(TransfererBase):
                     future.result()
                 except requests.exceptions.HTTPError as exc:
                     # if fail to download, just print warning
-                    logger.warning(f"Failed to download file '{fname}': {exc}")
-                else:
-                    logger.debug(f"Successfully downloaded file: {fname}")
+                    self._log(logging.WARNING, f"Failed to download file '{fname}': {exc}")
 
     def _download_file(self, filename: str):
         """
@@ -156,7 +156,7 @@ class GlobusHttpsTransferer(TransfererBase):
         """
         # file to download and URL
         download_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
-        logger.debug(f"Downloading file from: {download_url}")
+        self._log(logging.DEBUG, f"Downloading file: {filename}")
 
         # path to local file
         local_file = os.path.join(self._local_path, filename)

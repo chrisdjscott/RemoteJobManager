@@ -24,6 +24,11 @@ class TransfererBase:
 
         self._remote_path = None
         self._local_path = None
+        self._label = ""
+
+    def _log(self, level, message, *args, **kwargs):
+        """Add a label to log messages, identifying this specific RemoteJob"""
+        logger.log(level, self._label + message, *args, **kwargs)
 
     def save_state(self):
         """Return state dict if required for restarting"""
@@ -51,6 +56,7 @@ class TransfererBase:
     def set_local_directory(self, local_dir):
         """Set the local directory"""
         self._local_path = local_dir
+        self._label = f"[{os.path.basename(local_dir)}] "
 
     def make_directory(self, path):
         """Create a directory at the specified path"""
@@ -76,7 +82,7 @@ class TransfererBase:
                 got_dirname = True
 
         # create the directory
-        logger.debug(f"Creating remote directory: {workdirname}")
+        self._log(logging.INFO, f"Creating remote directory: {workdirname}")
         self.make_directory(workdirname)
         self._remote_path = workdirname
 
@@ -94,12 +100,11 @@ class TransfererBase:
         """Do any Globus auth setup here, if required"""
         pass
 
-    def log_transfer_time(self, text: str, local_file: str, elapsed_time: float, log_method: str = "debug"):
+    def log_transfer_time(self, text: str, local_file: str, elapsed_time: float, log_level: int = logging.DEBUG):
         """Report the time taken to upload/download a file"""
         file_size = os.path.getsize(local_file)
         file_size, file_size_units = utils.pretty_size_from_bytes(file_size)
-        log = getattr(logger, log_method)
-        log(f"{text} {local_file}: {file_size:.1f} {file_size_units} in {elapsed_time:.1f} s ({file_size / elapsed_time:.1f} {file_size_units}/s)")
+        self._log(log_level, f"{text} {local_file}: {file_size:.1f} {file_size_units} in {elapsed_time:.1f} s ({file_size / elapsed_time:.1f} {file_size_units}/s)")
 
     def upload_files(self, filenames: List[str]):
         """
