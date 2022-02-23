@@ -46,6 +46,9 @@ setup(
         "globus-sdk>=3",
         "funcx==0.3.6",
     ],
+    extras_require={
+        "test": ["pytest", "pytest-mock"],
+    },
     classifiers=[
         "Development Status :: 3 - Alpha"
         "Intended Audience :: Developers",
