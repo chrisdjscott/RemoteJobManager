@@ -115,7 +115,7 @@ class FuncxSlurmRunner(RunnerBase):
         """Starts running the Slurm script."""
         self._log(logging.DEBUG, f"Submitting Slurm script: {self._slurm_script}")
         returncode, stdout = self.run_function(submit_slurm_job, self._slurm_script, submit_dir=self._cwd)
-        self._log(logging.DEBUG, f'returncode = {returncode}; output = {stdout}')
+        self._log(logging.DEBUG, f'returncode = {returncode}; output = "{stdout}"')
 
         if returncode == 0:
             # success
@@ -163,6 +163,22 @@ class FuncxSlurmRunner(RunnerBase):
 
         return job_finished
 
+    def cancel(self):
+        """Cancel the Slurm job"""
+        if self._jobid is None:
+            raise ValueError("Cannot cancel a run that hasn't started")
+
+        self._log(logging.DEBUG, f"Cancelling Slurm job: {self._jobid}")
+        returncode, stdout = self.run_function(cancel_slurm_job, self._jobid)
+        self._log(logging.DEBUG, f'returncode = {returncode}; output = "{stdout}"')
+
+        if returncode == 0:
+            # success
+            self._log(logging.INFO, f"Cancelled Slurm job with id: {self._jobid}")
+
+        else:
+            self._log(logging.WARNING, f'Cancelling job failed ({returncode}): "{stdout}"')
+
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
 def submit_slurm_job(submit_script, submit_dir=None):
@@ -206,6 +222,19 @@ def check_slurm_job_status(jobid):
     # query the status of the job using sacct
     p = subprocess.run(['sacct', '-j', jobid, '-X', '-o', 'State', '-n'], universal_newlines=True,
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+
+    return p.returncode, p.stdout.strip()
+
+
+# function to cancel a Slurm job
+def cancel_slurm_job(jobid):
+    """Cancel the Slurm job"""
+    # have to load modules within the function
+    import subprocess
+
+    # cancel the job using scancel
+    p = subprocess.run(["scancel", jobid], universal_newlines=True, check=False,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     return p.returncode, p.stdout.strip()
 

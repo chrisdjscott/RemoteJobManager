@@ -84,6 +84,10 @@ class RunnerBase:
         """Blocks until the processing has finished"""
         raise NotImplementedError
 
+    def cancel(self):
+        """Cancel the processing"""
+        raise NotImplementedError
+
 
 # function for joining two paths on funcx endpoint
 def path_join(path1, path2):
