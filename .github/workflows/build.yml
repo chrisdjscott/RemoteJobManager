@@ -21,7 +21,7 @@ jobs:
         run: python --version
 
       - name: Build the package
-        run: python -m pip install .[all]
+        run: python -m pip install .[test]
 
       - name: Check rjm_batch_submit command installed
         run: rjm_batch_submit --help
