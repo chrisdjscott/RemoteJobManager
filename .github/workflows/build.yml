@@ -72,6 +72,10 @@ jobs:
         run: pyinstaller -F ../../rjm/cli/rjm_health_check.py
         working-directory:  ./extra/pyinstaller
         if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
+      - name: Build rjm_batch_cancel
+        run: pyinstaller -F ../../rjm/cli/rjm_batch_cancel.py
+        working-directory:  ./extra/pyinstaller
+        if: ${{ runner.os == 'Windows' && matrix.python-version == '3.9' }}
       - name: Dump license files
         run: |
           pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt

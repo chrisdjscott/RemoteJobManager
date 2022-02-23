@@ -250,6 +250,15 @@ class RemoteJob:
             self._run_completed = self._runner.wait(polling_interval=polling_interval)
             self._save_state()
 
+    def run_cancel(self):
+        """Cancel the run."""
+        if not self._run_started:
+            self._log(logging.WARNING, "Cannot cancel a run that hasn't started")
+        elif self._run_completed:
+            self._log(logging.WARNING, "Cannot cancel a run that has already completed")
+        else:
+            self._runner.cancel()
+
     def upload_and_start(self):
         """
         Complete the upload files and start running steps.

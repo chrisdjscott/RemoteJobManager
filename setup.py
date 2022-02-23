@@ -34,6 +34,7 @@ setup(
             'rjm_authenticate = rjm.cli.rjm_authenticate:authenticate',
             'rjm_configure = rjm.cli.rjm_configure:configure',
             'rjm_health_check = rjm.cli.rjm_health_check:health_check',
+            'rjm_batch_cancel = rjm.cli.rjm_batch_cancel:batch_cancel',
         ],
         'pyinstaller40': [
             'hook-dirs = rjm.__pyinstaller:get_hook_dirs',
