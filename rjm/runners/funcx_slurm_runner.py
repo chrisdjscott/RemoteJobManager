@@ -174,11 +174,10 @@ class FuncxSlurmRunner(RunnerBase):
 
         if returncode == 0:
             # success
-            self._jobid = stdout.split()[-1]
             self._log(logging.INFO, f"Cancelled Slurm job with id: {self._jobid}")
 
         else:
-            self._log(logging.WARNING, f'cancelling job failed ({returncode}): "{stdout}"')
+            self._log(logging.WARNING, f'Cancelling job failed ({returncode}): "{stdout}"')
 
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
