@@ -1,4 +1,5 @@
 
+import sys
 import argparse
 
 from rjm import __version__
@@ -21,7 +22,12 @@ def configure():
     parser = make_parser()
     parser.parse_args()
 
-    config_helper.do_configuration()
+    try:
+        config_helper.do_configuration()
+    except Exception as exc:
+        print("ERROR: rjm_configure failed with exception:")
+        print(repr(exc))
+        sys.exit(1)
 
 
 if __name__ == "__main__":

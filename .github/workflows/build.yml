@@ -21,13 +21,15 @@ jobs:
         run: python --version
 
       - name: Build the package
-        run: python -m pip install .
+        run: python -m pip install .[all]
 
       - name: Check rjm_batch_submit command installed
         run: rjm_batch_submit --help
-
       - name: Check rjm_batch_wait command installed
         run: rjm_batch_wait --help
+
+      - name: Run tests
+        run: pytest
 
       - run: mkdir -p ~/.rjm
       - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini

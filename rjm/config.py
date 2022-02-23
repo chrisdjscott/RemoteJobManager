@@ -68,7 +68,7 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
         config = configparser.ConfigParser()
         config.read(config_file)
     else:
-        raise RuntimeError(f"Config file does not exist: {config_file}")
+        raise ValueError(f"Config file does not exist: {config_file}")
 
     return config
 
