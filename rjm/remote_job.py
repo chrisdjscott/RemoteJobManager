@@ -59,35 +59,46 @@ class RemoteJob:
 
         return required_scopes
 
-    def _read_upload_files(self):
+    def _read_uploads_file(self):
         """Read the file that lists files to be uploaded"""
-        with open(os.path.join(self._local_path, self._uploads_file)) as fh:
-            upload_files = [fn.strip() for fn in fh.readlines() if len(fn.strip())]
+        upload_file_path = os.path.join(self._local_path, self._uploads_file)
         self._upload_files = []
-        for fname in upload_files:
-            # could be relative or absolute path
-            if os.path.isabs(fname):
-                fpath = fname
-            else:
-                fpath = os.path.join(self._local_path, fname)
 
-            if os.path.exists(fpath):
-                if os.path.isfile(fpath):
-                    self._upload_files.append(fpath)
+        if os.path.isfile(upload_file_path):
+            with open(upload_file_path) as fh:
+                upload_files = [fn.strip() for fn in fh.readlines() if len(fn.strip())]
+            for fname in upload_files:
+                # could be relative or absolute path
+                if os.path.isabs(fname):
+                    fpath = fname
                 else:
-                    self._log(logging.WARNING, f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
-            else:
-                self._log(logging.WARNING, f'Skipping upload file specified in "{self._uploads_file}" that does not exist: "{fpath}"')
-        self._log(logging.DEBUG, f"File to be uploaded: {self._upload_files}")
+                    fpath = os.path.join(self._local_path, fname)
+
+                if os.path.exists(fpath):
+                    if os.path.isfile(fpath):
+                        self._upload_files.append(fpath)
+                    else:
+                        self._log(logging.WARNING, f'Skipping upload file specified in "{self._uploads_file}" that is not a file: "{fpath}"')
+                else:
+                    self._log(logging.WARNING, f'Skipping upload file specified in "{self._uploads_file}" that does not exist: "{fpath}"')
+            self._log(logging.DEBUG, f"Files to be uploaded: {self._upload_files}")
+        else:
+            self._log(logging.WARNING, f"Uploads file does not exist: {upload_file_path}")
 
     def _read_downloads_file(self):
         """Read file that lists files to be downloaded"""
-        with open(os.path.join(self._local_path, self._downloads_file)) as fh:
-            self._download_files = [f.strip() for f in fh.readlines() if len(f.strip())]
-        for fn in self._download_files:
-            if os.path.exists(os.path.join(self._local_path, fn)):
-                self._log(logging.WARNING, f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
-        self._log(logging.DEBUG, f"Files to be downloaded: {self._download_files}")
+        download_file_path = os.path.join(self._local_path, self._downloads_file)
+
+        if os.path.isfile(download_file_path):
+            with open(download_file_path) as fh:
+                self._download_files = [f.strip() for f in fh.readlines() if len(f.strip())]
+            for fn in self._download_files:
+                if os.path.exists(os.path.join(self._local_path, fn)):
+                    self._log(logging.WARNING, f"Local file will be overwritten by download: {os.path.join(self._local_path, fn)}")
+            self._log(logging.DEBUG, f"Files to be downloaded: {self._download_files}")
+        else:
+            self._download_files = []
+            self._log(logging.WARNING, f"Downloads file does not exist: {download_file_path}")
 
     def setup(self, local_dir, force=False):
         """
@@ -106,20 +117,12 @@ class RemoteJob:
         self._transfer.set_local_directory(self._local_path)
         self._runner.set_local_directory(self._local_path)
 
-        # state file
+        # initialise and load saved state, if any
         self._uploaded = False
         self._downloaded = False
         self._run_started = False
         self._run_completed = False
         self._state_file = os.path.join(local_dir, self.STATE_FILE)
-
-        # reading upload files
-        self._read_upload_files()
-
-        # reading download files
-        self._read_downloads_file()
-
-        # load saved state if any
         self._load_state(force)
 
         # handle Globus here
@@ -158,7 +161,6 @@ class RemoteJob:
 
         """
         if os.path.exists(self._state_file) and not force:
-            self._log(logging.DEBUG, f"Loading state from: {self._state_file}")
             with open(self._state_file) as fh:
                 state_dict = json.load(fh)
             self._log(logging.DEBUG, f"Loading state: {state_dict}")
@@ -203,10 +205,15 @@ class RemoteJob:
             self._log(logging.INFO, "Already uploaded files")
         else:
             self._log(logging.INFO, "Uploading files...")
+
+            # read in the files to be uploaded
+            self._read_uploads_file()
+
+            # do the upload
             upload_time = time.perf_counter()
             self._transfer.upload_files(self._upload_files)
             upload_time = time.perf_counter() - upload_time
-            self._log(logging.DEBUG, f"Uploaded files in {upload_time:.1f} seconds")
+            self._log(logging.INFO, f"Uploaded {len(self._upload_files)} files in {upload_time:.1f} seconds")
             self._uploaded = True
             self._save_state()
 
@@ -218,11 +225,15 @@ class RemoteJob:
             self._log(logging.ERROR, "Run must be completed before we can download files")
             raise RuntimeError("Run must be completed before we can download files")
         else:
+            # read in files to be downloaded
+            self._read_downloads_file()
+
+            # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
             self._transfer.download_files(self._download_files)
             download_time = time.perf_counter() - download_time
-            self._log(logging.DEBUG, f"Downloaded files in {download_time:.1f} seconds")
+            self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
             self._save_state()
 

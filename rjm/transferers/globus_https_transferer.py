@@ -87,7 +87,6 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # make the URL to upload file to
         upload_url = f"{self._https_base_url}/{self._remote_path}/{basename}"
-        self._log(logging.DEBUG, f"Uploading file: {basename}")
 
         # authorisation
         headers = {
@@ -156,7 +155,6 @@ class GlobusHttpsTransferer(TransfererBase):
         """
         # file to download and URL
         download_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
-        self._log(logging.DEBUG, f"Downloading file: {filename}")
 
         # path to local file
         local_file = os.path.join(self._local_path, filename)
