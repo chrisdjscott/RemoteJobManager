@@ -35,7 +35,7 @@ def authenticate():
     # check config file exists (configure should have been done already)
     if not os.path.isfile(config_helper.CONFIG_FILE_LOCATION):
         sys.stderr.write("ERROR: configuration file must be created with rjm_configure before running rjm_authenticate" + os.linesep)
-        sys.exit(-1)
+        sys.exit(1)
 
     # delete token file if exists
     if args.force:
@@ -50,7 +50,7 @@ def authenticate():
         globus_scopes = rj.get_required_globus_scopes()
     except Exception as exc:
         sys.stderr.write(f"ERROR: failed to create RemoteJob: {exc}" + os.linesep)
-        sys.exit(-1)
+        sys.exit(1)
 
     # do the Globus authentication
     if args.verbose or initial_run:
@@ -62,7 +62,7 @@ def authenticate():
         utils.handle_globus_auth(globus_scopes)
     except Exception as exc:
         sys.stderr.write(f"ERROR: failed to do Globus auth: {exc}" + os.linesep)
-        sys.exit(-1)
+        sys.exit(1)
     else:
         if args.verbose or initial_run:
             print("RJM authentication completed")
