@@ -19,6 +19,10 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+
+    not_used_help = "not used; provided for compatibility with previous versions"
+    parser.add_argument('-z', '--pollingintervalsec', help=not_used_help, action='append')
+
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser

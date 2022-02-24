@@ -111,7 +111,7 @@ class RemoteJob:
             raise ValueError(f'RemoteJob directory does not exist: "{local_dir}"')
         self._local_path = local_dir
         self._job_name = os.path.basename(local_dir)
-        self._log(logging.INFO, f"Setting up remote job: {self._job_name}")
+        self._log(logging.DEBUG, f"Creating RemoteJob for local directory: {self._job_name}")
 
         # setting up transferer and runner
         self._transfer.set_local_directory(self._local_path)
@@ -122,6 +122,7 @@ class RemoteJob:
         self._downloaded = False
         self._run_started = False
         self._run_completed = False
+        self._cancelled = False
         self._state_file = os.path.join(local_dir, self.STATE_FILE)
         self._load_state(force)
 
@@ -169,6 +170,7 @@ class RemoteJob:
             self._run_started = state_dict["started_run"]
             self._run_completed = state_dict["finished_run"]
             self._downloaded = state_dict["downloaded"]
+            self._cancelled = state_dict["cancelled"]
 
             if "transfer" in state_dict:
                 self._transfer.load_state(state_dict["transfer"])
@@ -185,6 +187,7 @@ class RemoteJob:
             "started_run": self._run_started,
             "finished_run": self._run_completed,
             "downloaded": self._downloaded,
+            "cancelled": self._cancelled,
         }
 
         transfer_state = self._transfer.save_state()
@@ -221,6 +224,9 @@ class RemoteJob:
         """Download file from remote"""
         if self._downloaded:
             self._log(logging.INFO, "Already downloaded files")
+        elif self._cancelled:
+            self._log(logging.ERROR, "Cannot download files for a cancelled run")
+            raise RuntimeError("Cannot download files for a cancelled run")
         elif not self._run_completed:
             self._log(logging.ERROR, "Run must be completed before we can download files")
             raise RuntimeError("Run must be completed before we can download files")
@@ -253,6 +259,9 @@ class RemoteJob:
         """Wait for the processing to complete"""
         if self._run_completed:
             self._log(logging.INFO, "Run already completed")
+        elif self._cancelled:
+            self._log(logging.ERROR, "Cannot wait for a run that has been cancelled")
+            raise RuntimeError("Cannot wait for a run that has been cancelled")
         elif not self._run_started:
             self._log(logging.ERROR, "Run must be started before we can wait for it to complete")
             raise RuntimeError("Run must be started before we can wait for it to complete")
@@ -267,8 +276,12 @@ class RemoteJob:
             self._log(logging.WARNING, "Cannot cancel a run that hasn't started")
         elif self._run_completed:
             self._log(logging.WARNING, "Cannot cancel a run that has already completed")
+        elif self._cancelled:
+            self._log(logging.WARNING, "Already cancelled")
         else:
             self._runner.cancel()
+            self._cancelled = True
+            self._save_state()
 
     def upload_and_start(self):
         """
