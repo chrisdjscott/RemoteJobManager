@@ -82,7 +82,7 @@ class TransfererBase:
                 got_dirname = True
 
         # create the directory
-        self._log(logging.INFO, f"Creating remote directory: {workdirname}")
+        self._log(logging.DEBUG, f"Creating remote directory: {workdirname}")
         self.make_directory(workdirname)
         self._remote_path = workdirname
 
