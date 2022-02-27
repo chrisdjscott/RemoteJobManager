@@ -22,6 +22,7 @@ class TransfererBase:
         else:
             self._config = config
 
+        self._remote_base_path = None
         self._remote_path = None
         self._local_path = None
         self._label = ""
