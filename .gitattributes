@@ -1,0 +1,5 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+* text=auto
+
+# nonmem example files must have LF endings, even on Windows
+examples/nonmem/files/* text eol=lf
