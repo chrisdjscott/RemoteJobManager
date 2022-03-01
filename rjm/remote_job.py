@@ -167,7 +167,7 @@ class RemoteJob:
         Load the saved state, if any.
 
         """
-        if self._state_files is not None and os.path.exists(self._state_file) and not force:
+        if self._state_file is not None and os.path.exists(self._state_file) and not force:
             with open(self._state_file) as fh:
                 state_dict = json.load(fh)
             self._log(logging.DEBUG, f"Loading state: {state_dict}")
