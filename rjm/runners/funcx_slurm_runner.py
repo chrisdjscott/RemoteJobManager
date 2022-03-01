@@ -158,7 +158,7 @@ class FuncxSlurmRunner(RunnerBase):
                 self._log(logging.ERROR, f'Checking job status failed for {self._jobid}')
                 self._log(logging.ERROR, f'return code: {returncode}')
                 self._log(logging.ERROR, f'output: {job_status}')
-                break
+                raise RemoteJobRunnerError(f"{self._label}failed to get Slurm job status: {job_status}")
 
         if job_finished:
             self._log(logging.INFO, f"Slurm job {self._jobid} has finished")
