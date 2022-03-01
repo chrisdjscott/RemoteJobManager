@@ -9,6 +9,7 @@ from funcx.sdk.executor import FuncXExecutor
 
 from rjm.runners.runner_base import RunnerBase
 from rjm import utils
+from rjm.errors import RemoteJobRunnerError
 
 
 logger = logging.getLogger(__name__)
@@ -128,6 +129,7 @@ class FuncxSlurmRunner(RunnerBase):
             self._log(logging.ERROR, f'return code: {returncode}')
             self._log(logging.ERROR, f'output: {stdout}')
             started = False
+            raise RemoteJobRunnerError(f"{self._label} failed to submit Slurm job: {stdout}")
 
         return started
 
@@ -182,35 +184,42 @@ class FuncxSlurmRunner(RunnerBase):
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
 def submit_slurm_job(submit_script, submit_dir=None):
-    import os
-    import shutil
-    import subprocess
+    # catch all errors due to problem with exceptions being wrapped in parsl class
+    # and parsl may not be installed on host (particularly windows)
+    try:
+        import os
+#        import shutil
+        import subprocess
 
-    # if submit_dir is specified, it must exist
-    if submit_dir is not None:
-        if not os.path.exists(submit_dir):
-            return 1, f"working directory does not exist: '{submit_dir}'"
-        submit_script_path = os.path.join(submit_dir, submit_script)
-    else:
-        submit_script_path = submit_script
+        # if submit_dir is specified, it must exist
+        if submit_dir is not None:
+            if not os.path.exists(submit_dir):
+                return 1, f"working directory does not exist: '{submit_dir}'"
+            submit_script_path = os.path.join(submit_dir, submit_script)
+        else:
+            submit_script_path = submit_script
 
-    # submit script must also exist
-    if not os.path.exists(submit_script_path):
-        return 1, f"submit_script does not exist: '{submit_script_path}'"
+        # submit script must also exist
+        if not os.path.exists(submit_script_path):
+            return 1, f"submit_script does not exist: '{submit_script_path}'"
 
-    # replace CRLF line endings with LF, if any
-    # TODO: only do this is CRLF are present
-    if shutil.which("dos2unix") is not None:
-        with open("dos2unix.txt", "w") as fout:
-            p = subprocess.run("dos2unix *", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               universal_newlines=True, cwd=submit_dir, shell=True)
-            fout.write(p.stdout.strip() + "\n")
+        # replace CRLF line endings with LF, if any
+        # TODO: only do this is CRLF are present
+#        if shutil.which("dos2unix") is not None:
+#            with open("dos2unix.txt", "w") as fout:
+#                p = subprocess.run("dos2unix *", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+#                                   universal_newlines=True, cwd=submit_dir, shell=True)
+#                fout.write(p.stdout.strip() + "\n")
 
-    # submit the Slurm job and return the job id
-    p = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       universal_newlines=True, check=False, cwd=submit_dir)
+        # submit the Slurm job and return the job id
+        p = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                           universal_newlines=True, check=False, cwd=submit_dir)
 
-    return p.returncode, p.stdout.strip()
+        return p.returncode, p.stdout.strip()
+
+    except Exception as exc:
+        # return nonzero code and string representation of the exception
+        return 1, repr(exc)
 
 
 # function that checks Slurm job status
