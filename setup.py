@@ -42,6 +42,7 @@ setup(
         ],
     },
     install_requires=[
+        "retry",
         "requests",
         "fair-research-login",
         "globus-sdk>=3",

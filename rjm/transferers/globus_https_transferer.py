@@ -47,7 +47,6 @@ class GlobusHttpsTransferer(TransfererBase):
             utils.TRANSFER_SCOPE,
             self._https_scope,
         ]
-        self._log(logging.DEBUG, f"Required Globus scopes are: {required_scopes}")
 
         return required_scopes
 

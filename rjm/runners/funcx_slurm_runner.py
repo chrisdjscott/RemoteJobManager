@@ -2,10 +2,10 @@
 import sys
 import time
 import logging
-from subprocess import CalledProcessError
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
+from retry import retry
 
 from rjm.runners.runner_base import RunnerBase
 from rjm import utils
@@ -70,7 +70,6 @@ class FuncxSlurmRunner(RunnerBase):
             utils.SEARCH_SCOPE,
             utils.FUNCX_SCOPE,
         ]
-        self._log(logging.DEBUG, f"Required Globus scopes are: {self._required_scopes}")
 
         return self._required_scopes
 
