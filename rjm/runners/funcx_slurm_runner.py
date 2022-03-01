@@ -129,7 +129,7 @@ class FuncxSlurmRunner(RunnerBase):
             self._log(logging.ERROR, f'return code: {returncode}')
             self._log(logging.ERROR, f'output: {stdout}')
             started = False
-            raise RemoteJobRunnerError(f"{self._label} failed to submit Slurm job: {stdout}")
+            raise RemoteJobRunnerError(f"{self._label}failed to submit Slurm job: {stdout}")
 
         return started
 
