@@ -277,7 +277,9 @@ class RemoteJob:
             raise RuntimeError("Run must be started before we can wait for it to complete")
         else:
             self._log(logging.INFO, "Waiting for run to complete...")
-            self._run_completed = self._runner.wait(polling_interval=polling_interval)
+            self._run_completed = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval},
+                                             tries=self._retry_tries, backoff=self._retry_backoff,
+                                             delay=self._retry_delay)
             self._save_state()
 
     def run_cancel(self):

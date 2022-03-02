@@ -21,7 +21,7 @@ def configobj():
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
-        "poll_interval": "20",
+        "poll_interval": "1",
     }
     config["RETRY"] = {
         "delay": "1",
@@ -72,6 +72,37 @@ def test_run_start_restarts_succeed(rj, mocker):
     assert mocked.call_count == 3
     assert rj._run_started is True
     assert rj._runner._jobid == '1234567'
+
+
+def test_run_wait_restarts_fail(rj, mocker):
+    rj._run_started = True
+    rj._runner._jobid = '1234567'
+    mocked = mocker.patch(
+        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        return_value=(1, "mocking failure")
+    )
+    with pytest.raises(RemoteJobRunnerError):
+        rj.run_wait()
+    assert mocked.call_count == 4
+    assert rj._run_completed is False
+
+
+def test_run_wait_restarts_succeed(rj, mocker):
+    rj._run_started = True
+    rj._runner._jobid = '1234567'
+    mocked = mocker.patch(
+        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        side_effect=[
+            (1, "mocking failure"),
+            (0, "RUNNING"),
+            (0, "COMPLETED"),
+        ],
+    )
+
+    rj.run_wait()
+
+    assert mocked.call_count == 3
+    assert rj._run_completed is True
 
 
 def test_save_state(rj, tmpdir, mocker):

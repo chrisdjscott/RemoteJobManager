@@ -12,6 +12,8 @@ from rjm import utils
 from rjm.errors import RemoteJobRunnerError
 
 
+FUNCX_TIMEOUT = 180
+
 logger = logging.getLogger(__name__)
 
 
@@ -107,7 +109,7 @@ class FuncxSlurmRunner(RunnerBase):
 
         # wait for it to complete and get the result
         self._log(logging.DEBUG, "Waiting for FuncX function to complete")
-        result = future.result()
+        result = future.result(timeout=FUNCX_TIMEOUT)
 
         return result
 
