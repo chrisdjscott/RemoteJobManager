@@ -5,7 +5,6 @@ import logging
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
-from retry import retry
 
 from rjm.runners.runner_base import RunnerBase
 from rjm import utils
