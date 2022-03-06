@@ -156,14 +156,14 @@ class GlobusHttpsTransferer(TransfererBase):
                     self._log(logging.ERROR, msg)
                     errors.append(msg)
 
-            # handle errors
-            if len(errors):
-                msg = ["Failed to upload files in '{self._local_path}':"]
-                msg.append("")
-                for err in errors:
-                    msg.append("  - " + err)
-                msg = "\n".join(msg)
-                raise RemoteJobTransfererError(msg)
+        # handle errors
+        if len(errors):
+            msg = ["Failed to upload files in '{self._local_path}':"]
+            msg.append("")
+            for err in errors:
+                msg.append("  - " + err)
+            msg = "\n".join(msg)
+            raise RemoteJobTransfererError(msg)
 
     def download_files(self, filenames: List[str]):
         """
@@ -178,17 +178,39 @@ class GlobusHttpsTransferer(TransfererBase):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
-                executor.submit(self._download_file, fname): fname for fname in filenames
+                executor.submit(self._download_file_with_retries, fname): fname for fname in filenames
             }
 
             # wait for completion
+            errors = []
             for future in concurrent.futures.as_completed(future_to_fname):
                 fname = future_to_fname[future]
                 try:
                     future.result()
-                except requests.exceptions.HTTPError as exc:
-                    # if fail to download, just print warning
-                    self._log(logging.WARNING, f"Failed to download file '{fname}': {exc}")
+                except Exception as exc:
+                    msg = f"Failed to download '{fname}': {exc}"
+                    self._log(logging.ERROR, msg)
+                    errors.append(msg)
+
+        # handle errors
+        if len(errors):
+            msg = ["Failed to download files in '{self._local_path}':"]
+            msg.append("")
+            for err in errors:
+                msg.append("  - " + err)
+            msg = "\n".join(msg)
+            raise RemoteJobTransfererError(msg)
+
+    def _download_file_with_retries(self, filename: str):
+        """
+        Download file, retrying if the download fails
+
+        :param filename: File to be downloaded, relative to `remote_path`
+        :type filename: str
+
+        """
+        retry_call(self._download_file, fargs=(filename,), tries=self._retry_tries,
+                   backoff=self._retry_backoff, delay=self._retry_delay)
 
     def _download_file(self, filename: str):
         """
