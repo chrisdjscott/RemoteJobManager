@@ -71,6 +71,7 @@ def test_upload_files(tf, uploads, mocker):
     tf._https_base_url = "https://my.base.url"
     tf._remote_path = "my/remote/path"
     tf._local_path = os.path.dirname(uploads[0])
+    tf._max_workers = 1
     urls = [tf._url_for_file(os.path.basename(fn)) for fn in uploads]
     responses.add(
         responses.PUT,
@@ -102,6 +103,7 @@ def test_upload_files_retries_fail(tf, uploads, mocker):
     tf._https_base_url = "https://my.base.url"
     tf._remote_path = "my/remote/path"
     tf._local_path = os.path.dirname(uploads[0])
+    tf._max_workers = 1
     urls = [tf._url_for_file(os.path.basename(fn)) for fn in uploads]
     responses.add(
         responses.PUT,

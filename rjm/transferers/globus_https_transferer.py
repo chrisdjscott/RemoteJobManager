@@ -40,6 +40,7 @@ class GlobusHttpsTransferer(TransfererBase):
         # https uploads/downloads
         self._https_base_url = None
         self._https_auth_header = None
+        self._max_workers = None
 
         # transfer client
         self._tc = None
@@ -138,7 +139,7 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filenames: iterable of str
 
         """
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
                 executor.submit(self._upload_file_with_retries, fname): fname for fname in filenames
