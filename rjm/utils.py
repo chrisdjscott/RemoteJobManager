@@ -30,6 +30,10 @@ HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
 LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
+# defaults for retries
+DEFAULT_RETRY_TRIES = 5
+DEFAULT_RETRY_BACKOFF = 2
+DEFAULT_RETRY_DELAY = 2
 
 logger = logging.getLogger(__name__)
 

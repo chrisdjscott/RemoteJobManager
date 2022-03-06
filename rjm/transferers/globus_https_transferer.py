@@ -8,9 +8,11 @@ from typing import List
 
 import globus_sdk
 import requests
+from retry.api import retry_call
 
 from rjm.transferers.transferer_base import TransfererBase
 from rjm import utils
+from rjm.errors import RemoteJobTransfererError
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,11 @@ class GlobusHttpsTransferer(TransfererBase):
         self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")
         self._remote_base_path = self._config.get("GLOBUS", "remote_path")
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
+
+        # retry params
+        self._retry_tries = self._config.getint("RETRY", "tries", fallback=utils.DEFAULT_RETRY_TRIES)
+        self._retry_backoff = self._config.getint("RETRY", "backoff", fallback=utils.DEFAULT_RETRY_BACKOFF)
+        self._retry_delay = self._config.getint("RETRY", "delay", fallback=utils.DEFAULT_RETRY_DELAY)
 
         # https uploads/downloads
         self._https_base_url = None
@@ -56,7 +63,8 @@ class GlobusHttpsTransferer(TransfererBase):
 
     def make_directory(self, path):
         """Create a directory at the specified path"""
-        self._tc.operation_mkdir(self._remote_endpoint, path)
+        resp = self._tc.operation_mkdir(self._remote_endpoint, path)
+        self._log(logging.DEBUG, f"response from operation_mkdir: {resp}")
 
     def setup_globus_auth(self, globus_cli):
         """Setting up Globus authentication."""
@@ -73,19 +81,29 @@ class GlobusHttpsTransferer(TransfererBase):
         a = authorisers[self._https_scope]
         self._https_auth_header = a.get_authorization_header()
 
+    def _url_for_file(self, filename: str):
+        """
+        Create Globus HTTPS URL for given remote file name.
+
+        :param filename: File name to create URL for (should be a base name)
+        :type filename: str
+
+        """
+        return f"{self._https_base_url}/{self._remote_path}/{filename}"
+
     def _upload_file(self, filename: str):
         """
         Upload file to remote.
 
-        :param filename: File name relative to `local_path`
+        :param filename: File to be uploaded
         :type filename: str
 
         """
-        # basename for remote file name
+        # use basename for remote file name
         basename = os.path.basename(filename)
 
         # make the URL to upload file to
-        upload_url = f"{self._https_base_url}/{self._remote_path}/{basename}"
+        upload_url = self._url_for_file(basename)
 
         # authorisation
         headers = {
@@ -100,6 +118,17 @@ class GlobusHttpsTransferer(TransfererBase):
         upload_time = time.perf_counter() - start_time
         self.log_transfer_time("Uploaded", filename, upload_time)
 
+    def _upload_file_with_retries(self, filename: str):
+        """
+        Upload file, retrying if the upload fails
+
+        :param filename: File to be uploaded
+        :type filename: str
+
+        """
+        retry_call(self._upload_file, fargs=(filename,), tries=self._retry_tries,
+                   backoff=self._retry_backoff, delay=self._retry_delay)
+
     def upload_files(self, filenames: List[str]):
         """
         Upload the given files to the remote directory.
@@ -112,12 +141,28 @@ class GlobusHttpsTransferer(TransfererBase):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
-                executor.submit(self._upload_file, fname): fname for fname in filenames
+                executor.submit(self._upload_file_with_retries, fname): fname for fname in filenames
             }
 
             # wait for completion
+            errors = []
             for future in concurrent.futures.as_completed(future_to_fname):
-                future.result()
+                fname = future_to_fname[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    msg = f"Failed to upload '{fname}': {exc}"
+                    self._log(logging.ERROR, msg)
+                    errors.append(msg)
+
+            # handle errors
+            if len(errors):
+                msg = ["Failed to upload files in '{self._local_path}':"]
+                msg.append("")
+                for err in errors:
+                    msg.append("  - " + err)
+                msg = "\n".join(msg)
+                raise RemoteJobTransfererError(msg)
 
     def download_files(self, filenames: List[str]):
         """
@@ -153,7 +198,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         """
         # file to download and URL
-        download_url = f"{self._https_base_url}/{self._remote_path}/{filename}"
+        download_url = self._url_for_file(filename)
 
         # path to local file
         local_file = os.path.join(self._local_path, filename)
