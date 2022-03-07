@@ -62,7 +62,7 @@ setup(
         "requests",
         "fair-research-login",
         "globus-sdk>=3",
-        "funcx==0.3.7",
+        "funcx==0.3.6",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES,
