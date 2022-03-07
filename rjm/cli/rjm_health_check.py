@@ -3,6 +3,7 @@ import os
 import argparse
 from datetime import datetime
 import tempfile
+import uuid
 
 from rjm import __version__
 from rjm.remote_job import RemoteJob
@@ -51,7 +52,7 @@ def health_check():
     r = rj.get_runner()
 
     # use transferer to make a directory on the remote machine (tests transfer client)
-    prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}"
+    prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4()}"
     print()
     print("Testing creation of unique remote directory...")
     remote_root, remote_relpath = t.make_unique_directory(prefix)
@@ -62,13 +63,14 @@ def health_check():
         t.set_local_directory(tmpdir)
 
         # write file to local directory
-        with open(os.path.join(tmpdir, "test.txt"), "w") as fh:
+        test_file = os.path.join(tmpdir, "test.txt")
+        with open(test_file, "w") as fh:
             fh.write("Testing")
 
         # upload that file
         print()
         print("Testing uploading a file...")
-        t.upload_files(["test.txt"])
+        t.upload_files([test_file])
         print("Finished testing uploading a file")
 
     # use runner to check the directory and file exists (tests funcx)

@@ -158,7 +158,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # handle errors
         if len(errors):
-            msg = ["Failed to upload files in '{self._local_path}':"]
+            msg = [f"Failed to upload files in '{self._local_path}':"]
             msg.append("")
             for err in errors:
                 msg.append("  - " + err)
@@ -194,7 +194,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # handle errors
         if len(errors):
-            msg = ["Failed to download files in '{self._local_path}':"]
+            msg = [f"Failed to download files in '{self._local_path}':"]
             msg.append("")
             for err in errors:
                 msg.append("  - " + err)
