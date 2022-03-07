@@ -5,6 +5,8 @@ from datetime import datetime
 import time
 import json
 
+from retry.api import retry_call
+
 from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
@@ -28,6 +30,12 @@ class RemoteJob:
     def __init__(self, timestamp=None):
         self._local_path = None
         self._label = ""
+        self._uploaded = False
+        self._downloaded = False
+        self._run_started = False
+        self._run_completed = False
+        self._cancelled = False
+        self._state_file = None
 
         # timestamp for working directory name
         self._timestamp = timestamp
@@ -38,6 +46,9 @@ class RemoteJob:
         config = config_helper.load_config()
         self._uploads_file = config.get("FILES", "uploads_file")
         self._downloads_file = config.get("FILES", "downloads_file")
+        self._retry_tries = config.getint("RETRY", "tries", fallback=utils.DEFAULT_RETRY_TRIES)
+        self._retry_backoff = config.getint("RETRY", "backoff", fallback=utils.DEFAULT_RETRY_BACKOFF)
+        self._retry_delay = config.getint("RETRY", "delay", fallback=utils.DEFAULT_RETRY_DELAY)
 
         # file transferer
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
@@ -118,11 +129,6 @@ class RemoteJob:
         self._runner.set_local_directory(self._local_path)
 
         # initialise and load saved state, if any
-        self._uploaded = False
-        self._downloaded = False
-        self._run_started = False
-        self._run_completed = False
-        self._cancelled = False
         self._state_file = os.path.join(local_dir, self.STATE_FILE)
         self._load_state(force)
 
@@ -134,6 +140,7 @@ class RemoteJob:
             local_basename = os.path.basename(self._local_path)
             remote_path_tuple = self._transfer.make_unique_directory(f"{local_basename}-{self._timestamp}")
             self._runner.set_working_directory(remote_path_tuple)
+        self._runner.check_working_directory_exists()
 
         # save state and making remote dir
         self._save_state()
@@ -161,7 +168,7 @@ class RemoteJob:
         Load the saved state, if any.
 
         """
-        if os.path.exists(self._state_file) and not force:
+        if self._state_file is not None and os.path.exists(self._state_file) and not force:
             with open(self._state_file) as fh:
                 state_dict = json.load(fh)
             self._log(logging.DEBUG, f"Loading state: {state_dict}")
@@ -182,25 +189,26 @@ class RemoteJob:
         Save the current state of the remote job so it can be resumed later.
 
         """
-        state_dict = {
-            "uploaded": self._uploaded,
-            "started_run": self._run_started,
-            "finished_run": self._run_completed,
-            "downloaded": self._downloaded,
-            "cancelled": self._cancelled,
-        }
+        if self._state_file is not None:
+            state_dict = {
+                "uploaded": self._uploaded,
+                "started_run": self._run_started,
+                "finished_run": self._run_completed,
+                "downloaded": self._downloaded,
+                "cancelled": self._cancelled,
+            }
 
-        transfer_state = self._transfer.save_state()
-        if len(transfer_state):
-            state_dict["transfer"] = transfer_state
+            transfer_state = self._transfer.save_state()
+            if len(transfer_state):
+                state_dict["transfer"] = transfer_state
 
-        runner_state = self._runner.save_state()
-        if len(runner_state):
-            state_dict["runner"] = runner_state
+            runner_state = self._runner.save_state()
+            if len(runner_state):
+                state_dict["runner"] = runner_state
 
-        self._log(logging.DEBUG, f"Saving state: {state_dict}")
-        with open(self._state_file, 'w') as fh:
-            json.dump(state_dict, fh, indent=4)
+            self._log(logging.DEBUG, f"Saving state: {state_dict}")
+            with open(self._state_file, 'w') as fh:
+                json.dump(state_dict, fh, indent=4)
 
     def upload_files(self):
         """Upload files to remote"""
@@ -252,7 +260,10 @@ class RemoteJob:
             raise RuntimeError("Files must be uploaded before we can start the run")
         else:
             self._log(logging.INFO, "Starting run...")
-            self._run_started = self._runner.start()
+            self._run_started = retry_call(self._runner.start,
+                                           tries=self._retry_tries,
+                                           backoff=self._retry_backoff,
+                                           delay=self._retry_delay)
             self._save_state()
 
     def run_wait(self, polling_interval=None):
@@ -267,7 +278,9 @@ class RemoteJob:
             raise RuntimeError("Run must be started before we can wait for it to complete")
         else:
             self._log(logging.INFO, "Waiting for run to complete...")
-            self._run_completed = self._runner.wait(polling_interval=polling_interval)
+            self._run_completed = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval},
+                                             tries=self._retry_tries, backoff=self._retry_backoff,
+                                             delay=self._retry_delay)
             self._save_state()
 
     def run_cancel(self):

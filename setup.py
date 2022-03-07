@@ -42,13 +42,18 @@ setup(
         ],
     },
     install_requires=[
+        "retry",
         "requests",
         "fair-research-login",
         "globus-sdk>=3",
         "funcx==0.3.6",
     ],
     extras_require={
-        "test": ["pytest", "pytest-mock"],
+        "test": [
+            "pytest",
+            "pytest-mock",
+            "responses",
+        ],
     },
     classifiers=[
         "Development Status :: 3 - Alpha"
@@ -56,8 +61,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],

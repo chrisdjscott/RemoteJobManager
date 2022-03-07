@@ -2,6 +2,9 @@
 import os
 import logging
 
+from retry.api import retry_call
+
+from rjm import utils
 from rjm import config as config_helper
 
 
@@ -22,6 +25,10 @@ class RunnerBase:
             self._config = config_helper.load_config()
         else:
             self._config = config
+
+        self._retry_tries = self._config.getint("RETRY", "tries", fallback=utils.DEFAULT_RETRY_TRIES)
+        self._retry_backoff = self._config.getint("RETRY", "backoff", fallback=utils.DEFAULT_RETRY_BACKOFF)
+        self._retry_delay = self._config.getint("RETRY", "delay", fallback=utils.DEFAULT_RETRY_DELAY)
 
         self._cwd = None
 
@@ -63,18 +70,30 @@ class RunnerBase:
 
     def set_working_directory(self, working_dir_tuple):
         """Set the remote working directory"""
-        self._cwd = self.run_function(path_join, working_dir_tuple[0], working_dir_tuple[1])
+        self._cwd = self.run_function_with_retries(path_join, working_dir_tuple[0], working_dir_tuple[1])
         self._log(logging.DEBUG, f"Setting remote working directory to: {self._cwd}")
 
-        # sanity check the directory exists on the remote
-        dir_exists = self.run_function(check_dir_exists, self._cwd)
-        if not dir_exists:
-            self._log(logging.ERROR, f"The specified working directory does not exist on remote: {self._cwd}")
-            raise ValueError(f"The specified working directory does not exist on remote: {self._cwd}")
+    def check_working_directory_exists(self):
+        """Check the working directory exists"""
+        if self._cwd is None:
+            self._log(logging.ERROR, "Working directory not set")
+            return None
+        else:
+            # sanity check the directory exists on the remote
+            dir_exists = self.run_function_with_retries(check_dir_exists, self._cwd)
+            if not dir_exists:
+                self._log(logging.ERROR, f"The specified working directory does not exist on remote: {self._cwd}")
+                raise ValueError(f"The specified working directory does not exist on remote: {self._cwd}")
 
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""
         raise NotImplementedError
+
+    def run_function_with_retries(self, function, *args, **kwargs):
+        """Run the given function with retries if the function fails"""
+        return retry_call(self.run_function, fargs=(function,) + args, fkwargs=kwargs,
+                          tries=self._retry_tries, backoff=self._retry_backoff,
+                          delay=self._retry_delay)
 
     def start(self):
         """Starts running the processing asynchronously"""
