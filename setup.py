@@ -18,6 +18,22 @@ def get_version(rel_path):
         raise RuntimeError("Unable to find version string.")
 
 
+TEST_REQUIRES = [
+    "pytest",
+    "pytest-mock",
+    "responses",
+]
+
+LINT_REQUIRES = [
+    "python-lsp-server",
+    "pyls-flake8",
+]
+
+PACKAGE_REQUIRES = [
+    "pyinstaller",
+    "pip-licenses",
+]
+
 setup(
     name="RemoteJobManager",
     version=get_version("rjm/__init__.py"),
@@ -46,14 +62,10 @@ setup(
         "requests",
         "fair-research-login",
         "globus-sdk>=3",
-        "funcx==0.3.6",
+        "funcx==0.3.7",
     ],
     extras_require={
-        "test": [
-            "pytest",
-            "pytest-mock",
-            "responses",
-        ],
+        "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES,
     },
     classifiers=[
         "Development Status :: 3 - Alpha"
