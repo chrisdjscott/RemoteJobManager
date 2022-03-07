@@ -326,10 +326,6 @@ class RemoteJob:
         return self._runner
 
 
-# TODO:
-#   - implement retries
-#   - cleanup function that deletes the remote directory
-
 if __name__ == "__main__":
     import sys
 

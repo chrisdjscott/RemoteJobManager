@@ -4,7 +4,7 @@ import argparse
 import logging
 from datetime import datetime
 
-from rjm.remote_job import RemoteJob
+from rjm.remote_job_batch import RemoteJobBatch
 from rjm import utils
 from rjm import __version__
 from rjm.cli import read_local_dirs_file
@@ -47,28 +47,14 @@ def batch_submit():
     parser = make_parser()
     args = parser.parse_args()
 
-    # setup
+    # setup logging
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
-    local_dirs = read_local_dirs_file(args.localjobdirfile)
-    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-    # loop over local directories
-    failures = []
-    for local_dir in local_dirs:
-        try:
-            rj = RemoteJob(timestamp=timestamp)
-            rj.setup(local_dir, force=args.force)
-            rj.upload_and_start()
-        except Exception as exc:
-            # append string to list of failures
-            failures.append(f"[{local_dir}]: {exc}")
+    # create the object for managing a batch of remote jobs
+    rjb = RemoteJobBatch()
 
-    # print any errors
-    if len(failures):
-        logger.error(f"{len(failures)} local directories failed, errors listed below:")
-        for msg in failures:
-            logger.error(msg)
-        sys.exit(1)
+    # upload files and start
+    rjb.upload_and_start(args.localjobdirfile, force=args.force)
 
 
 if __name__ == "__main__":
