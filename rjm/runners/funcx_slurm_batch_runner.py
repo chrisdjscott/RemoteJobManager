@@ -1,4 +1,5 @@
 
+import os
 import time
 import logging
 import concurrent.futures
@@ -74,13 +75,20 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
                 )
 
                 # parse output for statuses
-                for line in job_status_text.split("\n"):
+                count = 0
+                for line in job_status_text.splitlines():
+                    if not len(line.strip()):
+                        continue
+
+                    count += 1
+
                     try:
                         jobid, job_status = line.split("|")
                     except ValueError as exc:
                         msg = f"Error parsing job status line: '{line}' (line.split('|'))"
                         logger.error(repr(exc))
                         logger.error(msg)
+                        logger.error("Full job status output:" + os.linesep + job_status)
                         raise RemoteJobRunnerError(msg)
 
                     if len(job_status) and job_status not in ("RUNNING", "PENDING"):
@@ -89,6 +97,8 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
                         logger.info(f"{rj} has finished ({jobid}: {job_status})")
                         rj.set_run_completed()
                         future_to_rj[downloader.submit(rj.download_files)] = rj
+                if count == 0:
+                    logger.warning("No job statuses parsed")
 
                 # wait before checking again
                 if len(unfinished_jobs):
