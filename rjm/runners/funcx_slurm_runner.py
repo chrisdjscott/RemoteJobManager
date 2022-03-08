@@ -1,22 +1,15 @@
 
-import sys
 import time
 import logging
 
-from funcx.sdk.client import FuncXClient
-from funcx.sdk.executor import FuncXExecutor
-
-from rjm.runners.runner_base import RunnerBase
-from rjm import utils
+from rjm.runners.funcx_runner_base import FuncxRunnerBase
 from rjm.errors import RemoteJobRunnerError
 
-
-FUNCX_TIMEOUT = 180
 
 logger = logging.getLogger(__name__)
 
 
-class FuncxSlurmRunner(RunnerBase):
+class FuncxSlurmRunner(FuncxRunnerBase):
     """
     Runner that uses FuncX to submit a Slurm job on the remote machine and
     poll until the job completes.
@@ -27,18 +20,11 @@ class FuncxSlurmRunner(RunnerBase):
     def __init__(self, config=None):
         super(FuncxSlurmRunner, self).__init__(config=config)
 
-        # the FuncX endpoint on the remote machine
-        self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")
-
         # the name of the Slurm script
         self._slurm_script = self._config.get("SLURM", "slurm_script")
 
         # how often to poll for Slurm job completion
         self._poll_interval = self._config.getint("SLURM", "poll_interval")
-
-        # funcx client and executor
-        self._funcx_client = None
-        self._funcx_executor = None
 
         # Slurm job id
         self._jobid = None
@@ -49,6 +35,10 @@ class FuncxSlurmRunner(RunnerBase):
 
     def __repr__(self):
         return f"FuncxSlurmRunner({self._funcx_endpoint})"
+
+    def get_jobid(self):
+        """Return the job id"""
+        return self._jobid
 
     def save_state(self):
         """Append state to state_dict if required for restarting"""
@@ -63,54 +53,6 @@ class FuncxSlurmRunner(RunnerBase):
         super(FuncxSlurmRunner, self).load_state(state_dict)
         if "slurm_job_id" in state_dict:
             self._jobid = state_dict["slurm_job_id"]
-
-    def get_globus_scopes(self):
-        """If any Globus scopes are required, override this method and return them in a list"""
-        self._required_scopes = [
-            utils.OPENID_SCOPE,
-            utils.SEARCH_SCOPE,
-            utils.FUNCX_SCOPE,
-        ]
-
-        return self._required_scopes
-
-    def setup_globus_auth(self, globus_cli):
-        """Do any Globus auth setup here, if required"""
-        # offprocess checker not working well with freezing currently
-        if getattr(sys, "frozen", False):
-            # application is frozen
-            use_offprocess_checker = False
-            self._log(logging.DEBUG, "Disabling offprocess_checker when frozen")
-        else:
-            use_offprocess_checker = True
-
-        # setting up the FuncX client
-        authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
-        self._funcx_client = FuncXClient(
-            fx_authorizer=authorisers[utils.FUNCX_SCOPE],
-            search_authorizer=authorisers[utils.SEARCH_SCOPE],
-            openid_authorizer=authorisers[utils.OPENID_SCOPE],
-            use_offprocess_checker=use_offprocess_checker,
-        )
-
-        # create a funcX executor
-        self._funcx_executor = FuncXExecutor(self._funcx_client)
-
-    def run_function(self, function, *args, **kwargs):
-        """Run the given function and pass back the return value"""
-        if self._funcx_executor is None:
-            self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
-            raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
-
-        # start the function
-        self._log(logging.DEBUG, f"Submitting function to FuncX executor: {function}")
-        future = self._funcx_executor.submit(function, *args, endpoint_id=self._funcx_endpoint, **kwargs)
-
-        # wait for it to complete and get the result
-        self._log(logging.DEBUG, "Waiting for FuncX function to complete")
-        result = future.result(timeout=FUNCX_TIMEOUT)
-
-        return result
 
     def start(self):
         """Starts running the Slurm script."""
@@ -237,25 +179,3 @@ def cancel_slurm_job(jobid):
                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     return p.returncode, p.stdout.strip()
-
-
-if __name__ == "__main__":
-    # python -m rjm.funcx_slurm_runner
-    logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("globus_sdk").setLevel(logging.WARNING)
-    logging.getLogger("websockets").setLevel(logging.WARNING)
-    logging.getLogger("asyncio").setLevel(logging.WARNING)
-
-    runner = FuncxSlurmRunner()
-    logger.info(f"Runner: {runner}")
-
-    scopes = runner.get_globus_scopes()
-    globus_cli = utils.handle_globus_auth(scopes)
-    runner.setup_globus_auth(globus_cli)
-
-    def get_hostname():
-        import socket
-        return socket.gethostname()
-    hostname = runner.run_function(get_hostname)
-    logger.info(f"Remote is running on: {hostname}")

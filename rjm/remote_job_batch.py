@@ -4,7 +4,9 @@ import sys
 import logging
 from datetime import datetime
 
+from rjm import utils
 from rjm.remote_job import RemoteJob
+from rjm.runners.funcx_slurm_batch_runner import FuncxSlurmBatchRunner
 
 
 logger = logging.getLogger(__name__)
@@ -14,43 +16,62 @@ class RemoteJobBatch:
     """
     Class for managing a batch of RemoteJobs
 
+    :param remote_jobs_file: File containing list of local directories
+        to create remote jobs for
+    :param force: Optional, ignore RemoteJob progress and start from
+        scratch (default: False)
+
     """
     def __init__(self):
         self._remote_jobs = []
+        self._batch_runner = FuncxSlurmBatchRunner()
 
-    def upload_and_start(self, remote_jobs_file: str, force: bool = False):
+    def setup(self, remote_jobs_file: str, force: bool = False):
+        """Setup the runner"""
+        # timestamp to use when creating remote directories
+        timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+
+        # read the list of local directories and create RemoteJobs
+        local_dirs = self._read_jobs_file(remote_jobs_file)
+        logger.info(f"Loaded {len(local_dirs)} local directories from {remote_jobs_file}")
+        self._remote_jobs = []
+        for local_dir in local_dirs:
+            rj = RemoteJob(timestamp=timestamp)
+            self._remote_jobs.append(rj)
+            rj.setup(local_dir, force=force)
+
+        # Globus auth
+        scopes = self._batch_runner.get_globus_scopes()
+        globus_cli = utils.handle_globus_auth(scopes)
+        self._batch_runner.setup_globus_auth(globus_cli)
+
+    def upload_and_start(self):
         """
         Setup the batch of remote jobs, upload files and start running.
-
-        :param remote_jobs_file: File containing list of local directories
-            to create remote jobs for
-        :param force: Optional, ignore RemoteJob progress and start from
-            scratch (default: False)
 
         """
         logger.info("Uploading files and starting jobs")
 
-        # read the list of local directories
-        local_dirs = self._read_jobs_file(remote_jobs_file)
-        logger.info(f"Loaded {len(local_dirs)} local directories from {remote_jobs_file}")
-
-        # timestamp to use when creating remote directories
-        timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-
         # loop over local directories and create RemoteJobs
-        self._remote_jobs = {}
         errors = []
-        for local_dir in local_dirs:
+        for rj in self._remote_jobs:
             try:
-                rj = RemoteJob(timestamp=timestamp)
-                self._remote_jobs[local_dir] = rj
-                rj.setup(local_dir, force=force)
                 rj.upload_and_start()
             except Exception as exc:
-                msg = f"Upload and start failed for '{local_dir}': {exc}"
+                msg = f"Upload and start failed for '{rj.get_local_dir()}': {exc}"
                 logger.error(msg)
                 errors.append(msg)
         self._handle_errors(errors)
+
+    def wait_and_download(self, polling_interval=None):
+        """
+        Wait for jobs to complete and download once completed.
+
+        """
+        logger.info(f"Waiting and downloading {len(self._remote_jobs)} jobs")
+
+        # now wait for the jobs to complete
+        self._batch_runner.wait_and_download(self._remote_jobs, polling_interval=polling_interval)
 
     def _handle_errors(self, errors: list[str]):
         """

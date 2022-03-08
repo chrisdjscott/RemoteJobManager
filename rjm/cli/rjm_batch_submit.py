@@ -52,9 +52,10 @@ def batch_submit():
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
+    rjb.setup(args.localjobdirfile, force=args.force)
 
     # upload files and start
-    rjb.upload_and_start(args.localjobdirfile, force=args.force)
+    rjb.upload_and_start()
 
 
 if __name__ == "__main__":
