@@ -16,11 +16,6 @@ class RemoteJobBatch:
     """
     Class for managing a batch of RemoteJobs
 
-    :param remote_jobs_file: File containing list of local directories
-        to create remote jobs for
-    :param force: Optional, ignore RemoteJob progress and start from
-        scratch (default: False)
-
     """
     def __init__(self):
         self._remote_jobs = []

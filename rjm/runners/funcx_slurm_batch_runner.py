@@ -75,7 +75,14 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
 
                 # parse output for statuses
                 for line in job_status_text.split("\n"):
-                    jobid, job_status = line.split("|")
+                    try:
+                        jobid, job_status = line.split("|")
+                    except ValueError as exc:
+                        msg = f"Error parsing job status line: '{line}' (line.split('|'))"
+                        logger.error(repr(exc))
+                        logger.error(msg)
+                        raise RemoteJobRunnerError(msg)
+
                     if len(job_status) and job_status not in ("RUNNING", "PENDING"):
                         # job has finished
                         rj = unfinished_jobs.pop(jobid)
