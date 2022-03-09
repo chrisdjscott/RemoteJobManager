@@ -56,9 +56,33 @@ class RemoteJob:
         # remote runner
         self._runner = funcx_slurm_runner.FuncxSlurmRunner(config=config)
 
+    def files_uploaded(self):
+        """Return whether files have been uploaded"""
+        return self._uploaded
+
+    def files_downloaded(self):
+        """Return whether files have been downloaded"""
+        return self._downloaded
+
+    def run_started(self):
+        """Return whether the run has been started"""
+        return self._run_started
+
+    def run_completed(self):
+        """Return whether the run has completed"""
+        return self._run_completed
+
+    def set_run_completed(self):
+        """Marks the run as having been completed"""
+        self._run_completed = True
+
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
         logger.log(level, self._label + message, *args, **kwargs)
+
+    def get_local_dir(self):
+        """Return the local directory of this RemoteJob"""
+        return self._local_path
 
     def get_required_globus_scopes(self):
         """
@@ -135,15 +159,17 @@ class RemoteJob:
         # handle Globus here
         self.do_globus_auth()
 
+        # save state and making remote dir
+        self._save_state()
+
+    def make_remote_directory(self):
+        """Create the remote directory"""
         # creating a remote directory for running in
         if self._transfer.get_remote_directory() is None:
             local_basename = os.path.basename(self._local_path)
             remote_path_tuple = self._transfer.make_unique_directory(f"{local_basename}-{self._timestamp}")
             self._runner.set_working_directory(remote_path_tuple)
         self._runner.check_working_directory_exists()
-
-        # save state and making remote dir
-        self._save_state()
 
     def do_globus_auth(self):
         """Handle globus auth here"""
@@ -161,7 +187,7 @@ class RemoteJob:
         raise NotImplementedError
 
     def __repr__(self):
-        return f'RemoteJob({self._label})'
+        return f'RemoteJob({self._local_path})'
 
     def _load_state(self, force):
         """
@@ -301,6 +327,7 @@ class RemoteJob:
         Complete the upload files and start running steps.
 
         """
+        self.make_remote_directory()
         self.upload_files()
         self.run_start()
 
@@ -325,10 +352,6 @@ class RemoteJob:
         """Return runner"""
         return self._runner
 
-
-# TODO:
-#   - implement retries
-#   - cleanup function that deletes the remote directory
 
 if __name__ == "__main__":
     import sys

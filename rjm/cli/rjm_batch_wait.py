@@ -1,12 +1,10 @@
 
-import sys
 import logging
 import argparse
 
 from rjm import __version__
 from rjm import utils
-from rjm.remote_job import RemoteJob
-from rjm.cli import read_local_dirs_file
+from rjm.remote_job_batch import RemoteJobBatch
 
 
 logger = logging.getLogger(__name__)
@@ -40,27 +38,15 @@ def batch_wait():
     parser = make_parser()
     args = parser.parse_args()
 
-    # setup
+    # setup logging
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
-    local_dirs = read_local_dirs_file(args.localjobdirfile)
 
-    # loop over local directories
-    failures = []
-    for local_dir in local_dirs:
-        try:
-            rj = RemoteJob()
-            rj.setup(local_dir)
-            rj.wait_and_download(polling_interval=args.pollingintervalsec)
-        except Exception as exc:
-            # append string to list of failures
-            failures.append(f"[{local_dir}]: {exc}")
+    # create the object for managing a batch of remote jobs
+    rjb = RemoteJobBatch()
+    rjb.setup(args.localjobdirfile)
 
-    # print any errors
-    if len(failures):
-        logger.error(f"{len(failures)} local directories failed, errors listed below:")
-        for msg in failures:
-            logger.error(msg)
-        sys.exit(1)
+    # wait for jobs to complete
+    rjb.wait_and_download(polling_interval=args.pollingintervalsec)
 
 
 if __name__ == "__main__":
