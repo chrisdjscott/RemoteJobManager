@@ -25,16 +25,18 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
         # how often to poll for Slurm job completion
         self._poll_interval = self._config.getint("SLURM", "poll_interval")
 
-    def wait_and_download(self, remote_jobs: list[RemoteJob], polling_interval=None):
+    def _categorise_jobs(self, remote_jobs: list[RemoteJob]):
         """
-        Wait for the jobs to finish and download files
+        Categorise RemoteJobs into unfinished or undownloaded
+
+        :param remote_jobs: list of RemoteJobs
+
+        :returns: tuple containing:
+            - unfinished_jobs: dictionary with job ids as the key and RemoteJobs as values
+            - undownloaded_jobs: list of RemoteJobs
+            - errors: list of strings of error messages
 
         """
-        # override polling interval from config file?
-        if polling_interval is None:
-            polling_interval = self._poll_interval
-
-        # categorising remote_jobs
         errors = []
         unfinished_jobs = {}
         undownloaded_jobs = []
@@ -53,6 +55,20 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
                 jobid = r.get_jobid()
                 unfinished_jobs[jobid] = rj
 
+        return unfinished_jobs, undownloaded_jobs, errors
+
+    def wait_and_download(self, remote_jobs: list[RemoteJob], polling_interval=None):
+        """
+        Wait for the jobs to finish and download files
+
+        """
+        # override polling interval from config file?
+        if polling_interval is None:
+            polling_interval = self._poll_interval
+
+        # categorising remote_jobs
+        unfinished_jobs, undownloaded_jobs, errors = self._categorise_jobs(remote_jobs)
+
         # executor for processing downloads
         future_to_rj = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as downloader:  # separate thread for downloading
@@ -65,7 +81,7 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
             logger.debug(f"Polling interval is: {polling_interval} seconds")
             while len(unfinished_jobs):
                 logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
-                # retry the remote function call
+                # remote function call with retries
                 job_status_text = retry_call(
                     self._check_slurm_jobs_wrapper,
                     fargs=(list(unfinished_jobs.keys()),),
@@ -97,6 +113,7 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
                         logger.info(f"{rj} has finished ({jobid}: {job_status})")
                         rj.set_run_completed()
                         future_to_rj[downloader.submit(rj.download_files)] = rj
+
                 if count == 0:
                     logger.warning("No job statuses parsed")
 
