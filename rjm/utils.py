@@ -38,12 +38,16 @@ DEFAULT_RETRY_DELAY = 2
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(log_file=None, log_level=None):
+def setup_logging(log_name=None, log_file=None, log_level=None):
+    # name
+    if log_name is None:
+        log_name = "%(name)s"
+
     # set the default levels
     logging.basicConfig(
         level=LOG_LEVEL_OTHER,
         filename=log_file,
-        format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
+        format=f'%(asctime)s|{log_name}|%(levelname)s|%(message)s',
     )
     logging.getLogger("rjm").setLevel(LOG_LEVEL_RJM)
 

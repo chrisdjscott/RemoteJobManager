@@ -48,7 +48,7 @@ def batch_submit():
     args = parser.parse_args()
 
     # setup logging
-    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
+    utils.setup_logging(log_name="batch_submit", log_file=args.logfile, log_level=args.loglevel)
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()

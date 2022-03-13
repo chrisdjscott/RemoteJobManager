@@ -38,7 +38,7 @@ def batch_cancel():
     args = parser.parse_args()
 
     # setup
-    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
+    utils.setup_logging(log_name="batch_cancel", log_file=args.logfile, log_level=args.loglevel)
     local_dirs = read_local_dirs_file(args.localjobdirfile)
 
     # loop over local directories
