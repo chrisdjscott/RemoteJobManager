@@ -59,35 +59,17 @@ class TransfererBase:
         self._local_path = local_dir
         self._label = f"[{os.path.basename(local_dir)}] "
 
+    def set_remote_directory(self, remote_path):
+        """Set the remote directory to the given value"""
+        self._remote_path = remote_path
+
     def make_directory(self, path):
         """Create a directory at the specified path"""
         raise NotImplementedError
 
-    def make_unique_directory(self, prefix):
-        """
-        Create a directory on the remote end, for running the job in, trying to
-        ensure it is unique.
-
-        """
-        # get a unique directory name based on the prefix
-        workdirname = prefix
-        got_dirname = False
-        existing_names = self.list_directory(path="/")
-        count = 0
-        while not got_dirname:
-            # check the directory does not already exist
-            if workdirname in existing_names:
-                count += 1
-                workdirname = f"{prefix}-{count:06d}"
-            else:
-                got_dirname = True
-
-        # create the directory
-        self._log(logging.DEBUG, f"Creating remote directory: {workdirname}")
-        self.make_directory(workdirname)
-        self._remote_path = workdirname
-
-        return self.get_remote_directory()
+    def get_remote_base_directory(self):
+        """Return the base directory on the remote system"""
+        return self._remote_base_path
 
     def get_remote_directory(self):
         """

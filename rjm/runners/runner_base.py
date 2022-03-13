@@ -39,10 +39,7 @@ class RunnerBase:
     def save_state(self):
         """Return state dict if required for restarting"""
         state_dict = {}
-
-        # save working directory
-        if self._cwd is not None:
-            state_dict["working_directory"] = self._cwd
+        state_dict["working_directory"] = self._cwd
 
         return state_dict
 
@@ -68,10 +65,17 @@ class RunnerBase:
         self._local_path = local_dir
         self._label = f"[{os.path.basename(local_dir)}] "
 
-    def set_working_directory(self, working_dir_tuple):
+    def set_working_directory(self, remote_path):
         """Set the remote working directory"""
-        self._cwd = self.run_function_with_retries(path_join, working_dir_tuple[0], working_dir_tuple[1])
+        self._cwd = remote_path
         self._log(logging.DEBUG, f"Setting remote working directory to: {self._cwd}")
+
+    def make_remote_directory(self, prefix: list[str]):
+        """
+        Make one or more remote directories, using the given prefix(es).
+
+        """
+        raise NotImplementedError
 
     def check_working_directory_exists(self):
         """Check the working directory exists"""

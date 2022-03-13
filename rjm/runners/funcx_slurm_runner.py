@@ -123,6 +123,23 @@ class FuncxSlurmRunner(FuncxRunnerBase):
         else:
             self._log(logging.WARNING, f'Cancelling job failed ({returncode}): "{stdout}"')
 
+    def make_remote_directory(self, remote_base_path, prefix):
+        """
+        Make one or more remote directories, using the given prefix(es).
+
+        :param remote_base_path: The base path on the remote machine to create
+            the directories in
+        :param prefix: Single prefix, or list of prefixes, for remote directories
+
+        :return: Tuple, or list of tuples, containing the full remote path and
+            remote path relative to the base path
+
+        """
+        remote_dirs = super(FuncxSlurmRunner, self).make_remote_directory(remote_base_path, prefix)
+        self._cwd = remote_dirs[0]
+
+        return remote_dirs
+
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
 def submit_slurm_job(submit_script, submit_dir=None):
