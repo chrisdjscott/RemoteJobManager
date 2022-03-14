@@ -1,12 +1,28 @@
 
 import os
 import pytest
+import configparser
 
 from rjm.runners import funcx_runner_base
 
 
 @pytest.fixture
-def runner():
+def configobj():
+    config = configparser.ConfigParser()
+    config["FUNCX"] = {
+        "remote_endpoint": "abcdefg",
+    }
+    config["SLURM"] = {
+        "slurm_script": "run.sl",
+        "poll_interval": "1",
+    }
+
+    return config
+
+
+@pytest.fixture
+def runner(mocker, configobj):
+    mocker.patch('rjm.config.load_config', return_value=configobj)
     runner = funcx_runner_base.FuncxRunnerBase()
 
     return runner
