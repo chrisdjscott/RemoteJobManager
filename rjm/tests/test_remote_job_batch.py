@@ -90,3 +90,57 @@ def test_make_directories(rjb, mocker):
     assert mocked_make_dirs.called_once_with("/my/remote/path", ["mylocaldir", "pathdir"])
     assert mocked_set1.called_once_with("/my/remote/path/mylocaldir-timestamp", "mylocaldir-timestamp")
     assert mocked_set2.called_once_with("/my/remote/path/anotherlocaldir", "anotherlocaldir")
+
+
+def test_categorise_jobs(rjb):
+    remote_jobs = []
+    rj = RemoteJob()  # not downloaded
+    rj._label = "1"
+    rj._uploaded = True
+    rj._run_started = True
+    rj._run_completed = True
+    rj._downloaded = False
+    remote_jobs.append(rj)
+    rj = RemoteJob()  # not uploaded
+    rj._label = "2"
+    rj._uploaded = False
+    remote_jobs.append(rj)
+    rj = RemoteJob()  # not completed
+    rj._label = "3"
+    rj._uploaded = True
+    rj._run_started = True
+    rj._run_completed = False
+    rj._runner._jobid = '123456'
+    remote_jobs.append(rj)
+    rj = RemoteJob()  # not started
+    rj._label = "4"
+    rj._uploaded = True
+    rj._run_started = False
+    remote_jobs.append(rj)
+    rj = RemoteJob()  # all done
+    rj._label = "5"
+    rj._uploaded = True
+    rj._run_started = True
+    rj._run_completed = True
+    rj._downloaded = True
+    remote_jobs.append(rj)
+    rjb._remote_jobs = remote_jobs
+
+    unup, unstart, unfin, undown = rjb._categorise_jobs()
+
+    # unuploaded
+    assert len(unup) == 1
+    assert unup[0]._label == "2"
+
+    # unstarted
+    assert len(unstart) == 1
+    assert unstart[0]._label == "4"
+
+    # unfinished
+    assert len(unfin) == 1
+    assert unfin[0].get_runner().get_jobid() == '123456'
+    assert unfin[0]._label == "3"
+
+    # undownloaded
+    assert len(undown) == 1
+    assert undown[0]._label == "1"

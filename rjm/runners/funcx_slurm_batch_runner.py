@@ -1,8 +1,6 @@
 
 import os
-import time
 import logging
-import concurrent.futures
 
 from retry.api import retry_call
 
@@ -25,118 +23,79 @@ class FuncxSlurmBatchRunner(FuncxRunnerBase):
         # how often to poll for Slurm job completion
         self._poll_interval = self._config.getint("SLURM", "poll_interval")
 
-    def _categorise_jobs(self, remote_jobs: list[RemoteJob]):
+    def get_poll_interval(self):
+        """Returns the poll interval from Slurm config"""
+        return self._poll_interval
+
+    def check_finished_jobs(self, remote_jobs: list[RemoteJob]):
         """
-        Categorise RemoteJobs into unfinished or undownloaded
+        Check whether jobs have finished
 
-        :param remote_jobs: list of RemoteJobs
+        :param remote_jobs: list of remote jobs to check
 
-        :returns: tuple containing:
-            - unfinished_jobs: dictionary with job ids as the key and RemoteJobs as values
-            - undownloaded_jobs: list of RemoteJobs
-            - errors: list of strings of error messages
+        :returns: tuple of lists of RemoteJobs containing:
+            - finished jobs
+            - unfinished jobs
 
         """
-        errors = []
-        unfinished_jobs = {}
-        undownloaded_jobs = []
-        for rj in remote_jobs:
-            if not rj.run_started():  # trying to wait for jobs that haven't started yet is an error
-                msg = f"{rj} cannot wait for job that has not started"
+        # get list of job ids from list of remote jobs
+        job_ids = [rj.get_runner().get_jobid() for rj in remote_jobs]
+
+        # remote function call with retries
+        job_status_text = retry_call(
+            self._check_slurm_jobs_wrapper,
+            fargs=(job_ids,),
+            tries=self._retry_tries,
+            backoff=self._retry_backoff,
+            delay=self._retry_delay,
+        )
+
+        # parse output for statuses
+        count = 0
+        finished_jobs = []
+        unfinished_jobs = []
+        for line in job_status_text.splitlines():
+            if not len(line.strip()):
+                continue
+
+            count += 1  # checking whether there was anything to parse
+
+            try:
+                jobid, job_status = line.split("|")
+            except ValueError as exc:
+                msg = f"Error parsing job status line: '{line}' (line.split('|'))"
+                logger.error(repr(exc))
                 logger.error(msg)
-                errors.append(msg)
-            elif rj.run_completed() and not rj.files_downloaded():  # jobs that have finished but need to be downloaded
-                logger.debug(f"{rj} has already completed but not downloaded")
-                undownloaded_jobs.append(rj)
-            elif rj.files_downloaded():  # skip jobs that have already finished and been downloaded
-                logger.info(f"{rj} has already completed and downloaded")
-            else:  # jobs that we need to wait for and download
-                r = rj.get_runner()
-                jobid = r.get_jobid()
-                unfinished_jobs[jobid] = rj
+                logger.error("Full job status output:" + os.linesep + job_status)
+                raise RemoteJobRunnerError(msg)
 
-        return unfinished_jobs, undownloaded_jobs, errors
+            # pop this job out of the incoming list
+            idx = job_ids.index(jobid)
+            job_ids.pop(idx)
+            rj = remote_jobs.pop(idx)
 
-    def wait_and_download(self, remote_jobs: list[RemoteJob], polling_interval=None):
-        """
-        Wait for the jobs to finish and download files
+            if len(job_status) and job_status not in ("RUNNING", "PENDING"):
+                # job has finished
+                finished_jobs.append(rj)
+                self._log(logging.DEBUG, f"Job {jobid} has finished: {job_status}")
+            else:
+                unfinished_jobs.append(rj)
+                self._log(logging.DEBUG, f"Job {jobid} is unfinished: {job_status}")
 
-        """
-        # override polling interval from config file?
-        if polling_interval is None:
-            polling_interval = self._poll_interval
+        if count == 0:
+            self._log(logging.WARNING, "No job statuses parsed, trying again later")
+            unfinished_jobs = remote_jobs
 
-        # categorising remote_jobs
-        unfinished_jobs, undownloaded_jobs, errors = self._categorise_jobs(remote_jobs)
-
-        # executor for processing downloads
-        future_to_rj = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as downloader:  # separate thread for downloading
-            # first download jobs that have finished but not downloaded already
-            for rj in undownloaded_jobs:
-                future_to_rj[downloader.submit(rj.download_files)] = rj
-
-            # loop until jobs have finished
-            logger.info(f"Waiting for {len(unfinished_jobs)} Slurm jobs to finish")
-            logger.debug(f"Polling interval is: {polling_interval} seconds")
-            while len(unfinished_jobs):
-                logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
-                # remote function call with retries
-                job_status_text = retry_call(
-                    self._check_slurm_jobs_wrapper,
-                    fargs=(list(unfinished_jobs.keys()),),
-                    tries=self._retry_tries,
-                    backoff=self._retry_backoff,
-                    delay=self._retry_delay,
-                )
-
-                # parse output for statuses
-                count = 0
-                for line in job_status_text.splitlines():
-                    if not len(line.strip()):
-                        continue
-
-                    count += 1
-
-                    try:
-                        jobid, job_status = line.split("|")
-                    except ValueError as exc:
-                        msg = f"Error parsing job status line: '{line}' (line.split('|'))"
-                        logger.error(repr(exc))
-                        logger.error(msg)
-                        logger.error("Full job status output:" + os.linesep + job_status)
-                        raise RemoteJobRunnerError(msg)
-
-                    if len(job_status) and job_status not in ("RUNNING", "PENDING"):
-                        # job has finished
-                        rj = unfinished_jobs.pop(jobid)
-                        logger.info(f"{rj} has finished ({jobid}: {job_status})")
-                        rj.set_run_completed()
-                        future_to_rj[downloader.submit(rj.download_files)] = rj
-
-                if count == 0:
-                    logger.warning("No job statuses parsed")
-
-                # wait before checking again
-                if len(unfinished_jobs):
-                    time.sleep(polling_interval)
-
-            # wait for downloads to complete
-            if len(future_to_rj):
-                for future in concurrent.futures.as_completed(future_to_rj):
-                    rj = future_to_rj[future]
-                    try:
-                        future.result()
-                    except Exception as exc:
-                        errors.append(repr(exc))
-                        logger.error(repr(exc))
-
-        # handle errors
-        if len(errors):
-            raise RemoteJobRunnerError(errors)
+        return finished_jobs, unfinished_jobs
 
     def _check_slurm_jobs_wrapper(self, unfinished_jobids):
-        """Wrapper function that raises exception if returncode is nonzero"""
+        """
+        Wrapper function that raises exception if returncode is nonzero
+
+        Required because raising exceptions in funcx functions breaks things
+        due to exception dependency on parsl
+
+        """
         returncode, job_status_text = self.run_function(_check_slurm_job_statuses, unfinished_jobids)
 
         if returncode != 0:
