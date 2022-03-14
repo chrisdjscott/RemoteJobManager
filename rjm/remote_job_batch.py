@@ -19,26 +19,51 @@ class RemoteJobBatch:
     """
     def __init__(self):
         self._remote_jobs = []
-        self._batch_runner = FuncxSlurmBatchRunner()
+        self._runner = FuncxSlurmBatchRunner()
 
     def setup(self, remote_jobs_file: str, force: bool = False):
         """Setup the runner"""
         # timestamp to use when creating remote directories
-        timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+        self._timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
         # read the list of local directories and create RemoteJobs
         local_dirs = self._read_jobs_file(remote_jobs_file)
         logger.info(f"Loaded {len(local_dirs)} local directories from {remote_jobs_file}")
         self._remote_jobs = []
         for local_dir in local_dirs:
-            rj = RemoteJob(timestamp=timestamp)
+            rj = RemoteJob(timestamp=self._timestamp)
             self._remote_jobs.append(rj)
             rj.setup(local_dir, force=force)
 
         # Globus auth
-        scopes = self._batch_runner.get_globus_scopes()
+        scopes = self._runner.get_globus_scopes()
         globus_cli = utils.handle_globus_auth(scopes)
-        self._batch_runner.setup_globus_auth(globus_cli)
+        self._runner.setup_globus_auth(globus_cli)
+
+    def make_directories(self):
+        """Make directories for the remote jobs"""
+        # build the list of prefixes for the remote directories
+        remote_base_path = None
+        rjs = []
+        prefixes = []
+        for rj in self._remote_jobs:
+            if remote_base_path is None:
+                remote_base_path = rj.get_remote_base_directory()
+
+            if not rj.get_remote_directory():
+                # remote directory is based on local path basename
+                local_basename = os.path.basename(rj.get_local_dir())
+                prefixes.append(f"{local_basename}-{self._timestamp}")
+                rjs.append(rj)
+
+        # create the remote directories
+        if len(rjs):
+            remote_directories = self._runner.make_remote_directory(remote_base_path, prefixes)
+            logger.debug(f"Created {len(remote_directories)} remote directories")
+
+            # set remote directories on RemoteJob objects
+            for rj, (remote_full_path, remote_basename) in zip(rjs, remote_directories):
+                rj.set_remote_directory(remote_full_path, remote_basename)
 
     def upload_and_start(self):
         """
@@ -46,6 +71,9 @@ class RemoteJobBatch:
 
         """
         logger.info("Uploading files and starting jobs")
+
+        # make remote directories
+        self.make_directories()
 
         # loop over local directories and create RemoteJobs
         errors = []
@@ -66,7 +94,7 @@ class RemoteJobBatch:
         logger.info(f"Waiting and downloading {len(self._remote_jobs)} jobs")
 
         # now wait for the jobs to complete
-        self._batch_runner.wait_and_download(self._remote_jobs, polling_interval=polling_interval)
+        self._runner.wait_and_download(self._remote_jobs, polling_interval=polling_interval)
 
     def _handle_errors(self, errors: list[str]):
         """

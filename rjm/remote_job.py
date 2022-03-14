@@ -163,6 +163,21 @@ class RemoteJob:
         # save state and making remote dir
         self._save_state()
 
+    def get_remote_directory(self):
+        """Return the remote directory"""
+        return self._remote_path
+
+    def get_remote_base_directory(self):
+        """Return the remote base directory"""
+        return self._transfer.get_remote_base_directory()
+
+    def set_remote_directory(self, remote_full_path, remote_basename):
+        """Set the remote directory"""
+        self._remote_path = remote_full_path
+        self._runner.set_working_directory(remote_full_path)
+        self._transfer.set_remote_directory(remote_basename)
+        self._save_state()
+
     def make_remote_directory(self):
         """Create the remote directory"""
         # creating a remote directory for running in
