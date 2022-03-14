@@ -50,7 +50,7 @@ class RemoteJobBatch:
             if remote_base_path is None:
                 remote_base_path = rj.get_remote_base_directory()
 
-            if not rj.get_remote_directory():
+            if rj.get_remote_directory() is None:
                 # remote directory is based on local path basename
                 local_basename = os.path.basename(rj.get_local_dir())
                 prefixes.append(f"{local_basename}-{self._timestamp}")
