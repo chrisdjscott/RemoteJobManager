@@ -68,6 +68,7 @@ def test_url_for_file(tf):
 #@responses.activate(registry=registries.OrderedRegistry)
 @responses.activate()
 def test_upload_files(tf, uploads, mocker):
+    mocker.patch('time.sleep')
     tf._https_base_url = "https://my.base.url"
     tf._remote_path = "my/remote/path"
     tf._local_path = os.path.dirname(uploads[0])
@@ -100,6 +101,7 @@ def test_upload_files(tf, uploads, mocker):
 
 @responses.activate()
 def test_upload_files_retries_fail(tf, uploads, mocker):
+    mocker.patch('time.sleep')
     tf._https_base_url = "https://my.base.url"
     tf._remote_path = "my/remote/path"
     tf._local_path = os.path.dirname(uploads[0])

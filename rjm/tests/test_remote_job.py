@@ -45,6 +45,7 @@ def rj(mocker, configobj):
 
 
 def test_run_start_restarts_fail(rj, mocker):
+    mocker.patch('time.sleep')
     rj._uploaded = True
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
@@ -57,6 +58,7 @@ def test_run_start_restarts_fail(rj, mocker):
 
 
 def test_run_start_restarts_succeed(rj, mocker):
+    mocker.patch('time.sleep')
     rj._uploaded = True
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
@@ -75,6 +77,7 @@ def test_run_start_restarts_succeed(rj, mocker):
 
 
 def test_run_wait_restarts_fail(rj, mocker):
+    mocker.patch('time.sleep')
     rj._run_started = True
     rj._runner._jobid = '1234567'
     mocked = mocker.patch(
@@ -88,6 +91,7 @@ def test_run_wait_restarts_fail(rj, mocker):
 
 
 def test_run_wait_restarts_succeed(rj, mocker):
+    mocker.patch('time.sleep')
     rj._run_started = True
     rj._runner._jobid = '1234567'
     mocked = mocker.patch(
