@@ -28,9 +28,11 @@ jobs:
       - name: Check rjm_batch_wait command installed
         run: rjm_batch_wait --help
 
+      # Run unit tests
       - name: Run tests
         run: pytest
-
+      
+      # Run real test using the nonmem example
       - run: mkdir -p ~/.rjm
       - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini
         shell: bash
@@ -40,13 +42,14 @@ jobs:
         shell: bash
         env:
           RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+      - name: Run the health check script
+        run: rjm_health_check
       - name: Run batch_submit for nonmem example
         run: rjm_batch_submit -f localdirs.txt -ll debug
         working-directory: ./examples/nonmem
       - name: Run batch_wait for nonmem example
         run: rjm_batch_wait -f localdirs.txt -ll debug
         working-directory: ./examples/nonmem
-      - run: rm ~/.rjm/*
 
       # Build executables just on Windows
       - name: Build rjm_batch_submit
@@ -79,6 +82,17 @@ jobs:
           echo "Python license: https://docs.python.org/3/license.html" >> dist/bundled_licenses.txt
         working-directory: ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+
+      # Run Pyinstaller built health check on Windows
+      - name: Run pyinstaller built health check
+        run: dist/rjm_health_check.exe
+        working-directory: ./extra/pyinstaller
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+
+      # Cleanup rjm config used for tests
+      - run: rm ~/.rjm/*
+
+      # archive the binaries and upload
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
         with:

@@ -3,7 +3,6 @@ import os
 import argparse
 from datetime import datetime
 import tempfile
-import uuid
 
 from rjm import __version__
 from rjm.remote_job import RemoteJob
@@ -22,17 +21,22 @@ def make_parser():
     return parser
 
 
-def _remote_health_check(remote_root, remote_relpath, remote_file):
+def _remote_health_check(remote_dir, remote_file):
     """Check the directory and file exist"""
-    import os.path
+    import os
 
-    full_path_dir = os.path.join(remote_root, remote_relpath)
-    if not os.path.isdir(full_path_dir):
-        return f"Remote directory does not exist: '{full_path_dir}'"
+    # test remote directory exists
+    if not os.path.isdir(remote_dir):
+        return f"Remote directory does not exist: '{remote_dir}'"
 
-    full_path_file = os.path.join(full_path_dir, remote_file)
+    # test uploaded file exists in remote directory
+    full_path_file = os.path.join(remote_dir, remote_file)
     if not os.path.isfile(full_path_file):
         return f"Remote file does not exist: '{full_path_file}'"
+
+    # everything worked if we got this far, so delete the remote file and directory
+    os.unlink(full_path_file)
+    os.rmdir(remote_dir)
 
 
 def health_check():
@@ -45,45 +49,41 @@ def health_check():
 
     print("Running RJM health check...")
 
-    # create remote job object
-    rj = RemoteJob()
-    rj.do_globus_auth()
-    t = rj.get_transferer()
-    r = rj.get_runner()
-
-    # use transferer to make a directory on the remote machine (tests transfer client)
-    prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}-{uuid.uuid4()}"
-    print()
-    print("Testing creation of unique remote directory...")
-    remote_root, remote_relpath = t.make_unique_directory(prefix)
-    print(f'Created remote directory "{remote_relpath}" in "{remote_root}"')
-
-    # use transferer to upload a file to the directory (tests https upload)
     with tempfile.TemporaryDirectory() as tmpdir:
-        t.set_local_directory(tmpdir)
+        # create remote job object
+        rj = RemoteJob()
+        rj.setup(tmpdir)
+        t = rj.get_transferer()
+        r = rj.get_runner()
+
+        # use transferer to make a directory on the remote machine (tests funcx)
+        prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}"
+        print()
+        print("Testing creation of unique remote directory...")
+        rj.make_remote_directory(prefix=prefix)
+        remote_dir = rj.get_remote_directory()
+        print(f'Created remote directory: "{remote_dir}"')
 
         # write file to local directory
-        test_file = os.path.join(tmpdir, "test.txt")
-        with open(test_file, "w") as fh:
+        test_file_name = "test.txt"
+        test_file_local = os.path.join(tmpdir, test_file_name)
+        with open(test_file_local, "w") as fh:
             fh.write("Testing")
 
         # upload that file
         print()
         print("Testing uploading a file...")
-        t.upload_files([test_file])
+        t.upload_files([test_file_local])
         print("Finished testing uploading a file")
 
-    # use runner to check the directory and file exists (tests funcx)
-    print()
-    print("Using runner to check directory and file exist...")
-    result = r.run_function(_remote_health_check, remote_root, remote_relpath, "test.txt")
-    if result is None:
-        print("Finished checking directory and file exist")
-    else:
-        print(f"ERROR: {result}")
-
-    # cleanup remote directory
-
+        # use runner to check the directory and file exists (tests funcx)
+        print()
+        print("Using runner to check directory and file exist...")
+        result = r.run_function_with_retries(_remote_health_check, remote_dir, test_file_name)
+        if result is None:
+            print("Finished checking directory and file exist")
+        else:
+            print(f"ERROR: {result}")
 
     print()
     print("If there were no errors above it looks like basic functionality is good")
