@@ -160,9 +160,6 @@ class RemoteJob:
         # handle Globus here
         self.do_globus_auth()
 
-        # save state and making remote dir
-        self._save_state()
-
     def get_remote_directory(self):
         """Return the remote directory"""
         return self._remote_path
@@ -178,17 +175,20 @@ class RemoteJob:
         self._transfer.set_remote_directory(remote_basename)
         self._save_state()
 
-    def make_remote_directory(self):
+    def make_remote_directory(self, prefix=None):
         """Create the remote directory"""
         # creating a remote directory for running in
         if self._remote_path is None:
             # remote path is based on local path basename
             local_basename = os.path.basename(self._local_path)
 
+            if prefix is None:
+                prefix = f"{local_basename}-{self._timestamp}"
+
             # create a remote directory
             remote_abspath, remote_basename = self._runner.make_remote_directory(
                 self._transfer.get_remote_base_directory(),
-                f"{local_basename}-{self._timestamp}",
+                prefix,
             )
             self._log(logging.DEBUG, f"Remote directory created: {remote_abspath} ({remote_basename})")
             self._remote_path = remote_abspath
