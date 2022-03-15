@@ -29,6 +29,7 @@ class RemoteJob:
 
     def __init__(self, timestamp=None):
         self._local_path = None
+        self._remote_path = None
         self._label = ""
         self._uploaded = False
         self._downloaded = False
@@ -162,14 +163,41 @@ class RemoteJob:
         # save state and making remote dir
         self._save_state()
 
+    def get_remote_directory(self):
+        """Return the remote directory"""
+        return self._remote_path
+
+    def get_remote_base_directory(self):
+        """Return the remote base directory"""
+        return self._transfer.get_remote_base_directory()
+
+    def set_remote_directory(self, remote_full_path, remote_basename):
+        """Set the remote directory"""
+        self._remote_path = remote_full_path
+        self._runner.set_working_directory(remote_full_path)
+        self._transfer.set_remote_directory(remote_basename)
+        self._save_state()
+
     def make_remote_directory(self):
         """Create the remote directory"""
         # creating a remote directory for running in
-        if self._transfer.get_remote_directory() is None:
+        if self._remote_path is None:
+            # remote path is based on local path basename
             local_basename = os.path.basename(self._local_path)
-            remote_path_tuple = self._transfer.make_unique_directory(f"{local_basename}-{self._timestamp}")
-            self._runner.set_working_directory(remote_path_tuple)
-        self._runner.check_working_directory_exists()
+
+            # create a remote directory
+            remote_abspath, remote_basename = self._runner.make_remote_directory(
+                self._transfer.get_remote_base_directory(),
+                f"{local_basename}-{self._timestamp}",
+            )
+            self._log(logging.DEBUG, f"Remote directory created: {remote_abspath} ({remote_basename})")
+            self._remote_path = remote_abspath
+
+            # set the directory on the transferer too
+            self._transfer.set_remote_directory(remote_basename)
+
+            # save state
+            self._save_state()
 
     def do_globus_auth(self):
         """Handle globus auth here"""
@@ -199,6 +227,7 @@ class RemoteJob:
                 state_dict = json.load(fh)
             self._log(logging.DEBUG, f"Loading state: {state_dict}")
 
+            self._remote_path = state_dict["remote_directory"]
             self._uploaded = state_dict["uploaded"]
             self._run_started = state_dict["started_run"]
             self._run_completed = state_dict["finished_run"]
@@ -217,6 +246,7 @@ class RemoteJob:
         """
         if self._state_file is not None:
             state_dict = {
+                "remote_directory": self._remote_path,
                 "uploaded": self._uploaded,
                 "started_run": self._run_started,
                 "finished_run": self._run_completed,

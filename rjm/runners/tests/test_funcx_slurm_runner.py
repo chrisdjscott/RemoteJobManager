@@ -64,6 +64,7 @@ def test_wait_fail(runner, mocker):
 
 
 def test_wait_succeed(runner, mocker):
+    mocked_sleep = mocker.patch('time.sleep')
     runner._jobid = '123456'
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
@@ -78,3 +79,4 @@ def test_wait_succeed(runner, mocker):
 
     assert mocked.call_count == 3
     assert completed is True
+    assert mocked_sleep.call_count == 2
