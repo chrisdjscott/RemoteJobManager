@@ -68,26 +68,65 @@ class RemoteJobBatch:
             for rj, (remote_full_path, remote_basename) in zip(rjs, remote_directories):
                 rj.set_remote_directory(remote_full_path, remote_basename)
 
-    def upload_and_start(self):
+    def upload_and_start(self, polling_interval=None):
         """
-        Setup the batch of remote jobs, upload files and start running.
+        Upload files and start jobs
 
         """
-        logger.info("Uploading files and starting jobs")
+        logger.info(f"Uploading files and starting {len(self._remote_jobs)} jobs")
 
-        # make remote directories
+        # override polling interval from config file?
+        if polling_interval is None:
+            polling_interval = self._runner.get_poll_interval()
+
+        # create directories
         self.make_directories()
 
-        # loop over local directories and create RemoteJobs
+        # categorising remote_jobs
+        unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs = self._categorise_jobs()
+        if len(unfinished_jobs):
+            logger.info(f"Skipping {len(unfinished_jobs)} that have already started running")
+        if len(undownloaded_jobs):
+            logger.info(f"Skipping {len(undownloaded_jobs)} that have already finished running")
+
+        # tracking errors to report later
         errors = []
-        for rj in self._remote_jobs:
-            try:
-                rj.upload_and_start()
-            except Exception as exc:
-                msg = f"Upload and start failed for '{rj.get_local_dir()}': {exc}"
-                logger.error(msg)
-                errors.append(msg)
-        self._handle_errors(errors)
+
+        # executor for processing uploads
+        future_to_rj = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as uploader:  # separate thread for uploading
+            # upload files
+            for rj in unuploaded_jobs:
+                future_to_rj[uploader.submit(rj.upload_files)] = rj
+
+            # start jobs that were already uploaded but not started
+            for rj in unstarted_jobs:
+                try:
+                    rj.run_start()
+                except Exception as exc:
+                    errors.append(repr(exc))
+                    logger.error(repr(exc))
+
+            # start jobs as their uploads complete
+            if len(future_to_rj):
+                for future in concurrent.futures.as_completed(future_to_rj):
+                    rj = future_to_rj[future]
+                    try:
+                        future.result()
+                    except Exception as exc:
+                        errors.append(repr(exc))
+                        logger.error(repr(exc))
+                    else:
+                        # upload succeeded, now start the job
+                        try:
+                            rj.run_start()
+                        except Exception as exc:
+                            errors.append(repr(exc))
+                            logger.error(repr(exc))
+
+        # handle errors
+        if len(errors):
+            raise RemoteJobBatchError(errors)
 
     def _categorise_jobs(self):
         """
@@ -118,7 +157,7 @@ class RemoteJobBatch:
                 logger.debug(f"{rj} has not downloaded files yet")
                 undownloaded_jobs.append(rj)
             else:
-                logger.debug(f"{rj} is done")
+                logger.info(f"{rj} is done")
 
         return unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs
 
