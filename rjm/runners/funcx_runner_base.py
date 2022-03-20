@@ -128,6 +128,7 @@ def _make_remote_directories(base_path, prefixes):
         remote_dirs = []
         for prefix in prefixes:
             remote_full_path = tempfile.mkdtemp(prefix=prefix + "-", dir=base_path)
+            os.chmod(remote_full_path, 0o755)
             remote_dirs.append((remote_full_path, os.path.relpath(remote_full_path, start=base_path)))
 
     except Exception as exc:
