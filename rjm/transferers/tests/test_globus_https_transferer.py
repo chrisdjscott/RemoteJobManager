@@ -11,6 +11,11 @@ from rjm.transferers.globus_https_transferer import GlobusHttpsTransferer
 from rjm.errors import RemoteJobTransfererError
 
 
+class AuthoriserMock:
+    def get_authorization_header(self):
+        pass
+
+
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
@@ -69,6 +74,7 @@ def test_url_for_file(tf):
 @responses.activate()
 def test_upload_files(tf, uploads, mocker):
     mocker.patch('time.sleep')
+    tf._https_authoriser = AuthoriserMock()
     tf._https_base_url = "https://my.base.url"
     tf._remote_path = "my/remote/path"
     tf._local_path = os.path.dirname(uploads[0])
@@ -102,6 +108,7 @@ def test_upload_files(tf, uploads, mocker):
 @responses.activate()
 def test_upload_files_retries_fail(tf, uploads, mocker):
     mocker.patch('time.sleep')
+    tf._https_authoriser = AuthoriserMock()
     tf._https_base_url = "https://my.base.url"
     tf._remote_path = "my/remote/path"
     tf._local_path = os.path.dirname(uploads[0])
