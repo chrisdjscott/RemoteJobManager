@@ -5,6 +5,7 @@ import time
 import shutil
 import concurrent.futures
 from typing import List
+import urllib.parse
 
 import globus_sdk
 import requests
@@ -91,7 +92,12 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filename: str
 
         """
-        return f"{self._https_base_url}/{self._remote_path}/{filename}"
+        url = urllib.parse.urljoin(
+            self._https_base_url,
+            urllib.parse.quote(f"{self._remote_path}/{filename}"),
+        )
+
+        return url
 
     def _upload_file(self, filename: str):
         """
