@@ -153,10 +153,19 @@ class FuncxSlurmRunner(RunnerBase):
 
         return remote_dirs
 
-    def start(self):
-        """Starts running the Slurm script."""
+    def start(self, working_directory):
+        """
+        Starts running the Slurm script
+
+        :param working_directory: the directory to submit the job in
+
+        """
         self._log(logging.DEBUG, f"Submitting Slurm script: {self._slurm_script}")
-        returncode, stdout = self.run_function(submit_slurm_job, self._slurm_script, submit_dir=self._cwd)
+        returncode, stdout = self.run_function(
+            submit_slurm_job,
+            self._slurm_script,
+            submit_dir=working_directory,
+        )
         self._log(logging.DEBUG, f'returncode = {returncode}; output = "{stdout}"')
 
         if returncode == 0:
@@ -166,7 +175,7 @@ class FuncxSlurmRunner(RunnerBase):
             started = True
 
         else:
-            self._log(logging.ERROR, f'submitting job failed in remote directory: "{self._cwd}"')
+            self._log(logging.ERROR, f'submitting job failed in remote directory: "{working_directory}"')
             self._log(logging.ERROR, f'return code: {returncode}')
             self._log(logging.ERROR, f'output: {stdout}')
             started = False

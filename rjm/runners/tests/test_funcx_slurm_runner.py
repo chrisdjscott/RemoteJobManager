@@ -69,7 +69,7 @@ def test_start_fail(runner, mocker):
         return_value=(1, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
-        runner.start()
+        runner.start("some_path")
     assert mocked.call_count == 1
 
 
@@ -79,7 +79,7 @@ def test_start_succeed(runner, mocker):
         return_value=(0, "Submitted batch job 1234567"),
     )
 
-    started = runner.start()
+    started = runner.start("some/path")
 
     assert mocked.called_once()
     assert started is True
