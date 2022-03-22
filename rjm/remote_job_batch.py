@@ -9,7 +9,7 @@ from datetime import datetime
 from rjm import utils
 from rjm.errors import RemoteJobBatchError
 from rjm.remote_job import RemoteJob
-from rjm.runners.funcx_slurm_batch_runner import FuncxSlurmBatchRunner
+from rjm.runners.funcx_slurm_runner import FuncxSlurmRunner
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class RemoteJobBatch:
     """
     def __init__(self):
         self._remote_jobs = []
-        self._runner = FuncxSlurmBatchRunner()
+        self._runner = FuncxSlurmRunner()
 
     def setup(self, remote_jobs_file: str, force: bool = False):
         """Setup the runner"""

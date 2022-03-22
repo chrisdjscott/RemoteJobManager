@@ -4,7 +4,6 @@ import math
 import logging
 
 from fair_research_login import NativeClient, JSONTokenStorage
-from funcx.sdk.client import FuncXClient
 
 from rjm import config as config_helper
 
@@ -21,7 +20,6 @@ CLIENT_ID = "b7f9ff16-4094-4d2a-8183-6dfd9362096a"
 
 # some Globus auth scopes
 SEARCH_SCOPE = "urn:globus:auth:scope:search.api.globus.org:all"
-FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
 OPENID_SCOPE = "openid"
 TRANSFER_SCOPE = "urn:globus:auth:scope:transfer.api.globus.org:all"
 HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
