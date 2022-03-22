@@ -5,6 +5,7 @@ import time
 import shutil
 import concurrent.futures
 from typing import List
+import urllib.parse
 
 import globus_sdk
 import requests
@@ -44,6 +45,8 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # transfer client
         self._tc = None
+        self._https_authoriser = None
+        self._https_auth_header = None
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -78,9 +81,8 @@ class GlobusHttpsTransferer(TransfererBase):
         endpoint = self._tc.get_endpoint(self._remote_endpoint)
         self._https_base_url = endpoint['https_server']
         self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
-        # HTTPS authentication header
-        a = authorisers[self._https_scope]
-        self._https_auth_header = a.get_authorization_header()
+        # HTTPS authoriser
+        self._https_authoriser = authorisers[self._https_scope]
 
     def _url_for_file(self, filename: str):
         """
@@ -90,7 +92,12 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filename: str
 
         """
-        return f"{self._https_base_url}/{self._remote_path}/{filename}"
+        url = urllib.parse.urljoin(
+            self._https_base_url,
+            urllib.parse.quote(f"{self._remote_path}/{filename}"),
+        )
+
+        return url
 
     def _upload_file(self, filename: str):
         """
@@ -139,6 +146,10 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filenames: iterable of str
 
         """
+        # make sure we have a current access token
+        self._https_auth_header = self._https_authoriser.get_authorization_header()
+
+        # start a pool of threads to do the uploading
         with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
@@ -175,6 +186,10 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filenames: iterable of str
 
         """
+        # make sure we have a current access token
+        self._https_auth_header = self._https_authoriser.get_authorization_header()
+
+        # start a pool of threads to do the downloading
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
