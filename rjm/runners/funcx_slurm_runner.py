@@ -310,6 +310,42 @@ class FuncxSlurmRunner(RunnerBase):
 
         return finished_jobs, unfinished_jobs
 
+    def get_checksums(self, working_directory, files):
+        """
+        Return checksums for the list of files
+
+        :param files: list of files to calculate checksums of
+        :param working_directory: directory to switch to first
+
+        :returns: dictionary with file names as keys and checksums as values
+
+        """
+        # remote function call with retries
+        checksums = retry_call(
+            self._get_checksums_wrapper,
+            fargs=(files, working_directory),
+            tries=self._retry_tries,
+            backoff=self._retry_backoff,
+            delay=self._retry_delay,
+        )
+        self._log(logging.DEBUG, f"Calculated checksums for {len([c for c in checksums if c is not None])} files")
+
+        return checksums
+
+    def _get_checksums_wrapper(self, files, working_directory):
+        """
+        Wrapper function that raises exception if returncode is nonzero.
+
+        """
+        returncode, checksums = self.run_function(_calculate_checksums, files, working_directory)
+
+        if returncode != 0:
+            msg = f"Calculating checksums failed ({returncode}): {checksums}"
+            self._log(logging.ERROR, msg)
+            raise RemoteJobRunnerError(msg)
+
+        return checksums
+
     def _check_slurm_jobs_wrapper(self, unfinished_jobids):
         """
         Wrapper function that raises exception if returncode is nonzero
@@ -322,10 +358,38 @@ class FuncxSlurmRunner(RunnerBase):
 
         if returncode != 0:
             msg = f"Checking job statuses failed ({returncode}): {job_status_text}"
-            logger.error(msg)
+            self._log(logging.ERROR, msg)
             raise RemoteJobRunnerError(msg)
 
         return job_status_text
+
+
+# function that calculates checksums for a list of files
+def _calculate_checksums(files, working_directory):
+    # catch all errors due to problem with exceptions being wrapped in parsl class
+    # and parsl may not be installed on host (particularly windows)
+    try:
+        import os.path
+        import hashlib
+
+        file_chunk_size = 8192
+
+        checksums = {}
+        for fn in files:
+            file_path = os.path.join(working_directory, fn)
+            if os.path.isfile(file_path):
+                with open(file_path, 'rb') as fh:
+                    checksum = hashlib.sha256()
+                    while chunk := fh.read(file_chunk_size):
+                        checksum.update(chunk)
+                checksums[fn] = checksum.hexdigest()
+            else:
+                checksums[fn] = None
+
+        return 0, checksums
+
+    except Exception as exc:
+        return 1, repr(exc)
 
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
