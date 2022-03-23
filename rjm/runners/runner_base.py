@@ -33,6 +33,10 @@ class RunnerBase:
         """Add a label to log messages, identifying this specific RemoteJob"""
         logger.log(level, self._label + message, *args, **kwargs)
 
+    def set_label(self, label):
+        """Set the label used in log messages"""
+        self._label = label
+
     def save_state(self):
         """Return state dict if required for restarting"""
         state_dict = {}
@@ -51,7 +55,7 @@ class RunnerBase:
         """If any Globus scopes are required, override this method and return them in a list"""
         return []
 
-    def setup_globus_auth(self, globus_cli):
+    def setup_globus_auth(self, globus_cli, runner=None):
         """Do any Globus auth setup here, if required"""
         pass
 

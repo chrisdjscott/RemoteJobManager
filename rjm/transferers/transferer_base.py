@@ -50,10 +50,6 @@ class TransfererBase:
         """If any Globus scopes are required, override this method and return them in a list"""
         return []
 
-    def list_directory(self, path):
-        """List the contents (just names) of the provided path (directory)"""
-        raise NotImplementedError
-
     def set_local_directory(self, local_dir):
         """Set the local directory"""
         self._local_path = local_dir
@@ -62,10 +58,6 @@ class TransfererBase:
     def set_remote_directory(self, remote_path):
         """Set the remote directory to the given value"""
         self._remote_path = remote_path
-
-    def make_directory(self, path):
-        """Create a directory at the specified path"""
-        raise NotImplementedError
 
     def get_remote_base_directory(self):
         """Return the base directory on the remote system"""
@@ -79,7 +71,7 @@ class TransfererBase:
         """
         return None if self._remote_path is None else (self._remote_base_path, self._remote_path)
 
-    def setup_globus_auth(self, globus_cli):
+    def setup_globus_auth(self, globus_cli, transfer=None):
         """Do any Globus auth setup here, if required"""
         pass
 

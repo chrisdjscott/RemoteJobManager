@@ -81,27 +81,41 @@ class FuncxSlurmRunner(RunnerBase):
 
         return self._required_scopes
 
-    def setup_globus_auth(self, globus_cli):
+    def setup_globus_auth(self, globus_cli, runner=None):
         """Do any Globus auth setup here, if required"""
-        # offprocess checker not working well with freezing currently
-        if getattr(sys, "frozen", False):
-            # application is frozen
-            use_offprocess_checker = False
-            self._log(logging.DEBUG, "Disabling offprocess_checker when frozen")
+        if runner is None:
+            # offprocess checker not working well with freezing currently
+            if getattr(sys, "frozen", False):
+                # application is frozen
+                use_offprocess_checker = False
+                self._log(logging.DEBUG, "Disabling offprocess_checker when frozen")
+            else:
+                use_offprocess_checker = True
+
+            # setting up the FuncX client
+            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
+            self._funcx_client = FuncXClient(
+                fx_authorizer=authorisers[FUNCX_SCOPE],
+                search_authorizer=authorisers[utils.SEARCH_SCOPE],
+                openid_authorizer=authorisers[utils.OPENID_SCOPE],
+                use_offprocess_checker=use_offprocess_checker,
+            )
+
+            # create a funcX executor
+            self._funcx_executor = FuncXExecutor(self._funcx_client)
         else:
-            use_offprocess_checker = True
+            # use client and executor from passed in runner
+            self._log(logging.DEBUG, "Initialising runner from another")
+            self._funcx_client = runner.get_funcx_client()
+            self._funcx_executor = runner.get_funcx_executor()
 
-        # setting up the FuncX client
-        authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
-        self._funcx_client = FuncXClient(
-            fx_authorizer=authorisers[FUNCX_SCOPE],
-            search_authorizer=authorisers[utils.SEARCH_SCOPE],
-            openid_authorizer=authorisers[utils.OPENID_SCOPE],
-            use_offprocess_checker=use_offprocess_checker,
-        )
+    def get_funcx_client(self):
+        """Returns the funcx client"""
+        return self._funcx_client
 
-        # create a funcX executor
-        self._funcx_executor = FuncXExecutor(self._funcx_client)
+    def get_funcx_executor(self):
+        """Returns the funcx executor"""
+        return self._funcx_executor
 
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""

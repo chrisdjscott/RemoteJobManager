@@ -45,8 +45,7 @@ class GlobusHttpsTransferer(TransfererBase):
         self._https_auth_header = None
         self._max_workers = None
 
-        # transfer client
-        self._tc = None
+        # Globus stuff
         self._https_authoriser = None
         self._https_auth_header = None
 
@@ -63,28 +62,33 @@ class GlobusHttpsTransferer(TransfererBase):
 
         return required_scopes
 
-    def list_directory(self, path="/"):
-        """List the contents (just names) of the provided path (directory)"""
-        return [[item["name"] for item in self._tc.operation_ls(self._remote_endpoint, path=path)]]
-
-    def make_directory(self, path):
-        """Create a directory at the specified path"""
-        resp = self._tc.operation_mkdir(self._remote_endpoint, path)
-        self._log(logging.DEBUG, f"response from operation_mkdir: {resp}")
-
-    def setup_globus_auth(self, globus_cli):
+    def setup_globus_auth(self, globus_cli, transfer=None):
         """Setting up Globus authentication."""
-        # creating Globus transfer client
-        authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=[utils.TRANSFER_SCOPE, self._https_scope])
-        self._tc = globus_sdk.TransferClient(authorizer=authorisers[utils.TRANSFER_SCOPE])
+        if transfer is None:
+            # creating Globus transfer client
+            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=[utils.TRANSFER_SCOPE, self._https_scope])
+            tc = globus_sdk.TransferClient(authorizer=authorisers[utils.TRANSFER_SCOPE])
 
-        # setting up HTTPS uploads/downloads
-        # get the base URL for uploads and downloads
-        endpoint = self._tc.get_endpoint(self._remote_endpoint)
-        self._https_base_url = endpoint['https_server']
-        self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
-        # HTTPS authoriser
-        self._https_authoriser = authorisers[self._https_scope]
+            # setting up HTTPS uploads/downloads
+            # get the base URL for uploads and downloads
+            endpoint = tc.get_endpoint(self._remote_endpoint)
+            self._https_base_url = endpoint['https_server']
+            self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
+            # HTTPS authoriser
+            self._https_authoriser = authorisers[self._https_scope]
+        else:
+            # initialise from passed in transferer object
+            self._log(logging.DEBUG, "Initialising transferer from another")
+            self._https_base_url = transfer.get_https_base_url()
+            self._https_authoriser = transfer.get_https_authoriser()
+
+    def get_https_base_url(self):
+        """Return the https base url"""
+        return self._https_base_url
+
+    def get_https_authoriser(self):
+        """Return the globus authoriser"""
+        return self._https_authoriser
 
     def _url_for_file(self, filename: str):
         """

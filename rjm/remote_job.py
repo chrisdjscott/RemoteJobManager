@@ -86,16 +86,6 @@ class RemoteJob:
         """Return the local directory of this RemoteJob"""
         return self._local_path
 
-    def get_required_globus_scopes(self):
-        """
-        Return list of Globus auth scopes required by the RemoteJob.
-
-        """
-        required_scopes = self._transfer.get_globus_scopes()
-        required_scopes.extend(self._runner.get_globus_scopes())
-
-        return required_scopes
-
     def _read_uploads_file(self):
         """Read the file that lists files to be uploaded"""
         upload_file_path = os.path.join(self._local_path, self._uploads_file)
@@ -137,9 +127,14 @@ class RemoteJob:
             self._download_files = []
             self._log(logging.WARNING, f"Downloads file does not exist: {download_file_path}")
 
-    def setup(self, local_dir, force=False):
+    def setup(self, local_dir, force=False, runner=None, transfer=None):
         """
         Set up the remote job (authentication, remote directory...)
+
+        :param local_dir: the local directory of the remote job
+        :param force: ignore saved progress and start again
+        :param runner: runner instance to base this job's runner off
+        :param transfer: transferer instance to base this job's transferer off
 
         """
         # the local directory this job is based on
@@ -151,6 +146,7 @@ class RemoteJob:
         self._log(logging.DEBUG, f"Creating RemoteJob for local directory: {self._job_name}")
 
         # setting up transferer and runner
+        self._runner.set_label(self._label)
         self._transfer.set_local_directory(self._local_path)
 
         # initialise and load saved state, if any
@@ -158,7 +154,7 @@ class RemoteJob:
         self._load_state(force)
 
         # handle Globus here
-        self.do_globus_auth()
+        self.do_globus_auth(runner=runner, transfer=transfer)
 
     def get_remote_directory(self):
         """Return the remote directory"""
@@ -198,13 +194,22 @@ class RemoteJob:
             # save state
             self._save_state()
 
-    def do_globus_auth(self):
+    def do_globus_auth(self, runner=None, transfer=None):
         """Handle globus auth here"""
-        required_scopes = self.get_required_globus_scopes()
-        if len(required_scopes):
-            globus_cli = utils.handle_globus_auth(required_scopes)
-            self._transfer.setup_globus_auth(globus_cli)
-            self._runner.setup_globus_auth(globus_cli)
+        # get the scopes
+        runner_scopes = self._runner.get_required_globus_scopes() if runner is None else []
+        transfer_scopes = self._transfer.get_required_globus_scopes() if transfer is None else []
+
+        # do the auth if required
+        globus_cli = None
+        if len(runner_scopes) + len(transfer_scopes) > 0:
+            globus_cli = utils.handle_globus_auth(runner_scopes.extend(transfer_scopes))
+
+        # setup runner
+        self._runner.setup_globus_auth(globus_cli, runner=runner)
+
+        # setup transferer
+        self._transfer.setup_globus_auth(globus_cli, transfer=transfer)
 
     def cleanup(self):
         """
