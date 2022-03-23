@@ -2,7 +2,6 @@
 import logging
 import os
 import time
-import shutil
 import concurrent.futures
 import urllib.parse
 import hashlib
@@ -129,7 +128,7 @@ class GlobusHttpsTransferer(TransfererBase):
         start_time = time.perf_counter()
         with open(filename, 'rb') as f:
             r = requests.put(upload_url, data=f, headers=headers)
-        r.raise_for_status()
+            r.raise_for_status()
         upload_time = time.perf_counter() - start_time
         self.log_transfer_time("Uploaded", filename, upload_time)
 
@@ -180,7 +179,7 @@ class GlobusHttpsTransferer(TransfererBase):
             msg.append("")
             for err in errors:
                 msg.append("  - " + err)
-            msg = "\n".join(msg)
+            msg = os.linesep.join(msg)
             raise RemoteJobTransfererError(msg)
 
     def download_files(self, filenames, checksums):
@@ -225,7 +224,7 @@ class GlobusHttpsTransferer(TransfererBase):
             msg.append("")
             for err in errors:
                 msg.append("  - " + err)
-            msg = "\n".join(msg)
+            msg = os.linesep.join(msg)
             raise RemoteJobTransfererError(msg)
 
     def _download_file_with_retries(self, filename: str, checksum: str):
@@ -274,18 +273,26 @@ class GlobusHttpsTransferer(TransfererBase):
         # download
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True) as r:
+            r.raise_for_status()
             with open(local_file, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                     if chunk:
                         f.write(chunk)
-        r.raise_for_status()
         download_time = time.perf_counter() - start_time
+
+        # confirm the file actually exists (shouldn't have to do this)
+        if not os.path.isfile(local_file):
+            time.sleep(2)
+            if not os.path.isfile(local_file):
+                msg = f"{self._label} Local file does not exist after downloading: {local_file}"
+                self._log(logging.ERROR, msg)
+                raise RemoteJobTransfererError(msg)
 
         # check the checksum
         if checksum is not None:
             checksum_local = self._calculate_checksum(local_file)
             if checksum != checksum_local:
-                msg = f"Checksums of downloaded {local_file} don't match ({checksum} vs {checksum_local})"
+                msg = f"Checksum of downloaded {local_file} doesn't match ({checksum_local} vs {checksum})"
                 self._log(logging.ERROR, msg)
                 raise RemoteJobTransfererError(msg)
 
