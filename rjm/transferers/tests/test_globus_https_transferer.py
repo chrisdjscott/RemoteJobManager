@@ -150,3 +150,15 @@ def test_upload_files_retries_fail(tf, uploads, mocker):
         tf.upload_files(uploads[:2])
 
     assert spy.call_count == 5
+
+
+def test_calculate_checksum(tf, tmpdir):
+    text = """test file with some text"""
+    expected = "337de094ee88f1bc965a97e1d6767f51a06fd1e6e679664625ff68546e3d2601"
+    test_file = str(tmpdir / "testchecksum.txt")
+    with open(test_file, "w") as fh:
+        fh.write(text)
+
+    checksum = tf._calculate_checksum(test_file)
+
+    assert checksum == expected

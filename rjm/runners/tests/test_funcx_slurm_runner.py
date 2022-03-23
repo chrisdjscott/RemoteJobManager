@@ -114,3 +114,21 @@ def test_wait_succeed(runner, mocker):
     assert mocked.call_count == 3
     assert completed is True
     assert mocked_sleep.call_count == 2
+
+
+def test_calculate_checksums(runner, tmpdir):
+    text = """test file with some text"""
+    expected = "337de094ee88f1bc965a97e1d6767f51a06fd1e6e679664625ff68546e3d2601"
+    test_file = "testchecksum.txt"
+    test_file_not_exist = "notexist.txt"
+    with open(os.path.join(tmpdir, test_file), "w") as fh:
+        fh.write(text)
+
+    returncode, checksums = funcx_slurm_runner._calculate_checksums(
+        [test_file, test_file_not_exist],
+        str(tmpdir),
+    )
+
+    assert returncode == 0
+    assert checksums[test_file] == expected
+    assert checksums[test_file_not_exist] is None
