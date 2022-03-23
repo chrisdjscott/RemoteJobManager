@@ -197,8 +197,8 @@ class RemoteJob:
     def do_globus_auth(self, runner=None, transfer=None):
         """Handle globus auth here"""
         # get the scopes
-        runner_scopes = self._runner.get_required_globus_scopes() if runner is None else []
-        transfer_scopes = self._transfer.get_required_globus_scopes() if transfer is None else []
+        runner_scopes = self._runner.get_globus_scopes() if runner is None else []
+        transfer_scopes = self._transfer.get_globus_scopes() if transfer is None else []
 
         # do the auth if required
         globus_cli = None
