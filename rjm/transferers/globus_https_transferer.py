@@ -4,8 +4,8 @@ import os
 import time
 import shutil
 import concurrent.futures
-from typing import List
 import urllib.parse
+import hashlib
 
 import globus_sdk
 import requests
@@ -17,6 +17,7 @@ from rjm.errors import RemoteJobTransfererError
 
 
 DOWNLOAD_CHUNK_SIZE = 8192
+FILE_CHUNK_SIZE = 8192
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ class GlobusHttpsTransferer(TransfererBase):
         retry_call(self._upload_file, fargs=(filename,), tries=self._retry_tries,
                    backoff=self._retry_backoff, delay=self._retry_delay)
 
-    def upload_files(self, filenames: List[str]):
+    def upload_files(self, filenames: list[str]):
         """
         Upload the given files to the remote directory.
 
@@ -182,14 +183,15 @@ class GlobusHttpsTransferer(TransfererBase):
             msg = "\n".join(msg)
             raise RemoteJobTransfererError(msg)
 
-    def download_files(self, filenames: List[str]):
+    def download_files(self, filenames, checksums):
         """
         Download the given files (which should be relative to `remote_path`) to
         the local directory.
 
-        :param filenames: List of file names relative to the `remote_path`
+        :param filenames: list of file names relative to the `remote_path`
             directory to download to the local directory.
-        :type filenames: iterable of str
+        :param checksums: dictionary with filenames as keys and checksums as
+            values
 
         """
         # make sure we have a current access token
@@ -199,7 +201,11 @@ class GlobusHttpsTransferer(TransfererBase):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
-                executor.submit(self._download_file_with_retries, fname): fname for fname in filenames
+                executor.submit(
+                    self._download_file_with_retries,
+                    fname,
+                    checksums[fname],
+                ): fname for fname in filenames
             }
 
             # wait for completion
@@ -222,23 +228,36 @@ class GlobusHttpsTransferer(TransfererBase):
             msg = "\n".join(msg)
             raise RemoteJobTransfererError(msg)
 
-    def _download_file_with_retries(self, filename: str):
+    def _download_file_with_retries(self, filename: str, checksum: str):
         """
         Download file, retrying if the download fails
 
-        :param filename: File to be downloaded, relative to `remote_path`
-        :type filename: str
+        :param filename: file to be downloaded, relative to `remote_path`
+        :param checksum: the expected checksum of the file
 
         """
-        retry_call(self._download_file, fargs=(filename,), tries=self._retry_tries,
-                   backoff=self._retry_backoff, delay=self._retry_delay)
+        retry_call(self._download_file, fargs=(filename, checksum),
+                   tries=self._retry_tries, backoff=self._retry_backoff,
+                   delay=self._retry_delay)
 
-    def _download_file(self, filename: str):
+    def _calculate_checksum(self, filename):
+        """
+        Calculate the checksum of the given file
+
+        """
+        with open(filename, 'rb') as fh:
+            checksum = hashlib.sha256()
+            while chunk := fh.read(FILE_CHUNK_SIZE):
+                checksum.update(chunk)
+
+        return checksum.hexdigest()
+
+    def _download_file(self, filename: str, checksum: str):
         """
         Download a file from remote.
 
-        :param filename: File name relative to `remote_path`
-        :type filename: str
+        :param filename: file name relative to `remote_path`
+        :param checksum: the expected checksum of the file
 
         """
         # file to download and URL
@@ -261,4 +280,13 @@ class GlobusHttpsTransferer(TransfererBase):
                         f.write(chunk)
         r.raise_for_status()
         download_time = time.perf_counter() - start_time
+
+        # check the checksum
+        if checksum is not None:
+            checksum_local = self._calculate_checksum(local_file)
+            if checksum != checksum_local:
+                msg = f"Checksums of downloaded {local_file} don't match ({checksum} vs {checksum_local})"
+                self._log(logging.ERROR, msg)
+                raise RemoteJobTransfererError(msg)
+
         self.log_transfer_time("Downloaded", local_file, download_time)

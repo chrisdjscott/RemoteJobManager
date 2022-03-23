@@ -304,10 +304,16 @@ class RemoteJob:
             # read in files to be downloaded
             self._read_downloads_file()
 
+            # get checksums
+            downloads_checksums = self._runner.get_checksums(
+                self._remote_full_path,
+                self._download_files,
+            )
+
             # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
-            self._transfer.download_files(self._download_files)
+            self._transfer.download_files(self._download_files, downloads_checksums)
             download_time = time.perf_counter() - download_time
             self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
