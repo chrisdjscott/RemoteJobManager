@@ -16,6 +16,8 @@ from rjm import utils
 from rjm.errors import RemoteJobTransfererError
 
 
+DOWNLOAD_CHUNK_SIZE = 8192
+
 logger = logging.getLogger(__name__)
 
 
@@ -250,7 +252,9 @@ class GlobusHttpsTransferer(TransfererBase):
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True) as r:
             with open(local_file, 'wb') as f:
-                shutil.copyfileobj(r.raw, f)
+                for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                    if chunk:
+                        f.write(chunk)
         r.raise_for_status()
         download_time = time.perf_counter() - start_time
         self.log_transfer_time("Downloaded", local_file, download_time)
