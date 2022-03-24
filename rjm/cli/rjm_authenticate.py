@@ -47,7 +47,8 @@ def authenticate():
     # create the remote job object and get Globus scopes
     try:
         rj = RemoteJob()
-        globus_scopes = rj.get_required_globus_scopes()
+        globus_scopes = rj.get_runner().get_globus_scopes()
+        globus_scopes.extend(rj.get_transferer().get_globus_scopes())
     except Exception as exc:
         sys.stderr.write(f"ERROR: failed to create RemoteJob: {exc}" + os.linesep)
         sys.exit(1)
