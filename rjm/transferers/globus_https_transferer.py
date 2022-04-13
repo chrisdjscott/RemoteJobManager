@@ -265,35 +265,33 @@ class GlobusHttpsTransferer(TransfererBase):
         # path to local file
         local_file = os.path.join(self._local_path, filename)
 
+        # download to a temporary file first
+        local_file_tmp = local_file + "-rjm-downloading"
+
         # authorisation
         headers = {
             "Authorization": self._https_auth_header,
         }
 
-        # download
+        # download with temporary local file name
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True) as r:
             r.raise_for_status()
-            with open(local_file, 'wb') as f:
+            with open(local_file_tmp, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                     if chunk:
                         f.write(chunk)
         download_time = time.perf_counter() - start_time
 
-        # confirm the file actually exists (shouldn't have to do this)
-        if not os.path.isfile(local_file):
-            time.sleep(2)
-            if not os.path.isfile(local_file):
-                msg = f"{self._label} Local file does not exist after downloading: {local_file}"
+        # check the checksum of the downloaded file
+        if checksum is not None:
+            checksum_local = self._calculate_checksum(local_file_tmp)
+            if checksum != checksum_local:
+                msg = f"Checksum of downloaded {local_file_tmp} doesn't match ({checksum_local} vs {checksum})"
                 self._log(logging.ERROR, msg)
                 raise RemoteJobTransfererError(msg)
 
-        # check the checksum
-        if checksum is not None:
-            checksum_local = self._calculate_checksum(local_file)
-            if checksum != checksum_local:
-                msg = f"Checksum of downloaded {local_file} doesn't match ({checksum_local} vs {checksum})"
-                self._log(logging.ERROR, msg)
-                raise RemoteJobTransfererError(msg)
+        # now rename the temporary file to the actual file
+        os.replace(local_file_tmp, local_file)
 
         self.log_transfer_time("Downloaded", local_file, download_time)
