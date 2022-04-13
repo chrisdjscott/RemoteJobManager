@@ -328,7 +328,7 @@ class FuncxSlurmRunner(RunnerBase):
             backoff=self._retry_backoff,
             delay=self._retry_delay,
         )
-        self._log(logging.DEBUG, f"Calculated checksums for {len([c for c in checksums if c is not None])} files")
+        self._log(logging.DEBUG, f"Calculated checksums for {len([c for c in checksums if c is not None])} of {len(files)} files")
 
         return checksums
 

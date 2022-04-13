@@ -309,6 +309,9 @@ class RemoteJob:
                 self._remote_full_path,
                 self._download_files,
             )
+            no_checksum = [f for f in downloads_checksums if downloads_checksums[f] is None]
+            if len(no_checksum):
+                self._log(logging.ERROR, f"Could not calculate checksums for the following files, their downloads will not be verified: {', '.join(no_checksum)}")
 
             # do the download
             self._log(logging.INFO, "Downloading files...")
