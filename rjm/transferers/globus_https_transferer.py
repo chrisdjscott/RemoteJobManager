@@ -197,7 +197,7 @@ class GlobusHttpsTransferer(TransfererBase):
         self._https_auth_header = self._https_authoriser.get_authorization_header()
 
         # start a pool of threads to do the downloading
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
                 executor.submit(
