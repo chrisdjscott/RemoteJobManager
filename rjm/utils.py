@@ -29,9 +29,9 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 # defaults for retries
-DEFAULT_RETRY_TRIES = 5
-DEFAULT_RETRY_BACKOFF = 2
-DEFAULT_RETRY_DELAY = 2
+DEFAULT_RETRY_TRIES = 9  # retry up to 9 times
+DEFAULT_RETRY_BACKOFF = 2  # each time double the delay before trying again
+DEFAULT_RETRY_DELAY = 2  # start with a 2 second delay
 
 logger = logging.getLogger(__name__)
 
