@@ -60,6 +60,7 @@ setup(
     install_requires=[
         "retry",
         "requests",
+        "paramiko",
         "fair-research-login",
         "globus-sdk>=3",
         "funcx==0.3.6",
