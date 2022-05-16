@@ -9,7 +9,8 @@ from datetime import datetime
 from rjm import utils
 from rjm.errors import RemoteJobBatchError
 from rjm.remote_job import RemoteJob
-from rjm.runners.funcx_slurm_batch_runner import FuncxSlurmBatchRunner
+from rjm.runners.funcx_slurm_runner import FuncxSlurmRunner
+from rjm.transferers.globus_https_transferer import GlobusHttpsTransferer
 
 
 logger = logging.getLogger(__name__)
@@ -22,12 +23,20 @@ class RemoteJobBatch:
     """
     def __init__(self):
         self._remote_jobs = []
-        self._runner = FuncxSlurmBatchRunner()
+        self._runner = FuncxSlurmRunner()
+        self._transfer = GlobusHttpsTransferer()
 
     def setup(self, remote_jobs_file: str, force: bool = False):
         """Setup the runner"""
         # timestamp to use when creating remote directories
         self._timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+
+        # Globus auth
+        scopes = self._runner.get_globus_scopes()
+        scopes.extend(self._transfer.get_globus_scopes())
+        globus_cli = utils.handle_globus_auth(scopes)
+        self._runner.setup_globus_auth(globus_cli)
+        self._transfer.setup_globus_auth(globus_cli)
 
         # read the list of local directories and create RemoteJobs
         local_dirs = self._read_jobs_file(remote_jobs_file)
@@ -36,12 +45,7 @@ class RemoteJobBatch:
         for local_dir in local_dirs:
             rj = RemoteJob(timestamp=self._timestamp)
             self._remote_jobs.append(rj)
-            rj.setup(local_dir, force=force)
-
-        # Globus auth
-        scopes = self._runner.get_globus_scopes()
-        globus_cli = utils.handle_globus_auth(scopes)
-        self._runner.setup_globus_auth(globus_cli)
+            rj.setup(local_dir, force=force, runner=self._runner, transfer=self._transfer)
 
     def make_directories(self):
         """Make directories for the remote jobs"""

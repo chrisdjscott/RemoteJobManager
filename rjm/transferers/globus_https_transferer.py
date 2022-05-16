@@ -2,9 +2,9 @@
 import logging
 import os
 import time
-import shutil
 import concurrent.futures
-from typing import List
+import urllib.parse
+import hashlib
 
 import globus_sdk
 import requests
@@ -14,6 +14,9 @@ from rjm.transferers.transferer_base import TransfererBase
 from rjm import utils
 from rjm.errors import RemoteJobTransfererError
 
+
+DOWNLOAD_CHUNK_SIZE = 8192
+FILE_CHUNK_SIZE = 8192
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +45,9 @@ class GlobusHttpsTransferer(TransfererBase):
         self._https_auth_header = None
         self._max_workers = None
 
-        # transfer client
-        self._tc = None
+        # Globus stuff
+        self._https_authoriser = None
+        self._https_auth_header = None
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -58,29 +62,33 @@ class GlobusHttpsTransferer(TransfererBase):
 
         return required_scopes
 
-    def list_directory(self, path="/"):
-        """List the contents (just names) of the provided path (directory)"""
-        return [[item["name"] for item in self._tc.operation_ls(self._remote_endpoint, path=path)]]
-
-    def make_directory(self, path):
-        """Create a directory at the specified path"""
-        resp = self._tc.operation_mkdir(self._remote_endpoint, path)
-        self._log(logging.DEBUG, f"response from operation_mkdir: {resp}")
-
-    def setup_globus_auth(self, globus_cli):
+    def setup_globus_auth(self, globus_cli, transfer=None):
         """Setting up Globus authentication."""
-        # creating Globus transfer client
-        authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=[utils.TRANSFER_SCOPE, self._https_scope])
-        self._tc = globus_sdk.TransferClient(authorizer=authorisers[utils.TRANSFER_SCOPE])
+        if transfer is None:
+            # creating Globus transfer client
+            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=[utils.TRANSFER_SCOPE, self._https_scope])
+            tc = globus_sdk.TransferClient(authorizer=authorisers[utils.TRANSFER_SCOPE])
 
-        # setting up HTTPS uploads/downloads
-        # get the base URL for uploads and downloads
-        endpoint = self._tc.get_endpoint(self._remote_endpoint)
-        self._https_base_url = endpoint['https_server']
-        self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
-        # HTTPS authentication header
-        a = authorisers[self._https_scope]
-        self._https_auth_header = a.get_authorization_header()
+            # setting up HTTPS uploads/downloads
+            # get the base URL for uploads and downloads
+            endpoint = tc.get_endpoint(self._remote_endpoint)
+            self._https_base_url = endpoint['https_server']
+            self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
+            # HTTPS authoriser
+            self._https_authoriser = authorisers[self._https_scope]
+        else:
+            # initialise from passed in transferer object
+            self._log(logging.DEBUG, "Initialising transferer from another")
+            self._https_base_url = transfer.get_https_base_url()
+            self._https_authoriser = transfer.get_https_authoriser()
+
+    def get_https_base_url(self):
+        """Return the https base url"""
+        return self._https_base_url
+
+    def get_https_authoriser(self):
+        """Return the globus authoriser"""
+        return self._https_authoriser
 
     def _url_for_file(self, filename: str):
         """
@@ -90,7 +98,12 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filename: str
 
         """
-        return f"{self._https_base_url}/{self._remote_path}/{filename}"
+        url = urllib.parse.urljoin(
+            self._https_base_url,
+            urllib.parse.quote(f"{self._remote_path}/{filename}"),
+        )
+
+        return url
 
     def _upload_file(self, filename: str):
         """
@@ -115,7 +128,7 @@ class GlobusHttpsTransferer(TransfererBase):
         start_time = time.perf_counter()
         with open(filename, 'rb') as f:
             r = requests.put(upload_url, data=f, headers=headers)
-        r.raise_for_status()
+            r.raise_for_status()
         upload_time = time.perf_counter() - start_time
         self.log_transfer_time("Uploaded", filename, upload_time)
 
@@ -130,7 +143,7 @@ class GlobusHttpsTransferer(TransfererBase):
         retry_call(self._upload_file, fargs=(filename,), tries=self._retry_tries,
                    backoff=self._retry_backoff, delay=self._retry_delay)
 
-    def upload_files(self, filenames: List[str]):
+    def upload_files(self, filenames: list[str]):
         """
         Upload the given files to the remote directory.
 
@@ -139,6 +152,10 @@ class GlobusHttpsTransferer(TransfererBase):
         :type filenames: iterable of str
 
         """
+        # make sure we have a current access token
+        self._https_auth_header = self._https_authoriser.get_authorization_header()
+
+        # start a pool of threads to do the uploading
         with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_workers) as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
@@ -162,23 +179,32 @@ class GlobusHttpsTransferer(TransfererBase):
             msg.append("")
             for err in errors:
                 msg.append("  - " + err)
-            msg = "\n".join(msg)
+            msg = os.linesep.join(msg)
             raise RemoteJobTransfererError(msg)
 
-    def download_files(self, filenames: List[str]):
+    def download_files(self, filenames, checksums):
         """
         Download the given files (which should be relative to `remote_path`) to
         the local directory.
 
-        :param filenames: List of file names relative to the `remote_path`
+        :param filenames: list of file names relative to the `remote_path`
             directory to download to the local directory.
-        :type filenames: iterable of str
+        :param checksums: dictionary with filenames as keys and checksums as
+            values
 
         """
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        # make sure we have a current access token
+        self._https_auth_header = self._https_authoriser.get_authorization_header()
+
+        # start a pool of threads to do the downloading
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
-                executor.submit(self._download_file_with_retries, fname): fname for fname in filenames
+                executor.submit(
+                    self._download_file_with_retries,
+                    fname,
+                    checksums[fname],
+                ): fname for fname in filenames
             }
 
             # wait for completion
@@ -198,26 +224,39 @@ class GlobusHttpsTransferer(TransfererBase):
             msg.append("")
             for err in errors:
                 msg.append("  - " + err)
-            msg = "\n".join(msg)
+            msg = os.linesep.join(msg)
             raise RemoteJobTransfererError(msg)
 
-    def _download_file_with_retries(self, filename: str):
+    def _download_file_with_retries(self, filename: str, checksum: str):
         """
         Download file, retrying if the download fails
 
-        :param filename: File to be downloaded, relative to `remote_path`
-        :type filename: str
+        :param filename: file to be downloaded, relative to `remote_path`
+        :param checksum: the expected checksum of the file
 
         """
-        retry_call(self._download_file, fargs=(filename,), tries=self._retry_tries,
-                   backoff=self._retry_backoff, delay=self._retry_delay)
+        retry_call(self._download_file, fargs=(filename, checksum),
+                   tries=self._retry_tries, backoff=self._retry_backoff,
+                   delay=self._retry_delay)
 
-    def _download_file(self, filename: str):
+    def _calculate_checksum(self, filename):
+        """
+        Calculate the checksum of the given file
+
+        """
+        with open(filename, 'rb') as fh:
+            checksum = hashlib.sha256()
+            while chunk := fh.read(FILE_CHUNK_SIZE):
+                checksum.update(chunk)
+
+        return checksum.hexdigest()
+
+    def _download_file(self, filename: str, checksum: str):
         """
         Download a file from remote.
 
-        :param filename: File name relative to `remote_path`
-        :type filename: str
+        :param filename: file name relative to `remote_path`
+        :param checksum: the expected checksum of the file
 
         """
         # file to download and URL
@@ -226,16 +265,33 @@ class GlobusHttpsTransferer(TransfererBase):
         # path to local file
         local_file = os.path.join(self._local_path, filename)
 
+        # download to a temporary file first
+        local_file_tmp = local_file + "-rjm-downloading"
+
         # authorisation
         headers = {
             "Authorization": self._https_auth_header,
         }
 
-        # download
+        # download with temporary local file name
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True) as r:
-            with open(local_file, 'wb') as f:
-                shutil.copyfileobj(r.raw, f)
-        r.raise_for_status()
+            r.raise_for_status()
+            with open(local_file_tmp, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                    if chunk:
+                        f.write(chunk)
         download_time = time.perf_counter() - start_time
+
+        # check the checksum of the downloaded file
+        if checksum is not None:
+            checksum_local = self._calculate_checksum(local_file_tmp)
+            if checksum != checksum_local:
+                msg = f"Checksum of downloaded {local_file_tmp} doesn't match ({checksum_local} vs {checksum})"
+                self._log(logging.ERROR, msg)
+                raise RemoteJobTransfererError(msg)
+
+        # now rename the temporary file to the actual file
+        os.replace(local_file_tmp, local_file)
+
         self.log_transfer_time("Downloaded", local_file, download_time)

@@ -89,6 +89,12 @@ jobs:
         working-directory: ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
 
+      # Run Pyinstaller built rjm_authenticate on Windows
+      - name: Run pyinstaller built rjm_authenticate
+        run: dist/rjm_authenticate.exe
+        working-directory: ./extra/pyinstaller
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+
       # Cleanup rjm config used for tests
       - run: rm ~/.rjm/*
 

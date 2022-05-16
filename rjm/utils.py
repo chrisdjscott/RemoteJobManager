@@ -4,7 +4,6 @@ import math
 import logging
 
 from fair_research_login import NativeClient, JSONTokenStorage
-from funcx.sdk.client import FuncXClient
 
 from rjm import config as config_helper
 
@@ -21,7 +20,6 @@ CLIENT_ID = "b7f9ff16-4094-4d2a-8183-6dfd9362096a"
 
 # some Globus auth scopes
 SEARCH_SCOPE = "urn:globus:auth:scope:search.api.globus.org:all"
-FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
 OPENID_SCOPE = "openid"
 TRANSFER_SCOPE = "urn:globus:auth:scope:transfer.api.globus.org:all"
 HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
@@ -31,9 +29,9 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 # defaults for retries
-DEFAULT_RETRY_TRIES = 5
-DEFAULT_RETRY_BACKOFF = 2
-DEFAULT_RETRY_DELAY = 2
+DEFAULT_RETRY_TRIES = 9  # retry up to 9 times
+DEFAULT_RETRY_BACKOFF = 2  # each time double the delay before trying again
+DEFAULT_RETRY_DELAY = 2  # start with a 2 second delay
 
 logger = logging.getLogger(__name__)
 

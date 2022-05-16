@@ -1,4 +1,5 @@
 
+import os
 import configparser
 
 import pytest
@@ -29,13 +30,46 @@ def runner(mocker, configobj):
     return runner
 
 
+def mocked_run_function(function, *args, **kwargs):
+    return function(*args, **kwargs)
+
+
+def test_make_remote_directory_single(runner, tmpdir):
+    runner.run_function = mocked_run_function
+    remote_base_path = str(tmpdir)
+    prefix = "my-remote-dir"
+
+    full_path, basename = runner.make_remote_directory(remote_base_path, prefix)
+
+    assert os.path.basename(full_path) == basename
+    assert os.path.join(remote_base_path, basename) == full_path
+    assert os.path.isdir(full_path)
+    assert basename.startswith(prefix)
+
+
+def test_make_remote_directory_list(runner, tmpdir):
+    runner.run_function = mocked_run_function
+    remote_base_path = str(tmpdir)
+    prefixes = ["my-remote-dir", "another-remote-dir"]
+
+    remote_dirs = runner.make_remote_directory(remote_base_path, prefixes)
+
+    assert type(remote_dirs) is list
+    assert len(remote_dirs) == len(prefixes)
+    for prefix, (full_path, basename) in zip(prefixes, remote_dirs):
+        assert os.path.basename(full_path) == basename
+        assert os.path.join(remote_base_path, basename) == full_path
+        assert os.path.isdir(full_path)
+        assert basename.startswith(prefix)
+
+
 def test_start_fail(runner, mocker):
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
         return_value=(1, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
-        runner.start()
+        runner.start("some_path")
     assert mocked.call_count == 1
 
 
@@ -45,7 +79,7 @@ def test_start_succeed(runner, mocker):
         return_value=(0, "Submitted batch job 1234567"),
     )
 
-    started = runner.start()
+    started = runner.start("some/path")
 
     assert mocked.called_once()
     assert started is True
@@ -80,3 +114,21 @@ def test_wait_succeed(runner, mocker):
     assert mocked.call_count == 3
     assert completed is True
     assert mocked_sleep.call_count == 2
+
+
+def test_calculate_checksums(runner, tmpdir):
+    text = """test file with some text"""
+    expected = "337de094ee88f1bc965a97e1d6767f51a06fd1e6e679664625ff68546e3d2601"
+    test_file = "testchecksum.txt"
+    test_file_not_exist = "notexist.txt"
+    with open(os.path.join(tmpdir, test_file), "w") as fh:
+        fh.write(text)
+
+    returncode, checksums = funcx_slurm_runner._calculate_checksums(
+        [test_file, test_file_not_exist],
+        str(tmpdir),
+    )
+
+    assert returncode == 0
+    assert checksums[test_file] == expected
+    assert checksums[test_file_not_exist] is None

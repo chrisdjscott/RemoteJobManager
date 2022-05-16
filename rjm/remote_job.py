@@ -10,7 +10,7 @@ from retry.api import retry_call
 from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
-from rjm.runners import funcx_slurm_runner
+from rjm.runners.funcx_slurm_runner import FuncxSlurmRunner
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,8 @@ class RemoteJob:
 
     def __init__(self, timestamp=None):
         self._local_path = None
-        self._remote_path = None
+        self._remote_full_path = None
+        self._remote_basename = None
         self._label = ""
         self._uploaded = False
         self._downloaded = False
@@ -55,7 +56,7 @@ class RemoteJob:
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
-        self._runner = funcx_slurm_runner.FuncxSlurmRunner(config=config)
+        self._runner = FuncxSlurmRunner(config=config)
 
     def files_uploaded(self):
         """Return whether files have been uploaded"""
@@ -84,16 +85,6 @@ class RemoteJob:
     def get_local_dir(self):
         """Return the local directory of this RemoteJob"""
         return self._local_path
-
-    def get_required_globus_scopes(self):
-        """
-        Return list of Globus auth scopes required by the RemoteJob.
-
-        """
-        required_scopes = self._transfer.get_globus_scopes()
-        required_scopes.extend(self._runner.get_globus_scopes())
-
-        return required_scopes
 
     def _read_uploads_file(self):
         """Read the file that lists files to be uploaded"""
@@ -136,9 +127,14 @@ class RemoteJob:
             self._download_files = []
             self._log(logging.WARNING, f"Downloads file does not exist: {download_file_path}")
 
-    def setup(self, local_dir, force=False):
+    def setup(self, local_dir, force=False, runner=None, transfer=None):
         """
         Set up the remote job (authentication, remote directory...)
+
+        :param local_dir: the local directory of the remote job
+        :param force: ignore saved progress and start again
+        :param runner: runner instance to base this job's runner off
+        :param transfer: transferer instance to base this job's transferer off
 
         """
         # the local directory this job is based on
@@ -150,19 +146,19 @@ class RemoteJob:
         self._log(logging.DEBUG, f"Creating RemoteJob for local directory: {self._job_name}")
 
         # setting up transferer and runner
+        self._runner.set_label(self._label)
         self._transfer.set_local_directory(self._local_path)
-        self._runner.set_local_directory(self._local_path)
 
         # initialise and load saved state, if any
         self._state_file = os.path.join(local_dir, self.STATE_FILE)
         self._load_state(force)
 
         # handle Globus here
-        self.do_globus_auth()
+        self.do_globus_auth(runner=runner, transfer=transfer)
 
     def get_remote_directory(self):
         """Return the remote directory"""
-        return self._remote_path
+        return self._remote_full_path
 
     def get_remote_base_directory(self):
         """Return the remote base directory"""
@@ -170,15 +166,14 @@ class RemoteJob:
 
     def set_remote_directory(self, remote_full_path, remote_basename):
         """Set the remote directory"""
-        self._remote_path = remote_full_path
-        self._runner.set_working_directory(remote_full_path)
+        self._remote_full_path = remote_full_path
         self._transfer.set_remote_directory(remote_basename)
         self._save_state()
 
     def make_remote_directory(self, prefix=None):
         """Create the remote directory"""
         # creating a remote directory for running in
-        if self._remote_path is None:
+        if self._remote_full_path is None:
             # remote path is based on local path basename
             local_basename = os.path.basename(self._local_path)
 
@@ -186,12 +181,12 @@ class RemoteJob:
                 prefix = f"{local_basename}-{self._timestamp}"
 
             # create a remote directory
-            remote_abspath, remote_basename = self._runner.make_remote_directory(
+            remote_full_path, remote_basename = self._runner.make_remote_directory(
                 self._transfer.get_remote_base_directory(),
                 prefix,
             )
-            self._log(logging.DEBUG, f"Remote directory created: {remote_abspath} ({remote_basename})")
-            self._remote_path = remote_abspath
+            self._log(logging.DEBUG, f"Remote directory created: {remote_full_path} ({remote_basename})")
+            self._remote_full_path = remote_full_path
 
             # set the directory on the transferer too
             self._transfer.set_remote_directory(remote_basename)
@@ -199,13 +194,22 @@ class RemoteJob:
             # save state
             self._save_state()
 
-    def do_globus_auth(self):
+    def do_globus_auth(self, runner=None, transfer=None):
         """Handle globus auth here"""
-        required_scopes = self.get_required_globus_scopes()
-        if len(required_scopes):
-            globus_cli = utils.handle_globus_auth(required_scopes)
-            self._transfer.setup_globus_auth(globus_cli)
-            self._runner.setup_globus_auth(globus_cli)
+        # get the scopes
+        runner_scopes = self._runner.get_globus_scopes() if runner is None else []
+        transfer_scopes = self._transfer.get_globus_scopes() if transfer is None else []
+
+        # do the auth if required
+        globus_cli = None
+        if len(runner_scopes) + len(transfer_scopes) > 0:
+            globus_cli = utils.handle_globus_auth(runner_scopes.extend(transfer_scopes))
+
+        # setup runner
+        self._runner.setup_globus_auth(globus_cli, runner=runner)
+
+        # setup transferer
+        self._transfer.setup_globus_auth(globus_cli, transfer=transfer)
 
     def cleanup(self):
         """
@@ -227,7 +231,8 @@ class RemoteJob:
                 state_dict = json.load(fh)
             self._log(logging.DEBUG, f"Loading state: {state_dict}")
 
-            self._remote_path = state_dict["remote_directory"]
+            self._remote_full_path = state_dict["remote_directory"]
+            self._remote_basename = state_dict["remote_basename"]
             self._uploaded = state_dict["uploaded"]
             self._run_started = state_dict["started_run"]
             self._run_completed = state_dict["finished_run"]
@@ -246,7 +251,8 @@ class RemoteJob:
         """
         if self._state_file is not None:
             state_dict = {
-                "remote_directory": self._remote_path,
+                "remote_directory": self._remote_full_path,
+                "remote_basename": self._remote_basename,
                 "uploaded": self._uploaded,
                 "started_run": self._run_started,
                 "finished_run": self._run_completed,
@@ -298,10 +304,19 @@ class RemoteJob:
             # read in files to be downloaded
             self._read_downloads_file()
 
+            # get checksums
+            downloads_checksums = self._runner.get_checksums(
+                self._remote_full_path,
+                self._download_files,
+            )
+            no_checksum = [f for f in downloads_checksums if downloads_checksums[f] is None]
+            if len(no_checksum):
+                self._log(logging.ERROR, f"Could not calculate checksums for the following files, their downloads will not be verified: {', '.join(no_checksum)}")
+
             # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
-            self._transfer.download_files(self._download_files)
+            self._transfer.download_files(self._download_files, downloads_checksums)
             download_time = time.perf_counter() - download_time
             self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
@@ -317,6 +332,7 @@ class RemoteJob:
         else:
             self._log(logging.INFO, "Starting run...")
             self._run_started = retry_call(self._runner.start,
+                                           fargs=(self._remote_full_path,),
                                            tries=self._retry_tries,
                                            backoff=self._retry_backoff,
                                            delay=self._retry_delay)
