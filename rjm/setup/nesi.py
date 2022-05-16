@@ -14,11 +14,12 @@ logger = logging.getLogger(__name__)
 
 GATEWAY = "lander.nesi.org.nz"
 LOGIN_NODE = "login.mahuika.nesi.org.nz"
-LOGIN_NODES = [
+FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
 FUNCX_MODULE = "funcx-endpoint/0.3.6-gimkl-2020a-Python-3.9.9"
+FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
 GLOBUS_CREATE_COLLECTION_SCOPE = f"{GLOBUS_NESI_ENDPOINT}[*{GLOBUS_NESI_COLLECTION}]"
@@ -87,8 +88,8 @@ class NeSISetup:
         self._sftp = self._client.open_sftp()
 
         # test run command
-        stdin, stdout, stderr = self._client.exec_command("echo $HOSTNAME")
-        logger.info(f"Successfully opened connection to {stdout.read().strip().decode('utf-8')}")
+        status, stdout, stderr = self.run_command("echo $HOSTNAME")
+        logger.info(f"Successfully opened connection to '{stdout}'")
 
     def __del__(self):
         # close connection
@@ -100,6 +101,7 @@ class NeSISetup:
             self._lander_client.close()
 
     def _auth_handler(self, title, instructions, prompt_list):
+        """auth handler that returns first and second factors for NeSI"""
         self._num_handler_requests += 1
         logger.debug(f"auth_handler called with: {prompt_list}")
 
@@ -122,10 +124,20 @@ class NeSISetup:
         return return_val
 
     def run_command(self, command):
-        full_command = f"source /etc/profile; module load {FUNCX_MODULE}; {command}"
+        """
+        Execute command on NeSI and return stdout and stderr.
+
+        Ensure /etc/profile is sourced prior to running the command.
+
+        """
+        full_command = f"source /etc/profile && {command}"
         logger.debug(f"Running command: '{full_command}'")
         stdin, stdout, stderr = self._client.exec_command(full_command)
-        return stdout.read().decode('utf-8').strip(), stderr.read().decode('utf-8').strip()
+        output = stdout.read().decode('utf-8').strip()
+        error = stderr.read().decode('utf-8').strip()
+        status = stdout.channel.recv_exit_status()
+
+        return status, output, error
 
     def setup_globus(self):
         """
@@ -141,12 +153,10 @@ class NeSISetup:
         3. ...
 
         """
-        required_scopes = []
-
         # select directory for sharing
         account = input("Enter NeSI project code: ").strip()
         guest_collection_dir = f"/nesi/nobackup/{account}/{self._username}/rjm-jobs"
-        print("="*100)
+        print("="*120)
         print("Creating Globus guest collection at:\n    {guest_collection_dir}")
         response = ("Press enter to continue or enter a different location: ").strip()
         if len(response):
@@ -162,7 +172,8 @@ class NeSISetup:
             logger.debug("Guest collection directory already exists")
         else:
             logger.debug("Creating guest collection directory...")
-            stdout, stderr = self.run_command(f"mkdir -p {guest_collection_dir}")
+            status, stdout, stderr = self.run_command(f"mkdir -p {guest_collection_dir}")
+            assert status == 0, f"Creating '{guest_collection_dir}' failed: {stdout} {stderr}"
             if not self._remote_path_exists(guest_collection_dir):
                 raise RuntimeError(f"Creating guest collection directory failed ({stdout}) ({stderr})")
 
@@ -192,16 +203,18 @@ class NeSISetup:
         3. ...
 
         """
-        self.get_funcx_status()
+        # make sure funcx is authorised
+        if not self.is_funcx_authorised():
+            print("="*120)
+            print("Authorising funcX - this should open a browser where you need to authenticate with Globus and approve access")
+            print("="*120)
 
-        if not self._funcx_authorised:
             required_scopes = [
                 utils.OPENID_SCOPE,
                 utils.SEARCH_SCOPE,
                 FUNCX_SCOPE,
             ]
 
-            # do Globus auth
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmp_token_file = os.path.join(tmpdir, "tokens.json")
                 logger.debug(f"Requesting funcX tokens and storing in tmpfile: {tmp_token_file}")
@@ -215,16 +228,39 @@ class NeSISetup:
                 logger.debug("Transferring token file to NeSI")
 
                 # create the credentials directory
-                self.run_command("mkdir -p /home/{username}/.funcx/credentials")
+                status, stdout, stderr = self.run_command(f"mkdir -p /home/{self._username}/.funcx/credentials")
+                assert status == 0, "Create credentials file failed: {stdout} {stderr}"
 
                 # transfer the token file we just created
                 self._sftp.put(tmp_token_file, self._funcx_cred_file)
 
-        # TODO: configure and start funcx endpoint, report back endpoint id for config
+            assert self.is_funcx_authorised(), "funcX authorisation failed"
+            logger.info("funcX authorisatiion complete")
 
+        # configure funcx endpoint
+        if not self.is_funcx_endpoint_configured():
+            logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
 
-        # TODO: confirm list command works
+            status, stdout, stderr = self.run_command(f"module load {FUNCX_MODULE} && funcx-endpoint configure {FUNCX_ENDPOINT_NAME}")
+            assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
 
+            assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
+            logger.info("funcX endpoint configuration complete")
+
+        # start the funcX endpoint
+        endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
+        if not endpoint_running:
+            logger.info(f"Starting funcx '{FUNCX_ENDPOINT_NAME}' endpoint")
+            status, stdout, stderr = self.run_command(f"module load {FUNCX_MODULE} && funcx-endpoint start {FUNCX_ENDPOINT_NAME}")
+            assert status == 0, f"Starting endpoint failed: {stdout} {stderr}"
+            endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
+            assert endpoint_running, f'Starting funcX endpoint failed: {stdout} {stderr}'
+
+        # report endpoint id for configuring rjm
+        print("="*120)
+        print(f"funcX endpoint is running and has id: '{endpoint_id}'")
+        print("the above value will be required when configuring RJM")
+        print("="*120)
 
         # TODO: install scrontab if not already installed
 
@@ -240,47 +276,84 @@ class NeSISetup:
         return exists
 
     def get_funcx_status(self):
-        """Returns whether funcX is configured or not"""
+        """Checks whether funcx is authorised and the default endpoint is configured and running"""
         # assume it is configured if the credentials and default endpoint files exist
         # or run status and see if we can tell from that
         # first test if funcx
 
-        # test if credentials file exists
+    def is_funcx_authorised(self):
+        """
+        Check whether funcx is authorised already
+
+        """
+        # test if credentials file exists, if so, we assume it is authorised
         if self._remote_path_exists(self._funcx_cred_file):
             logger.debug("Assuming funcx is authorised as credentials file exists")
-            self._funcx_authorised = True
+            authorised = True
         else:
             logger.debug("funcX credentials file does not exist")
-            self._funcx_authorised = False
+            authorised = False
 
-        # test if default endpoint config exists
+        return authorised
+
+    def is_funcx_endpoint_configured(self):
+        """
+        Check whether the funcx default endpoint is configured already
+
+        """
+        # test if default endpoint config exists, if so, we assume it is configured
         if self._remote_path_exists(self._funcx_default_config):
             logger.debug("Assuming funcx default endpoint is configured as config file exists")
-            self._funcx_configured = True
+            configured = True
         else:
             logger.debug("funcX default endpoint config file does not exist")
-            self._funcx_configured = False
+            configured = False
 
-        # TODO: test "funcx-endpoint list" shows default endpoint and whether running??
-        # TODO: need to loop over login nodes
-        if self._funcx_authorised and self._funcx_configured:
-            stdout, stderr = self.run_command("funcx-endpoint list")
-            print("out")
-            print(stdout)
-            print("err")
-            print(stderr)
+        return configured
 
+    def is_funcx_endpoint_running(self):
+        """
+        Check whether the funcx default endpoint is running already
 
+        """
+        # test whether funcx endpoint is actually running
+        if self.is_funcx_authorised():
+            # loop over nodes where funcx could be running
+            funcx_running_nodes = []
+            funcx_endpoint_id = None
+            for node in FUNCX_NODES:
+                status, stdout, stderr = self.run_command(f"ssh {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'")
+                assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
 
+                for line in stdout.splitlines():
+                    if FUNCX_ENDPOINT_NAME in line:
+                        funcx_endpoint_id = line.split('|')[3].strip()
+                        if "Running" in line:
+                            funcx_running_nodes.append(node)
+                            break
 
+            if len(funcx_running_nodes) == 1:
+                logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint is running on '{funcx_running_nodes[0]}' with endpoint id '{funcx_endpoint_id}'")
+            elif len(funcx_running_nodes) > 1:
+                logger.warning(f'funcX endpoint running on multiple nodes -> should stop them and start on one only: {funcx_running_nodes}')
+            else:
+                logger.debug("funcX endpoint is not running")
+
+            return len(funcx_running_nodes) != 0, funcx_endpoint_id
+
+        else:
+            raise RuntimeError("ensure funcx is authorised before checking whether the endpoint is running")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("paramiko").setLevel(logging.WARNING)
+    logging.getLogger("globus_sdk").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("fair_research_login").setLevel(logging.WARNING)
     nesi = NeSISetup(
-        username=input(f"Username [{getpass.getuser()}]: ") or getpass.getuser(),
-        password=getpass.getpass("NeSI 1st factor (password): "),
-        token=input("NeSI 2nd factor (WITH AT LEAST 10 SECS REMAINING): "),
+        username=input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ") or getpass.getuser(),
+        password=getpass.getpass("Enter NeSI Login Password (First Factor): "),
+        token=input("Enter NeSI Authenticator Code (Second Factor with >5 seconds remaining): "),
     )
     #stdout, stderr = nesi_ssh.run_command("scrontab -l")
     #print(stdout)
