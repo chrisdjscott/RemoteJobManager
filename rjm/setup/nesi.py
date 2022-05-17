@@ -335,14 +335,19 @@ class NeSISetup:
             if len(funcx_running_nodes) == 1:
                 logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint is running on '{funcx_running_nodes[0]}' with endpoint id '{funcx_endpoint_id}'")
             elif len(funcx_running_nodes) > 1:
-                logger.warning(f'funcX endpoint running on multiple nodes -> should stop them and start on one only: {funcx_running_nodes}')
+                logger.warning(f'funcX endpoint running on multiple nodes -> attempting to stop them all: {funcx_running_nodes}')
+                for node in funcx_running_nodes:
+                    status, stdout, stderr = self.run_command(f"ssh {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'")
+                    if status:
+                        logger.warning(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
             else:
                 logger.debug("funcX endpoint is not running")
 
             return len(funcx_running_nodes) != 0, funcx_endpoint_id
 
         else:
-            raise RuntimeError("ensure funcx is authorised before checking whether the endpoint is running")
+            raise RuntimeError("ensure funcX is authorised before checking whether the endpoint is running")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
