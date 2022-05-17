@@ -3,7 +3,7 @@
 LOGIN_NODES=(mahuika01 mahuika02)
 PRIMARY_NODE=login.mahuika.nesi.org.nz
 ENDPOINT_NAME=default
-LOG=~/funcx-endpoint-persist-nesi.log
+LOG=~/.funcx-endpoint-persist-nesi.log
 
 echo "Running $0 at $(date)" >> $LOG
 

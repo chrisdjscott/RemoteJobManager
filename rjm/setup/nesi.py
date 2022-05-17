@@ -141,6 +141,25 @@ class NeSISetup:
 
         return status, output, error
 
+    def run_command_with_stdin(self, command, textin):
+        """
+        Run command with standard input
+
+        """
+        full_command = f"source /etc/profile && {command}"
+        logger.debug(f"Running command: '{full_command}'")
+        stdin, stdout, stderr = self._client.exec_command(full_command)
+
+        stdin.write(textin)  # TODO: encode??
+        stdin.flush()
+        stdin.channel.shutdown_write()
+
+        output = stdout.read().decode('utf-8').strip()
+        error = stderr.read().decode('utf-8').strip()
+        status = stdout.channel.recv_exit_status()
+
+        return status, output, error
+
     def setup_globus(self):
         """
         Sets up funcx:
@@ -163,7 +182,6 @@ class NeSISetup:
         response = ("Press enter to continue or enter a different location: ").strip()
         if len(response):
             if response.startswith("/nesi/nobackup"):
-                # TODO: check have write access too...
                 guest_collection_dir = response
             else:
                 raise ValueError("Valid guest collection directories must start with '/nesi/nobackup'")
@@ -178,6 +196,8 @@ class NeSISetup:
             assert status == 0, f"Creating '{guest_collection_dir}' failed: {stdout} {stderr}"
             if not self._remote_path_exists(guest_collection_dir):
                 raise RuntimeError(f"Creating guest collection directory failed ({stdout}) ({stderr})")
+
+        # TODO: check have write access to the directory
 
         # do Globus auth
         required_scopes = [GLOBUS_CREATE_COLLECTION_SCOPE]
@@ -281,26 +301,46 @@ class NeSISetup:
             self._sftp.put(p, script_path)
         assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
 
+        # make sure the script is executable
+        status, stdout, stderr = self.run_command(f"chmod +x {script_path}")
+        assert status == 0, f"Failed to make script executable: {stdout} {stderr}"
+
         # retrieve current scrontab
         status, stdout, stderr = self.run_command('scrontab -l')
         assert status == 0, f"Failed to retrieve current scrontab contents: {stdout} {stderr}"
         current_scrontab = stdout
         new_scrontab_lines = []
-        print('scrontab:')
-        print(current_scrontab)
-        has_rjm_section = False
+
+        # remove rjm section from current scrontab, if any
+        in_rjm_section = False
         rjm_section_start = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
         rjm_section_end = "# END RJM AUTOMATICALLY ADDED SECTION"
-        for line in current_scrontab.iterlines():
+        for line in current_scrontab.splitlines():
             if rjm_section_start in line:
-                has_rjm_section = True
+                in_rjm_section = True
+                logger.debug("Found beginning of rjm section in existing scrontab")
+            elif in_rjm_section and rjm_section_end in line:
+                in_rjm_section = False
+                logger.debug("Found end of rjm section in existing scrontab")
+            elif in_rjm_section:
+                logger.debug(f"Remving current rjm section ({line})")
+            else:
+                new_scrontab_lines.append(line)
+                logger.debug(f"Keeping existing scrontab line ({line})")
 
-            new_scrontab_lines.append(line)
+        # add new rjm section
+        new_scrontab_lines.append("")
+        new_scrontab_lines.append(rjm_section_start)
+        new_scrontab_lines.append("#SCRON -t 08:00")
+        new_scrontab_lines.append("#SCRON -J funcxcheck")
+        new_scrontab_lines.append("#SCRON --mem=128")
+        new_scrontab_lines.append(f"@hourly {script_path}")
+        new_scrontab_lines.append(rjm_section_end)
+        new_scrontab_lines.append("")
 
-
-
-        # if entry doesn't exist, add it
-
+        # install new scrontab
+        status, stdout, stderr = self.run_command_with_stdin("scrontab -", "\n".join(new_scrontab_lines))
+        assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
 
     def _remote_path_exists(self, path):
         """Return True if the path exists on the remote, otherwise False"""
