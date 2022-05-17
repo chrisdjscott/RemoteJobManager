@@ -3,6 +3,7 @@ import os
 import logging
 import getpass
 import tempfile
+import importlib.resources
 
 import paramiko
 
@@ -23,6 +24,7 @@ FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
 GLOBUS_CREATE_COLLECTION_SCOPE = f"{GLOBUS_NESI_ENDPOINT}[*{GLOBUS_NESI_COLLECTION}]"
+NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
 
 
 class NeSISetup:
@@ -205,6 +207,7 @@ class NeSISetup:
         """
         # make sure funcx is authorised
         if not self.is_funcx_authorised():
+            logger.info("Authorising funcX")
             print("="*120)
             print("Authorising funcX - this should open a browser where you need to authenticate with Globus and approve access")
             print("="*120)
@@ -262,7 +265,41 @@ class NeSISetup:
         print("the above value will be required when configuring RJM")
         print("="*120)
 
-        # TODO: install scrontab if not already installed
+        # install scrontab if not already installed
+        self._setup_funcx_scrontab()
+
+    def _setup_funcx_scrontab(self):
+        """
+        Create a scrontab job for keeping funcx endpoint running
+
+        """
+        # write script to NeSI
+        with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
+            # upload the script to NeSI
+            script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
+            logger.debug(f"Uploading persist script '{p}' to 'script_path'")
+            self._sftp.put(p, script_path)
+        assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
+
+        # retrieve current scrontab
+        status, stdout, stderr = self.run_command('scrontab -l')
+        assert status == 0, f"Failed to retrieve current scrontab contents: {stdout} {stderr}"
+        current_scrontab = stdout
+        new_scrontab_lines = []
+        print('scrontab:')
+        print(current_scrontab)
+        has_rjm_section = False
+        rjm_section_start = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
+        rjm_section_end = "# END RJM AUTOMATICALLY ADDED SECTION"
+        for line in current_scrontab.iterlines():
+            if rjm_section_start in line:
+                has_rjm_section = True
+
+            new_scrontab_lines.append(line)
+
+
+
+        # if entry doesn't exist, add it
 
 
     def _remote_path_exists(self, path):
@@ -347,23 +384,3 @@ class NeSISetup:
 
         else:
             raise RuntimeError("ensure funcX is authorised before checking whether the endpoint is running")
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger("paramiko").setLevel(logging.WARNING)
-    logging.getLogger("globus_sdk").setLevel(logging.WARNING)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("fair_research_login").setLevel(logging.WARNING)
-    nesi = NeSISetup(
-        username=input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ") or getpass.getuser(),
-        password=getpass.getpass("Enter NeSI Login Password (First Factor): "),
-        token=input("Enter NeSI Authenticator Code (Second Factor with >5 seconds remaining): "),
-    )
-    #stdout, stderr = nesi_ssh.run_command("scrontab -l")
-    #print(stdout)
-    #print(stderr)
-
-    nesi.setup_funcx()
-#    nesi.setup_globus()
-
