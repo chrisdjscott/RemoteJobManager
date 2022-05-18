@@ -76,6 +76,10 @@ jobs:
         run: pyinstaller -F ../../rjm/cli/rjm_batch_cancel.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+      - name: Build rjm_nesi_setup
+        run: pyinstaller -F ../../rjm/cli/rjm_nesi_setup.py
+        working-directory:  ./extra/pyinstaller
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Dump license files
         run: |
           pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt

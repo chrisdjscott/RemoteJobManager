@@ -16,8 +16,8 @@ def make_parser():
     """Return ArgumentParser"""
     parser = argparse.ArgumentParser(description="Upload files and start jobs")
 
-    parser.add_argument('--skip-funcx', action="store_true", help="Skip setting up funcX on NeSI")
-    parser.add_argument('--skip-globus', action="store_true", help="Skip setting up Globus for NeSI")
+    parser.add_argument('--funcx', action="store_true", help="Set up funcX on NeSI")
+    parser.add_argument('--globus', action="store_true", help="Set up Globus for NeSI")
 
     parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
     parser.add_argument('-ll', '--loglevel', required=False,
@@ -38,28 +38,32 @@ def nesi_setup():
     parser = make_parser()
     args = parser.parse_args()
 
-    # setup logging
-    utils.setup_logging(log_name="nesi_setup", log_file=args.logfile, log_level=args.loglevel)
+    if not args.funcx and not args.globus:
+        print("Neither '--funcx' nor '--globus' specified; nothing to do")
 
-    print("="*120)
-    print("This is an interactive script to setup NeSI for using RJM")
-    print("You will be required to enter information along the way, including NeSI credentials and to")
-    print("authenticate with Globus in a browser when asked to do so")
-    print("="*120)
+    else:
+        # setup logging
+        utils.setup_logging(log_name="nesi_setup", log_file=args.logfile, log_level=args.loglevel)
 
-    # get extra info from user
-    username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ") or getpass.getuser()
-    password = getpass.getpass("Enter NeSI Login Password (First Factor): ")
-    token = input("Enter NeSI Authenticator Code (Second Factor with >5 seconds remaining): ")
+        print("="*120)
+        print("This is an interactive script to setup NeSI for using RJM")
+        print("You will be required to enter information along the way, including NeSI credentials and to")
+        print("authenticate with Globus in a browser when asked to do so")
+        print("="*120)
 
-    # create the setup object
-    nesi = NeSISetup(username, password, token)
+        # get extra info from user
+        username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
+        password = getpass.getpass("Enter NeSI Login Password (First Factor): ")
+        token = input("Enter NeSI Authenticator Code (Second Factor with >5 seconds remaining): ")
 
-    if not args.skip_funcx:
-        nesi.setup_funcx()
+        # create the setup object
+        nesi = NeSISetup(username, password, token)
 
-    # if not args.skip_globus():
-        # nesi.setup_globus()
+        if args.funcx:
+            nesi.setup_funcx()
+
+        if args.globus:
+            nesi.setup_globus()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,8 @@ import tempfile
 import importlib.resources
 
 import paramiko
+from globus_sdk import GCSClient
+from globus_sdk.services.gcs.data import GuestCollectionDocument
 
 from rjm import utils
 from rjm.runners.funcx_slurm_runner import FUNCX_SCOPE
@@ -23,7 +25,7 @@ FUNCX_MODULE = "funcx-endpoint/0.3.6-gimkl-2020a-Python-3.9.9"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
-GLOBUS_CREATE_COLLECTION_SCOPE = f"{GLOBUS_NESI_ENDPOINT}[*{GLOBUS_NESI_COLLECTION}]"
+GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"
 NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
 
 
@@ -162,24 +164,22 @@ class NeSISetup:
 
     def setup_globus(self):
         """
-        Sets up funcx:
+        Sets up globus:
 
-        1. Check if funcx is configured, if not configure it (default endpoint)
-           - TODO: handle auth centrally and copy tokens across, if possible
-        2. Check if funcx endpoint is running, if not start it
-           - TODO: option to restart it (or maybe make that the default)
-
-        1. Check if funcx is authorised
-        2. If not, get required scopes including globus
-        3. ...
+        1. Create a directory for the guest collection
+        2. Create a guest collection to share the directory
+        3. Report back the endpoint id and url for managing the new guest collection
 
         """
+        print("Setting up Globus...")
+
         # select directory for sharing
-        account = input("Enter NeSI project code: ").strip()
+        print("Enter your NeSI project code below or press enter to select the default (note: you must be a member of the project)")
+        account = input("Enter NeSI project code [uoa00106]: ").strip() or "uoa00106"
         guest_collection_dir = f"/nesi/nobackup/{account}/{self._username}/rjm-jobs"
         print("="*120)
-        print("Creating Globus guest collection at:\n    {guest_collection_dir}")
-        response = ("Press enter to continue or enter a different location: ").strip()
+        print(f"Creating Globus guest collection at:\n    {guest_collection_dir}")
+        response = input("Press enter to continue or enter a different location: ").strip()
         if len(response):
             if response.startswith("/nesi/nobackup"):
                 guest_collection_dir = response
@@ -199,17 +199,71 @@ class NeSISetup:
 
         # TODO: check have write access to the directory
 
-        # do Globus auth
-        required_scopes = [GLOBUS_CREATE_COLLECTION_SCOPE]
+        # prepare scope for creating directory
+        endpoint_scope = GCSClient.get_gcs_endpoint_scopes(GLOBUS_NESI_ENDPOINT).manage_collections
+        collection_scope = GCSClient.get_gcs_collection_scopes(GLOBUS_NESI_COLLECTION).data_access
+        required_scope = f"{endpoint_scope}[*{collection_scope}]"
+        logger.debug(f"Requesting scope: {required_scope}")
         with tempfile.TemporaryDirectory() as tmpdir:
+            print("="*120)
+            print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
+            print("                   - you will probably also need to enter your NeSI credentials, please follow the instructions")
+            print("="*120)
+
+            # globus auth
             tmp_token_file = os.path.join(tmpdir, "tokens.json")
             globus_cli = utils.handle_globus_auth(
-                required_scopes,
+                [required_scope],
                 token_file=tmp_token_file,
             )
+            authorisers = globus_cli.get_authorizers_by_scope(endpoint_scope)
 
-        # create Globus collection, report back endpoint id for config
+            # GCS client
+            client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=authorisers[endpoint_scope])
 
+            # user must be authenticated on the NeSI endpoint
+            # may be a better way than this eventually...
+            # NOTE: it looks like this is not necessary, since they will have to be authenticated to NeSI
+            #       during the "handle_globus_auth" step above...
+#            print("="*120)
+#            print("You must activate the NeSI Globus Endpoint at the following URL.")
+#            print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
+#            print("")
+#            print("NOTE: you will need to authenticate with Globus first, if you haven't already done that,")
+#            print("      then you must connect to the NeSI endpoint via the browser...")
+#            print("")
+#            print("Please confirm you can see your files on NeSI via the above link before continuing")
+#            # TODO: add link to some documentation...
+#            print("="*120)
+#            input("Press any key to continue...")
+#            print("="*120)
+
+            # user credentials
+            cred = client.get("/user_credentials")
+            assert cred["code"] == "success", "Error getting user_credentials"
+            user_cred = cred["data"][0]
+
+            # collection document specifying options for new guest collection
+            doc = GuestCollectionDocument(
+                mapped_collection_id=GLOBUS_NESI_COLLECTION,
+                user_credential_id=user_cred["id"],
+                collection_base_path=guest_collection_dir,
+                display_name="RJM_jobs",
+                public=False,
+                enable_https=True,
+            )
+            logger.debug(f"Collection document: {doc}")
+
+            # create Globus collection, report back endpoint id for config
+            response = client.create_collection(doc)
+            endpoint_id = response.data["id"]
+            logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
+
+        # report endpoint id for configuring rjm
+        print("="*120)
+        print(f"Globus guest collection endpoint id: '{endpoint_id}'")
+        print("the above value will be required when configuring RJM")
+        print("="*120)
 
     def setup_funcx(self):
         """
@@ -225,6 +279,8 @@ class NeSISetup:
         3. ...
 
         """
+        print("Setting up funcX...")
+
         # make sure funcx is authorised
         if not self.is_funcx_authorised():
             logger.info("Authorising funcX")
@@ -287,6 +343,10 @@ class NeSISetup:
 
         # install scrontab if not already installed
         self._setup_funcx_scrontab()
+        logger.info("Installed scrontab entry to ensure funcx endpoint keeps ruuning (run 'scrontab -l' on mahuika to view)")
+        print("A scrontab entry has been added to periodically check the status of the funcx endpoint and restart it if needed")
+        print("On mahuika, run 'scrontab -l' to view it")
+        print("="*120)
 
     def _setup_funcx_scrontab(self):
         """
