@@ -43,7 +43,7 @@ CONFIG_OPTIONS_OPTIONAL = [  # default values must be strings
     {
         "section": "SLURM",
         "name": "poll_interval",
-        "default": "10",
+        "default": "60",
         "help": "Interval (in seconds) between checking whether the Slurm job has completed",
     },
     {
