@@ -55,6 +55,9 @@ class NeSISetup:
         self._funcx_cred_file = f"{funcx_dir}/credentials/funcx_sdk_tokens.json"
         self._funcx_default_config = f"{funcx_dir}/default/config.py"
 
+        self._connect()
+
+    def _connect(self):
         # create SSH client for lander
         logger.info(f"Connecting to {LOGIN_NODE} via {GATEWAY} as {self._username}")
         self._lander_client = paramiko.SSHClient()
@@ -127,34 +130,23 @@ class NeSISetup:
 
         return return_val
 
-    def run_command(self, command):
+    def run_command(self, command, input_text=None):
         """
         Execute command on NeSI and return stdout and stderr.
 
         Ensure /etc/profile is sourced prior to running the command.
 
-        """
-        full_command = f"source /etc/profile && {command}"
-        logger.debug(f"Running command: '{full_command}'")
-        stdin, stdout, stderr = self._client.exec_command(full_command)
-        output = stdout.read().decode('utf-8').strip()
-        error = stderr.read().decode('utf-8').strip()
-        status = stdout.channel.recv_exit_status()
-
-        return status, output, error
-
-    def run_command_with_stdin(self, command, textin):
-        """
-        Run command with standard input
+        If input_text is specified, write that to stdin
 
         """
         full_command = f"source /etc/profile && {command}"
         logger.debug(f"Running command: '{full_command}'")
         stdin, stdout, stderr = self._client.exec_command(full_command)
 
-        stdin.write(textin)  # TODO: encode??
-        stdin.flush()
-        stdin.channel.shutdown_write()
+        if input_text is not None:
+            stdin.write(input_text)
+            stdin.flush()
+            stdin.channel.shutdown_write()  # send EOF
 
         output = stdout.read().decode('utf-8').strip()
         error = stderr.read().decode('utf-8').strip()
@@ -179,7 +171,7 @@ class NeSISetup:
         guest_collection_dir = f"/nesi/nobackup/{account}/{self._username}/rjm-jobs"
         print("="*120)
         print(f"Creating Globus guest collection at:\n    {guest_collection_dir}")
-        response = input("Press enter to continue or enter a different location: ").strip()
+        response = input("Press enter to accept the above location or specify an alternative here: ").strip()
         if len(response):
             if response.startswith("/nesi/nobackup"):
                 guest_collection_dir = response
@@ -189,17 +181,17 @@ class NeSISetup:
 
         # create the directory if it doesn't exist
         if self._remote_path_exists(guest_collection_dir):
+            # confirm have write access to the directory
+            write_access = self._remote_path_writeable(guest_collection_dir)
+            logger.debug(f"Testing for write access: {write_access}")
+            if not write_access:
+                raise ValueError(f"User does not have write access to: {guest_collection_dir}")
             logger.debug("Guest collection directory already exists")
         else:
             logger.debug("Creating guest collection directory...")
-            status, stdout, stderr = self.run_command(f"mkdir -p {guest_collection_dir}")
-            assert status == 0, f"Creating '{guest_collection_dir}' failed: {stdout} {stderr}"
-            if not self._remote_path_exists(guest_collection_dir):
-                raise RuntimeError(f"Creating guest collection directory failed ({stdout}) ({stderr})")
+            self._remote_dir_create(guest_collection_dir)
 
-        # TODO: check have write access to the directory
-
-        # prepare scope for creating directory
+        # request scope for creating collection
         endpoint_scope = GCSClient.get_gcs_endpoint_scopes(GLOBUS_NESI_ENDPOINT).manage_collections
         collection_scope = GCSClient.get_gcs_collection_scopes(GLOBUS_NESI_COLLECTION).data_access
         required_scope = f"{endpoint_scope}[*{collection_scope}]"
@@ -217,6 +209,7 @@ class NeSISetup:
                 token_file=tmp_token_file,
             )
             authorisers = globus_cli.get_authorizers_by_scope(endpoint_scope)
+            print("Authentication done. Continuing...")
 
             # GCS client
             client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=authorisers[endpoint_scope])
@@ -302,13 +295,13 @@ class NeSISetup:
                     token_file=tmp_token_file,
                 )
                 assert os.path.exists(tmp_token_file)
+                print("Authentication done. Continuing...")
 
                 # upload funcx tokens to correct place if needed
                 logger.debug("Transferring token file to NeSI")
 
                 # create the credentials directory
-                status, stdout, stderr = self.run_command(f"mkdir -p /home/{self._username}/.funcx/credentials")
-                assert status == 0, "Create credentials file failed: {stdout} {stderr}"
+                self._remote_dir_create(f'/home/{self._username}/.funcx/credentials')
 
                 # transfer the token file we just created
                 self._sftp.put(tmp_token_file, self._funcx_cred_file)
@@ -399,8 +392,21 @@ class NeSISetup:
         new_scrontab_lines.append("")
 
         # install new scrontab
-        status, stdout, stderr = self.run_command_with_stdin("scrontab -", "\n".join(new_scrontab_lines))
+        status, stdout, stderr = self.run_command("scrontab -", input_text="\n".join(new_scrontab_lines))
         assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
+
+    def _remote_dir_create(self, path):
+        """Create directory at the given path"""
+        status, stdout, stderr = self.run_command(f'mkdir -p "{path}"')
+        assert status == 0, f"Creating '{path}' failed: {stdout} {stderr}"
+        if not self._remote_path_exists(path):
+            raise RuntimeError(f"Creating '{path}' failed: ({stdout}) ({stderr})")
+
+    def _remote_path_writeable(self, path):
+        """Return True if the path is writeable, otherwise False"""
+        status, _, _ = self.run_command(f'test -w "{path}"')
+
+        return not status
 
     def _remote_path_exists(self, path):
         """Return True if the path exists on the remote, otherwise False"""
@@ -476,7 +482,8 @@ class NeSISetup:
                 for node in funcx_running_nodes:
                     status, stdout, stderr = self.run_command(f"ssh {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'")
                     if status:
-                        logger.warning(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
+                        raise RuntimeError(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
+                funcx_running_nodes = []
             else:
                 logger.debug("funcX endpoint is not running")
 
