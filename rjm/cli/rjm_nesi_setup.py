@@ -59,11 +59,25 @@ def nesi_setup():
         # create the setup object
         nesi = NeSISetup(username, password, token)
 
+        # do the funcx setup
         if args.funcx:
             nesi.setup_funcx()
 
+        # do the globus setup
         if args.globus:
             nesi.setup_globus()
+
+        # report
+        print("="*120)
+        print("Configuration values:")
+        if args.funcx:
+            funcx_ep = nesi.get_funcx_config()
+            print(f"- funcX endpoint id: {funcx_ep}")
+        if args.globus:
+            globus_ep, globus_path = nesi.get_globus_config()
+            print(f"- Globus endpoint id: {globus_ep}")
+            print(f"- Globus endpoint path: {globus_path}")
+        print("="*120)
 
 
 if __name__ == "__main__":

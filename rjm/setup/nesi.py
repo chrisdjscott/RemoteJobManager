@@ -7,6 +7,7 @@ import importlib.resources
 
 import paramiko
 from globus_sdk import GCSClient
+from globus_sdk import GCSAPIError
 from globus_sdk.services.gcs.data import GuestCollectionDocument
 
 from rjm import utils
@@ -51,11 +52,24 @@ class NeSISetup:
         self._funcx_configured = None
         self._funcx_running = None
 
+        # initialise values we are setting up
+        self._funcx_id = None  # funcX endpoint id
+        self._globus_id = None  # globus endpoint id
+        self._globus_path = None  # path to globus share
+
+        # funcx file locations
         funcx_dir = f"/home/{self._username}/.funcx"
         self._funcx_cred_file = f"{funcx_dir}/credentials/funcx_sdk_tokens.json"
         self._funcx_default_config = f"{funcx_dir}/default/config.py"
 
         self._connect()
+
+    def get_funcx_config(self):
+        """Return funcx config values"""
+        return self._funcx_id
+
+    def get_globus_config(self):
+        return self._globus_id, self._globus_path
 
     def _connect(self):
         # create SSH client for lander
@@ -248,15 +262,45 @@ class NeSISetup:
             logger.debug(f"Collection document: {doc}")
 
             # create Globus collection, report back endpoint id for config
-            response = client.create_collection(doc)
+            try:
+                response = client.create_collection(doc)
+            except GCSAPIError as exc:
+                # first attempt might result in authentication error if they haven't
+                # authenticated with their NeSI credentials recently?
+                logger.debug("Initial attempt to create collection failed with error {exc.http_status}. {exc.code}, {exc.message}")
+                if exc.http_status == 403 and exc.code == "permission_denied" and exc.message.startswith("You must reauthenticate one of your identities"):
+                    logger.warning(exc.message)
+
+                    # ask them to login to the NeSI endpoint via Globus Web App, then try again
+                    print("="*120)
+                    print("You must activate the NeSI Globus Endpoint at the following URL, which should")
+                    print("require entering your NeSI credentials:")
+                    print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
+                    print("")
+                    print("NOTE: Please confirm you can see your files on NeSI via the above link before continuing")
+                    print("")
+                    input("Once you can access your NeSI files at the above link, press enter to continue... ")
+                    # TODO: add link to some documentation...
+
+                    # now try to create the collection again
+                    response = client.create_collection(doc)
+
+                else:
+                    # otherwise raise the original error
+                    raise exc
+
             endpoint_id = response.data["id"]
             logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
 
         # report endpoint id for configuring rjm
         print("="*120)
         print(f"Globus guest collection endpoint id: '{endpoint_id}'")
-        print("the above value will be required when configuring RJM")
-        print("="*120)
+        print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
+        print("The above values will be required when configuring RJM")
+
+        # also store the endpoint id and path
+        self._globus_id = endpoint_id
+        self._globus_path = guest_collection_dir
 
     def setup_funcx(self):
         """
@@ -331,8 +375,11 @@ class NeSISetup:
         # report endpoint id for configuring rjm
         print("="*120)
         print(f"funcX endpoint is running and has id: '{endpoint_id}'")
-        print("the above value will be required when configuring RJM")
+        print("The above value will be required when configuring RJM")
         print("="*120)
+
+        # store endpoint id
+        self._funcx_id = endpoint_id
 
         # install scrontab if not already installed
         self._setup_funcx_scrontab()
