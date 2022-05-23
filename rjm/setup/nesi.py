@@ -297,6 +297,7 @@ class NeSISetup:
         print(f"Globus guest collection endpoint id: '{endpoint_id}'")
         print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
         print("The above values will be required when configuring RJM")
+        print("="*120)
 
         # also store the endpoint id and path
         self._globus_id = endpoint_id
