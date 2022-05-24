@@ -352,7 +352,7 @@ class NeSISetup:
                 self._sftp.put(tmp_token_file, self._funcx_cred_file)
 
             assert self.is_funcx_authorised(), "funcX authorisation failed"
-            logger.info("funcX authorisatiion complete")
+            logger.info("funcX authorisation complete")
 
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():

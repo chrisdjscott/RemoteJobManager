@@ -16,6 +16,7 @@ echo "  deleted ${nold} old funcx endpoint log files" >> $LOG
 
 # check if there is a funcx endpoint already running somewhere
 running=0
+running_nodes=()
 for node in ${LOGIN_NODES[@]}; do
     echo "  checking for endpoint running on ${node}" >> $LOG
 
@@ -23,18 +24,24 @@ for node in ${LOGIN_NODES[@]}; do
     if [ $? -eq 0 ]; then
         echo "    funcx '${ENDPOINT_NAME}' endpoint is running on ${node}" >> $LOG
         running=$((running+1))
+        running_nodes[${#running_nodes[@]}]="${node}"
     else
         echo "    funcx '${ENDPOINT_NAME}' endpoint is not running on ${node}" >> $LOG
     fi
 done
 
+# if more than one endpoint is running, kill them all so we can start just one
+if [ $running -gt 1 ]; then
+    echo "  warning: funcx '${ENDPOINT_NAME}' endpoint is running on multiple nodes; stopping them" >> $LOG
+    for node in ${running_nodes[@]}; do
+        echo "    stopping endpoint running on ${node}"
+        ssh ${node} "source /etc/profile; module load funcx-endpoint; funcx-endpoint stop ${ENDPOINT_NAME}" >> $LOG 2>&1
+    done
+fi
+
 if [ $running -eq 1 ]; then
     # endpoint is running, nothing to do
-    echo "  the funcx '${ENDPOINT_NAME}' endpoint is already running" >> $LOG
-elif [ $running -gt 1 ]; then
-    # bad, should probably kill them all and start a new one
-    echo "error: funcx '${ENDPOINT_NAME}' endpoint is running on multiple nodes" >> $LOG
-    exit 1
+    echo "  the funcx '${ENDPOINT_NAME}' endpoint is already running on ${running_nodes[0]}" >> $LOG
 else
     # start the default endpoint
     echo "  the funcx '${ENDPOINT_NAME}' endpoint is not running, starting it" >> $LOG

@@ -29,9 +29,9 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 # defaults for retries
-DEFAULT_RETRY_TRIES = 9  # retry up to 9 times
+DEFAULT_RETRY_TRIES = 10  # retry up to 10 times
 DEFAULT_RETRY_BACKOFF = 2  # each time double the delay before trying again
-DEFAULT_RETRY_DELAY = 2  # start with a 2 second delay
+DEFAULT_RETRY_DELAY = 8  # start with an 8 second delay
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +67,12 @@ def setup_logging(log_name=None, log_file=None, log_level=None):
             logging.getLogger("rjm").setLevel(level)
 
 
-def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION):
+def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION, client_id=CLIENT_ID):
     """Load the globus auth that should have already been configured"""
     # TODO: make open browser tab optional
 
     cli = NativeClient(
-        client_id=CLIENT_ID,
+        client_id=client_id,
         token_storage=JSONTokenStorage(token_file),  # save/load tokens here
         app_name="RemoteJobManager",
     )
