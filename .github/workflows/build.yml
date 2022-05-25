@@ -48,7 +48,7 @@ jobs:
         run: rjm_batch_submit -f localdirs.txt -ll debug
         working-directory: ./examples/nonmem
       - name: Run batch_wait for nonmem example
-        run: rjm_batch_wait -f localdirs.txt -ll debug
+        run: rjm_batch_wait -f localdirs.txt -ll debug -z 15
         working-directory: ./examples/nonmem
 
       # Build executables just on Windows
@@ -74,6 +74,10 @@ jobs:
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_cancel
         run: pyinstaller -F ../../rjm/cli/rjm_batch_cancel.py
+        working-directory:  ./extra/pyinstaller
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+      - name: Build rjm_nesi_setup
+        run: pyinstaller -F ../../rjm/cli/rjm_nesi_setup.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Dump license files

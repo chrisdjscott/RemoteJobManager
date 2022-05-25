@@ -2,6 +2,7 @@
 import pytest
 
 from rjm import config as config_helper
+from rjm.errors import RemoteJobConfigError
 
 
 CONFIG_FILE_TEST = """[GLOBUS]
@@ -41,5 +42,5 @@ def test_load_config(config_file):
 
 def test_load_config_exception(tmp_path):
     config_file = tmp_path / "does_not_exist.ini"
-    with pytest.raises(ValueError):
+    with pytest.raises(RemoteJobConfigError):
         config_helper.load_config(config_file=str(config_file))

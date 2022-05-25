@@ -17,3 +17,10 @@ class RemoteJobBatchError(Exception):
     Errors related to running a batch of jobs
 
     """
+
+
+class RemoteJobConfigError(Exception):
+    """
+    Config file does not exist
+
+    """

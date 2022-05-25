@@ -51,6 +51,7 @@ setup(
             'rjm_configure = rjm.cli.rjm_configure:configure',
             'rjm_health_check = rjm.cli.rjm_health_check:health_check',
             'rjm_batch_cancel = rjm.cli.rjm_batch_cancel:batch_cancel',
+            'rjm_nesi_setup = rjm.cli.rjm_nesi_setup:nesi_setup',
         ],
         'pyinstaller40': [
             'hook-dirs = rjm.__pyinstaller:get_hook_dirs',
@@ -60,6 +61,7 @@ setup(
     install_requires=[
         "retry",
         "requests",
+        "paramiko",
         "fair-research-login",
         "globus-sdk>=3",
         "funcx==0.3.6",
@@ -67,6 +69,9 @@ setup(
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES,
     },
+    data_files=[
+        ('rjm/setup', ['rjm/setup/funcx-endpoint-persist-nesi.sh']),
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha"
         "Intended Audience :: Developers",
