@@ -9,6 +9,7 @@ import paramiko
 from globus_sdk import GCSClient
 from globus_sdk import GCSAPIError
 from globus_sdk.services.gcs.data import GuestCollectionDocument
+from funcx import FuncXClient
 
 from rjm import utils
 from rjm.runners.funcx_slurm_runner import FUNCX_SCOPE
@@ -228,23 +229,6 @@ class NeSISetup:
             # GCS client
             client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=authorisers[endpoint_scope])
 
-            # user must be authenticated on the NeSI endpoint
-            # may be a better way than this eventually...
-            # NOTE: it looks like this is not necessary, since they will have to be authenticated to NeSI
-            #       during the "handle_globus_auth" step above...
-#            print("="*120)
-#            print("You must activate the NeSI Globus Endpoint at the following URL.")
-#            print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
-#            print("")
-#            print("NOTE: you will need to authenticate with Globus first, if you haven't already done that,")
-#            print("      then you must connect to the NeSI endpoint via the browser...")
-#            print("")
-#            print("Please confirm you can see your files on NeSI via the above link before continuing")
-#            # TODO: add link to some documentation...
-#            print("="*120)
-#            input("Press any key to continue...")
-#            print("="*120)
-
             # user credentials
             cred = client.get("/user_credentials")
             assert cred["code"] == "success", "Error getting user_credentials"
@@ -335,9 +319,12 @@ class NeSISetup:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmp_token_file = os.path.join(tmpdir, "tokens.json")
                 logger.debug(f"Requesting funcX tokens and storing in tmpfile: {tmp_token_file}")
+                logger.debug(f"Using funcx client id: {FuncXClient.FUNCX_SDK_CLIENT_ID}")
                 utils.handle_globus_auth(
                     required_scopes,
                     token_file=tmp_token_file,
+                    client_id=FuncXClient.FUNCX_SDK_CLIENT_ID,  # using their client id so refreshing works
+                    name="RJM on behalf of FuncX Endpoint",
                 )
                 assert os.path.exists(tmp_token_file)
                 print("Authentication done. Continuing...")
@@ -430,14 +417,15 @@ class NeSISetup:
                 logger.debug(f"Keeping existing scrontab line ({line})")
 
         # add new rjm section
-        new_scrontab_lines.append("")
+        if len(new_scrontab_lines) > 0 and len(new_scrontab_lines[-1].strip()) > 0:
+            new_scrontab_lines.append("")  # insert space if there were lines before
         new_scrontab_lines.append(rjm_section_start)
         new_scrontab_lines.append("#SCRON -t 08:00")
         new_scrontab_lines.append("#SCRON -J funcxcheck")
         new_scrontab_lines.append("#SCRON --mem=128")
         new_scrontab_lines.append(f"@hourly {script_path}")
         new_scrontab_lines.append(rjm_section_end)
-        new_scrontab_lines.append("")
+        new_scrontab_lines.append("")  # end with a newline
 
         # install new scrontab
         status, stdout, stderr = self.run_command("scrontab -", input_text="\n".join(new_scrontab_lines))

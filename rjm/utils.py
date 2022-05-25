@@ -67,14 +67,15 @@ def setup_logging(log_name=None, log_file=None, log_level=None):
             logging.getLogger("rjm").setLevel(level)
 
 
-def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION, client_id=CLIENT_ID):
+def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,
+                       client_id=CLIENT_ID, name="RemoteJobManager"):
     """Load the globus auth that should have already been configured"""
     # TODO: make open browser tab optional
 
     cli = NativeClient(
         client_id=client_id,
         token_storage=JSONTokenStorage(token_file),  # save/load tokens here
-        app_name="RemoteJobManager",
+        app_name=name,
     )
 
     # get the requested scopes (load tokens from file if available, otherwise request new tokens)
