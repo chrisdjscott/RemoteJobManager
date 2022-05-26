@@ -214,7 +214,13 @@ class NeSISetup:
         with tempfile.TemporaryDirectory() as tmpdir:
             print("="*120)
             print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
-            print("                   - you will probably also need to enter your NeSI credentials, please follow the instructions")
+            print("                     Globus is used by RJM to transfer files to and from NeSI")
+            print("")
+            print("NOTE: You may be asked for a linked identity with the NeSI Wellington OIDC Server")
+            print("      If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
+            print("      If so, please select it and follow the instructions to authenticate with your NeSI credentials")
+            print("      Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
+            print("")
             print("="*120)
 
             # globus auth
@@ -281,6 +287,7 @@ class NeSISetup:
         print(f"Globus guest collection endpoint id: '{endpoint_id}'")
         print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
         print("The above values will be required when configuring RJM")
+        print(f"You can manage the endpoint online at: https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
         print("="*120)
 
         # also store the endpoint id and path
@@ -385,7 +392,8 @@ class NeSISetup:
         with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
             # upload the script to NeSI
             script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
-            logger.debug(f"Uploading persist script '{p}' to 'script_path'")
+            assert os.path.exists(p), "Problem finding shell script resource ({p})"
+            logger.debug(f"Uploading persist script '{p}' to '{script_path}'")
             self._sftp.put(p, script_path)
         assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
 
@@ -411,7 +419,7 @@ class NeSISetup:
                 in_rjm_section = False
                 logger.debug("Found end of rjm section in existing scrontab")
             elif in_rjm_section:
-                logger.debug(f"Remving current rjm section ({line})")
+                logger.debug(f"Removing current rjm section ({line})")
             else:
                 new_scrontab_lines.append(line)
                 logger.debug(f"Keeping existing scrontab line ({line})")
