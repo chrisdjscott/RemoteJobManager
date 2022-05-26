@@ -2,5 +2,10 @@ import os
 from PyInstaller.utils.hooks import collect_data_files
 
 # we have to include_py_files so that funcx can extract function source
-datas = collect_data_files('rjm', include_py_files=True, excludes=['__pyinstaller'])
-datas += [(os.path.join(os.path.dirname(os.path.abspath(__file__)), os.pardir, "setup", "funcx-endpoint-persist-nesi.sh"), os.path.join("rjm", "setup", "funcx-endpoint-persist-nesi.sh"))]
+datas = collect_data_files('rjm', include_py_files=True, excludes=['__pyinstaller', 'tests'])
+
+# force the bash script to be included (doesn't on Windows by default)
+this_dir = os.path.dirname(os.path.abspath(__file__))
+persist_script = os.path.join(this_dir, os.pardir, "setup", "funcx-endpoint-persist-nesi.sh")
+dest_dir = os.path.join("rjm", "setup")
+datas += [(persist_script, dest_dir)]
