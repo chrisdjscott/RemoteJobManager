@@ -102,6 +102,11 @@ jobs:
       # Cleanup rjm config used for tests
       - run: rm ~/.rjm/*
 
+      - use: actions/upload-artifact@v2
+        with:
+          name: rjm_nesi_setup_analysis_${{ runner.os }}
+          path: extra/pyinstaller/build/rjm_nesi_setup/Analysis-00.toc
+        
       # archive the binaries and upload
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
