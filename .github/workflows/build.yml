@@ -102,6 +102,9 @@ jobs:
       # Cleanup rjm config used for tests
       - run: rm ~/.rjm/*
 
+      - run: ls extra/pyinstaller
+      - run: ls extra/pyinstaller/build
+
       - uses: actions/upload-artifact@v2
         with:
           name: rjm_nesi_setup_analysis_${{ runner.os }}
