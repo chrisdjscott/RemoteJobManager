@@ -403,8 +403,16 @@ class NeSISetup:
 
         # retrieve current scrontab
         status, stdout, stderr = self.run_command('scrontab -l')
-        assert status == 0, f"Failed to retrieve current scrontab contents: {stdout} {stderr}"
-        current_scrontab = stdout
+        if status != 0:
+            if "no crontab for" in stdout or "no crontab for" in stderr:
+                # blank scrontab
+                current_scrontab = ""
+            else:
+                raise RuntimeError(f"Failed to retrieve current scrontab contents: '{stdout}' '{stderr}'")
+        else:
+            current_scrontab = stdout
+
+        # for storing new scrontab
         new_scrontab_lines = []
 
         # remove rjm section from current scrontab, if any
