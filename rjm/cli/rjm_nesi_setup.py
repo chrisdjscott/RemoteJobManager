@@ -45,7 +45,7 @@ def nesi_setup():
     args = parser.parse_args()
 
     if not args.funcx and not args.globus and not args.config:
-        print("Neither '--funcx' nor '--globus' specified; nothing to do")
+        print("Neither '--funcx', '--globus' nor '--config' specified; nothing to do")
 
     else:
         # setup logging

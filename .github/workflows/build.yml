@@ -101,7 +101,7 @@ jobs:
 
       # Cleanup rjm config used for tests
       - run: rm ~/.rjm/*
-
+        
       # archive the binaries and upload
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
