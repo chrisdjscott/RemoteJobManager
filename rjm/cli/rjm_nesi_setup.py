@@ -44,18 +44,8 @@ def nesi_setup():
     parser = make_parser()
     args = parser.parse_args()
 
-    # DEBUG: test resource is accessible
-    import importlib
-    with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
-        print(f"RESOURCE: {p} : exists = {os.path.exists(p)}")
-        if hasattr(sys, "_MEIPASS"):
-            print(f"tmpdir = {sys._MEIPASS}")
-            for root, dirs, files in os.walk(sys._MEIPASS):
-                print(f"DEBUG: {root}: {files}")
-    # END DEBUG
-
     if not args.funcx and not args.globus and not args.config:
-        print("Neither '--funcx' nor '--globus' specified; nothing to do")
+        print("Neither '--funcx', '--globus' nor '--config' specified; nothing to do")
 
     else:
         # setup logging
