@@ -101,17 +101,6 @@ jobs:
 
       # Cleanup rjm config used for tests
       - run: rm ~/.rjm/*
-
-      - run: ls extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
-      - run: ls extra/pyinstaller/build
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
-
-      - uses: actions/upload-artifact@v2
-        with:
-          name: rjm_nesi_setup_analysis_${{ runner.os }}
-          path: extra/pyinstaller/build/rjm_nesi_setup/Analysis-00.toc
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
         
       # archive the binaries and upload
       - name: Archive binaries
