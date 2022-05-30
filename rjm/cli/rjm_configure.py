@@ -19,14 +19,14 @@ def make_parser():
     return parser
 
 
-def configure():
+def configure(args_in=None):
     """
     Run through configuration steps
 
     """
     # parse and check arguments
     parser = make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args_in)
     if args.export_config is not None and args.import_config is not None:
         print("ERROR: '--export-config' and '--import-config' are mutually exclusive")
         sys.exit(1)
