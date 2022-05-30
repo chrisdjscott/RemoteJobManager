@@ -39,12 +39,16 @@
 <nav class="contents local" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#install-rjm" id="id1">Install RJM</a></p></li>
-<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once" id="id2">Run the NeSI setup script (once)</a></p></li>
-<li><p><a class="reference internal" href="#authenticate-rjm" id="id3">Authenticate RJM</a></p></li>
-<li><p><a class="reference internal" href="#run-a-simple-test" id="id4">Run a simple test</a></p>
+<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once" id="id2">Run the NeSI setup script (once)</a></p>
 <ul>
-<li><p><a class="reference internal" href="#health-check-script" id="id5">Health check script</a></p></li>
-<li><p><a class="reference internal" href="#example-simulation" id="id6">Example simulation</a></p></li>
+<li><p><a class="reference internal" href="#transferring-config-to-a-different-machine" id="id3">Transferring config to a different machine</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#authenticate-rjm" id="id4">Authenticate RJM</a></p></li>
+<li><p><a class="reference internal" href="#run-a-simple-test" id="id5">Run a simple test</a></p>
+<ul>
+<li><p><a class="reference internal" href="#health-check-script" id="id6">Health check script</a></p></li>
+<li><p><a class="reference internal" href="#example-simulation" id="id7">Example simulation</a></p></li>
 </ul>
 </li>
 </ul>
@@ -73,8 +77,6 @@ running and restart it if it has stopped</p></li>
 <li><p>create a “Globus Guest Collection” in your NeSI nobackup directory, which will
 be used to transfer files to and from NeSI</p></li>
 </ul>
-<p><strong>Note:</strong> you only need to run this script once. You can reuse the config created
-in this step on multiple machines.</p>
 <p>When you run the setup script you will need to input values and authenticate
 multiple times, which can’t be avoided at this time unfortunately. In some cases
 a browser window will open where you will need to do the authentication, in other
@@ -87,6 +89,21 @@ the RJM config file:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_nesi_setup.exe --config
 </pre></div>
 </div>
+<p><strong>Note:</strong> you only need to run this script once. You can reuse the config created
+in this step on multiple machines.</p>
+<section id="transferring-config-to-a-different-machine">
+<h3>Transferring config to a different machine<a class="headerlink" href="#transferring-config-to-a-different-machine" title="Permalink to this heading">¶</a></h3>
+<p>Export the config on the machine that you generated it on:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure.exe --export-config myrjmconfig.ini
+</pre></div>
+</div>
+<p>This should write a file called <em>myrjmconfig.ini</em> into your current directory.
+Copy this file to another machine and install it by running:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure.exe --import-config myrjmconfig.ini
+</pre></div>
+</div>
+<p>You will still need to redo the authentication step below on the new machine.</p>
+</section>
 </section>
 <section id="authenticate-rjm">
 <h2>Authenticate RJM<a class="headerlink" href="#authenticate-rjm" title="Permalink to this heading">¶</a></h2>
