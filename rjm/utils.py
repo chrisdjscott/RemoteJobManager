@@ -2,6 +2,8 @@
 import os
 import math
 import logging
+import shutil
+from datetime import datetime
 
 from fair_research_login import NativeClient, JSONTokenStorage
 
@@ -93,3 +95,18 @@ def pretty_size_from_bytes(size_bytes):
     p = math.pow(1024, i)
     s = round(size_bytes / p, 2)
     return s, size_name[i]
+
+
+def backup_file(path):
+    """Backup the given file"""
+    if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
+        now = datetime.now().strftime("%Y%m%dT%H%M%S")
+        bkp_file = config_helper.CONFIG_FILE_LOCATION + f'-{now}'
+        bkp_file_base = bkp_file
+        count = 1
+        while os.path.exists(bkp_file):
+            bkp_file = f"{bkp_file_base}-{count}"
+            count += 1
+        shutil.copy(config_helper.CONFIG_FILE_LOCATION, bkp_file)
+
+        return bkp_file

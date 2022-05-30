@@ -1,12 +1,9 @@
 
 import os
-import sys
 import copy
-import shutil
 import argparse
 import logging
 import getpass
-from datetime import datetime
 
 from rjm import utils
 from rjm import config as config_helper
@@ -101,9 +98,7 @@ def nesi_setup():
 
             # backup current config if any
             if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
-                now = datetime.now().strftime("%Y%m%dT%H%M%S")
-                bkp_file = config_helper.CONFIG_FILE_LOCATION + f'-{now}'
-                shutil.copy(config_helper.CONFIG_FILE_LOCATION, bkp_file)
+                bkp_file = utils.backup_file(config_helper.CONFIG_FILE_LOCATION)
                 print(f"Backed up current config file to: {bkp_file}")
                 print("="*120)
 
