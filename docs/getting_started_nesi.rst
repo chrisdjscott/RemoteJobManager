@@ -35,9 +35,6 @@ The NeSI setup script (either :code:`rjm_nesi_setup.exe` or
 * create a "Globus Guest Collection" in your NeSI nobackup directory, which will
   be used to transfer files to and from NeSI
 
-**Note:** you only need to run this script once. You can reuse the config created
-in this step on multiple machines.
-
 When you run the setup script you will need to input values and authenticate
 multiple times, which can't be avoided at this time unfortunately. In some cases
 a browser window will open where you will need to do the authentication, in other
@@ -52,6 +49,27 @@ the RJM config file:
 .. code-block:: bash
 
    rjm_nesi_setup.exe --config
+
+**Note:** you only need to run this script once. You can reuse the config created
+in this step on multiple machines.
+
+Transferring config to a different machine
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Export the config on the machine that you generated it on:
+
+.. code-block:: bash
+
+   rjm_configure.exe --export-config myrjmconfig.ini
+
+This should write a file called *myrjmconfig.ini* into your current directory.
+Copy this file to another machine and install it by running:
+
+.. code-block:: bash
+
+   rjm_configure.exe --import-config myrjmconfig.ini
+
+You will still need to redo the authentication step below on the new machine.
 
 Authenticate RJM
 ----------------
