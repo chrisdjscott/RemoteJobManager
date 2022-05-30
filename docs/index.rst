@@ -18,7 +18,8 @@ before using the tool.
 .. toctree::
    :maxdepth: 2
 
-   getting_started
+   getting_started_nesi
+   getting_started_manual
    using_rjm
 
 

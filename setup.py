@@ -34,6 +34,10 @@ PACKAGE_REQUIRES = [
     "pip-licenses",
 ]
 
+DOC_REQUIRES = [
+    "sphinx",
+]
+
 setup(
     name="RemoteJobManager",
     version=get_version("rjm/__init__.py"),
@@ -67,7 +71,7 @@ setup(
         "funcx==0.3.6",
     ],
     extras_require={
-        "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES,
+        "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
     },
     data_files=[
         ('rjm/setup', ['rjm/setup/funcx-endpoint-persist-nesi.sh']),
