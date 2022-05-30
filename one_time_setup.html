@@ -1,10 +1,10 @@
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
     <title>One-time setup &#8212; RemoteJobManager 0.6.0-dev documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
@@ -12,11 +12,12 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Installation" href="installation.html" />
-    <link rel="prev" title="Getting started" href="getting_started.html" />
+    <link rel="prev" title="Getting started (manual steps)" href="getting_started_manual.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -34,8 +35,8 @@
           <div class="body" role="main">
             
   <section id="one-time-setup">
-<h1>One-time setup<a class="headerlink" href="#one-time-setup" title="Permalink to this headline">¶</a></h1>
-<div class="contents local topic" id="contents">
+<h1>One-time setup<a class="headerlink" href="#one-time-setup" title="Permalink to this heading">¶</a></h1>
+<nav class="contents local" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#remote-machine" id="id1">Remote machine</a></p>
 <ul>
@@ -44,14 +45,14 @@
 </ul>
 </li>
 </ul>
-</div>
+</nav>
 <p>This guide has been tested with NeSI as the remote.</p>
 <p>A Globus account is required: <a class="reference external" href="https://app.globus.org/">https://app.globus.org/</a> (you can usually use
 your institutional account to authenticate, e.g. University of Auckland).</p>
 <section id="remote-machine">
-<h2>Remote machine<a class="headerlink" href="#remote-machine" title="Permalink to this headline">¶</a></h2>
+<h2>Remote machine<a class="headerlink" href="#remote-machine" title="Permalink to this heading">¶</a></h2>
 <section id="globus-guest-collection">
-<h3>Globus Guest Collection<a class="headerlink" href="#globus-guest-collection" title="Permalink to this headline">¶</a></h3>
+<h3>Globus Guest Collection<a class="headerlink" href="#globus-guest-collection" title="Permalink to this heading">¶</a></h3>
 <p>On the remote machine (e.g. NeSI), you need to have a Globus Guest Collection.
 In Globus terminology, a <em>Collection</em> is a set of files and/or directories
 that can be shared via Globus. In this section we are sharing a specific
@@ -86,7 +87,7 @@ required during <a class="reference internal" href="configuration.html"><span cl
 </ol>
 </section>
 <section id="funcx-endpoint">
-<h3>funcX endpoint<a class="headerlink" href="#funcx-endpoint" title="Permalink to this headline">¶</a></h3>
+<h3>funcX endpoint<a class="headerlink" href="#funcx-endpoint" title="Permalink to this heading">¶</a></h3>
 <p>A <a class="reference external" href="https://funcx.readthedocs.io/en/latest/">funcX</a> endpoint is also required on the remote machine. This allows us to
 run commands on the remote system.</p>
 <p>On NeSI, first connect to a Mahuika login node. For example, using MobaXterm,
@@ -169,7 +170,8 @@ funcx-endpoint list
 
 <h3>Navigation</h3>
 <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="getting_started.html">Getting started</a><ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started_nesi.html">Getting started on NeSI</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="getting_started_manual.html">Getting started (manual steps)</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">One-time setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
@@ -182,8 +184,8 @@ funcx-endpoint list
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-  <li><a href="getting_started.html">Getting started</a><ul>
-      <li>Previous: <a href="getting_started.html" title="previous chapter">Getting started</a></li>
+  <li><a href="getting_started_manual.html">Getting started (manual steps)</a><ul>
+      <li>Previous: <a href="getting_started_manual.html" title="previous chapter">Getting started (manual steps)</a></li>
       <li>Next: <a href="installation.html" title="next chapter">Installation</a></li>
   </ul></li>
   </ul></li>
@@ -198,7 +200,7 @@ funcx-endpoint list
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -215,7 +217,7 @@ funcx-endpoint list
       &copy;2022, The University of Auckland.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.5.0</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.0.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
