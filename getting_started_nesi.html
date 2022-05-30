@@ -39,7 +39,7 @@
 <nav class="contents local" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#install-rjm" id="id1">Install RJM</a></p></li>
-<li><p><a class="reference internal" href="#run-the-nesi-setup-script" id="id2">Run the NeSI setup script</a></p></li>
+<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once" id="id2">Run the NeSI setup script (once)</a></p></li>
 <li><p><a class="reference internal" href="#authenticate-rjm" id="id3">Authenticate RJM</a></p></li>
 <li><p><a class="reference internal" href="#run-a-simple-test" id="id4">Run a simple test</a></p>
 <ul>
@@ -61,8 +61,8 @@ python -m pip install git+https://github.com/chrisdjscott/RemoteJobManager
 </pre></div>
 </div>
 </section>
-<section id="run-the-nesi-setup-script">
-<h2>Run the NeSI setup script<a class="headerlink" href="#run-the-nesi-setup-script" title="Permalink to this heading">¶</a></h2>
+<section id="run-the-nesi-setup-script-once">
+<h2>Run the NeSI setup script (once)<a class="headerlink" href="#run-the-nesi-setup-script-once" title="Permalink to this heading">¶</a></h2>
 <p>The NeSI setup script (either <code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup.exe</span></code> or
 <code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup</span></code>) will do the following:</p>
 <ul class="simple">
@@ -73,6 +73,8 @@ running and restart it if it has stopped</p></li>
 <li><p>create a “Globus Guest Collection” in your NeSI nobackup directory, which will
 be used to transfer files to and from NeSI</p></li>
 </ul>
+<p><strong>Note:</strong> you only need to run this script once. You can reuse the config created
+in this step on multiple machines.</p>
 <p>When you run the setup script you will need to input values and authenticate
 multiple times, which can’t be avoided at this time unfortunately. In some cases
 a browser window will open where you will need to do the authentication, in other
@@ -117,7 +119,7 @@ rjm_batch_submit.exe -f localdirs.txt -ll info
 rjm_batch_wait.exe -f localdirs.txt -ll info
 </pre></div>
 </div>
-<p>Note: for the above to work you need to either make sure the RJM executables
+<p><strong>Note:</strong> for the above to work you need to either make sure the RJM executables
 are in your PATH or provide the full path to them. Remove the “.exe” suffix if
 you are using the pip installed python package rather than the Windows
 executables.</p>
@@ -151,7 +153,7 @@ option to <code class="code docutils literal notranslate"><span class="pre">rjm_
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started on NeSI</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#install-rjm">Install RJM</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#run-the-nesi-setup-script">Run the NeSI setup script</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#run-the-nesi-setup-script-once">Run the NeSI setup script (once)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#authenticate-rjm">Authenticate RJM</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#run-a-simple-test">Run a simple test</a></li>
 </ul>
