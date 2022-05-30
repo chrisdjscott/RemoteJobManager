@@ -22,8 +22,8 @@ environment:
 
 .. _GitHub repository: https://github.com/chrisdjscott/RemoteJobManager/releases
 
-Run the NeSI setup script
--------------------------
+Run the NeSI setup script (once)
+--------------------------------
 
 The NeSI setup script (either :code:`rjm_nesi_setup.exe` or
 :code:`rjm_nesi_setup`) will do the following:
@@ -34,6 +34,9 @@ The NeSI setup script (either :code:`rjm_nesi_setup.exe` or
   running and restart it if it has stopped
 * create a "Globus Guest Collection" in your NeSI nobackup directory, which will
   be used to transfer files to and from NeSI
+
+**Note:** you only need to run this script once. You can reuse the config created
+in this step on multiple machines.
 
 When you run the setup script you will need to input values and authenticate
 multiple times, which can't be avoided at this time unfortunately. In some cases
@@ -92,7 +95,7 @@ Clone the repository and run the example simulation using the steps below:
    rjm_batch_submit.exe -f localdirs.txt -ll info
    rjm_batch_wait.exe -f localdirs.txt -ll info
 
-Note: for the above to work you need to either make sure the RJM executables
+**Note:** for the above to work you need to either make sure the RJM executables
 are in your PATH or provide the full path to them. Remove the ".exe" suffix if
 you are using the pip installed python package rather than the Windows
 executables.
