@@ -24,6 +24,8 @@ def make_parser():
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-z', '--pollingintervalsec', type=int,
                         help="number of seconds to wait between attempts to poll for job status")
+    parser.add_argument('-w', '--workers', type=int, default=1,
+                        help='Maximum number of threads to use when downloading files (the default value, 1, means files will be downloaded sequentially in the order specified in the file; setting to 0 will auto select the max number of threads)')
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
@@ -45,8 +47,12 @@ def batch_wait():
     rjb = RemoteJobBatch()
     rjb.setup(args.localjobdirfile)
 
+    # max workers argument
+    if args.workers < 1:
+        args.workers = None
+
     # wait for jobs to complete
-    rjb.wait_and_download(polling_interval=args.pollingintervalsec)
+    rjb.wait_and_download(polling_interval=args.pollingintervalsec, max_workers=args.workers)
 
 
 if __name__ == "__main__":

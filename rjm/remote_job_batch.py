@@ -165,7 +165,7 @@ class RemoteJobBatch:
 
         return unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs
 
-    def wait_and_download(self, polling_interval=None):
+    def wait_and_download(self, polling_interval=None, max_workers=1):
         """
         Wait for jobs to complete and download once completed.
 
@@ -193,7 +193,7 @@ class RemoteJobBatch:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as downloader:  # separate thread for downloading
             # first download jobs that have finished but not downloaded already
             for rj in undownloaded_jobs:
-                future_to_rj[downloader.submit(rj.download_files)] = rj
+                future_to_rj[downloader.submit(rj.download_files, max_workers=max_workers)] = rj
 
             # loop until jobs have finished
             logger.info(f"Waiting for {len(unfinished_jobs)} Slurm jobs to finish")

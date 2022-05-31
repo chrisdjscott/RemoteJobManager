@@ -182,7 +182,7 @@ class GlobusHttpsTransferer(TransfererBase):
             msg = os.linesep.join(msg)
             raise RemoteJobTransfererError(msg)
 
-    def download_files(self, filenames, checksums):
+    def download_files(self, filenames, checksums, max_workers=1):
         """
         Download the given files (which should be relative to `remote_path`) to
         the local directory.
@@ -191,13 +191,15 @@ class GlobusHttpsTransferer(TransfererBase):
             directory to download to the local directory.
         :param checksums: dictionary with filenames as keys and checksums as
             values
+        :param max_workers: max number of workers to use when downloading files,
+            see `concurrent.futures.ThreadPoolExecutor`
 
         """
         # make sure we have a current access token
         self._https_auth_header = self._https_authoriser.get_authorization_header()
 
         # start a pool of threads to do the downloading
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # start the uploads and mark each future with its filename
             future_to_fname = {
                 executor.submit(

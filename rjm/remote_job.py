@@ -290,7 +290,7 @@ class RemoteJob:
             self._uploaded = True
             self._save_state()
 
-    def download_files(self):
+    def download_files(self, max_workers=1):
         """Download file from remote"""
         if self._downloaded:
             self._log(logging.INFO, "Already downloaded files")
@@ -316,7 +316,7 @@ class RemoteJob:
             # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
-            self._transfer.download_files(self._download_files, downloads_checksums)
+            self._transfer.download_files(self._download_files, downloads_checksums, max_workers=max_workers)
             download_time = time.perf_counter() - download_time
             self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
