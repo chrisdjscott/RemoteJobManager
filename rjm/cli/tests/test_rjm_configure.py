@@ -34,19 +34,43 @@ def test_export_config(mocker, tmp_path, option):
 
 
 @pytest.mark.parametrize('option', ('-i', '--import-config'))
-def test_impport_config(mocker, tmp_path, option):
+def test_import_config_new(tmp_path, option):
     # create a dummy config file
     config_file = tmp_path / "test_config.ini"
     config_file.write_text('test contents')
 
     # import the config file
-    imported_config = tmp_path / "imported_config.ini"
+    config_dir = tmp_path / "config_dir"
+    imported_config = config_dir / "imported_config.ini"
     config_helper.CONFIG_FILE_LOCATION = str(imported_config)
     rjm_configure.configure([option, str(config_file)])
 
     # check exported file is ok
     assert os.path.exists(imported_config)
     assert filecmp.cmp(config_file, imported_config)
+
+
+@pytest.mark.parametrize('option', ('-i', '--import-config'))
+def test_import_config_replace(mocker, tmp_path, option):
+    # create a dummy config file
+    config_file = tmp_path / "test_config.ini"
+    config_file.write_text('test contents')
+
+    # import the config file
+    spy = mocker.spy(rjm_configure, 'backup_file')
+    imported_config = tmp_path / "imported_config.ini"
+    imported_config.write_text("something")
+    config_helper.CONFIG_FILE_LOCATION = str(imported_config)
+    rjm_configure.configure([option, str(config_file)])
+
+    # check exported file is ok
+    assert os.path.exists(imported_config)
+    assert filecmp.cmp(config_file, imported_config)
+
+    # check original was backed up
+    assert spy.call_count == 1
+    assert os.path.isfile(spy.spy_return)
+    assert open(spy.spy_return).read() == "something"
 
 
 def test_mutually_exclusive_args():

@@ -42,12 +42,17 @@ def configure(args_in=None):
     # import config file
     elif args.import_config is not None:
         if os.path.isfile(args.import_config):
+            # create the config directory if it doesn't exist
+            config_dir = os.path.dirname(config_helper.CONFIG_FILE_LOCATION)
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir, mode=0o700)
+
             # backup the current config if there is one
-            if os.path.isfile(config_helper.CONFIG_FILE_LOCATION):
+            elif os.path.isfile(config_helper.CONFIG_FILE_LOCATION):
                 bkp_file = backup_file(config_helper.CONFIG_FILE_LOCATION)
                 print(f"Backed up current config to: {bkp_file}")
 
-            # overwrite
+            # copy the new config file
             shutil.copy(args.import_config, config_helper.CONFIG_FILE_LOCATION)
 
         else:
