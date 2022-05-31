@@ -66,16 +66,18 @@ setup(
         "retry",
         "requests",
         "paramiko",
-        "fair-research-login",
+        "fair-research-login==0.2.6",  # pinned to same version as funcx requires
         "globus-sdk>=3",
         "funcx==0.3.6",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
     },
-    data_files=[
-        ('rjm/setup', ['rjm/setup/funcx-endpoint-persist-nesi.sh']),
-    ],
+    package_data={
+        'rjm.setup': [
+            'funcx-endpoint-persist-nesi.sh',
+        ],
+    },
     classifiers=[
         "Development Status :: 3 - Alpha"
         "Intended Audience :: Developers",
