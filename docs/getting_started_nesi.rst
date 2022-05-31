@@ -12,12 +12,12 @@ On Windows you could download the executables from the latest release
 on the `GitHub repository`_.
 
 Otherwise, install the *rjm* python package, for example using a virtual
-environment:
+environment and installing the *main* branch from the git repo:
 
 .. code-block:: bash
 
     python -m venv venv
-    source activate venv/bin/activate
+    source venv/bin/activate
     python -m pip install git+https://github.com/chrisdjscott/RemoteJobManager
 
 .. _GitHub repository: https://github.com/chrisdjscott/RemoteJobManager/releases
