@@ -42,6 +42,28 @@ jobs:
         shell: bash
         env:
           RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+
+      - run: echo "testing" > ~/.rjm/test
+        shell: bash
+        env:
+          RJM_TEST: ${{ secrets.RJM_TEST }}
+        if: env.RJM_TEST != null
+
+      - name: "check file existence"
+        id: check_files
+        uses: andstor/file-existence-action@v1
+        with:
+          files: "~/.rjm/test"
+
+      - name: file exists
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: echo "test file exists"
+      - name: file does not exist
+        if: steps.check_files.outputs.files_exists == 'false'
+        run: echo "test file does not exist"
+
+
+
       - name: Run the health check script
         run: rjm_health_check
       - name: Run batch_submit for nonmem example
