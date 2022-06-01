@@ -20,6 +20,7 @@ jobs:
       - name: Display Python version
         run: python --version
 
+      # Building the RJM python package
       - name: Build the package
         run: python -m pip install .[dev]
 
@@ -32,48 +33,38 @@ jobs:
       - name: Run tests
         run: pytest
       
-      # Run real test using the nonmem example
+      # Secrets required for running real test using the nonmem example
       - run: mkdir -p ~/.rjm
       - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini
         shell: bash
         env:
           RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+        if: env.RJM_CONFIG != null
       - run: printf "${RJM_TOKENS}" > ~/.rjm/rjm_tokens.json
         shell: bash
         env:
           RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
-
-      - run: echo "testing" > ~/.rjm/test
-        shell: bash
-        env:
-          RJM_TEST: ${{ secrets.RJM_TEST }}
-        if: env.RJM_TEST != null
-
-      - name: "check file existence"
-        id: check_files
+        if: env.RJM_TOKENS != null
+      - name: "Check RJM config files existence"
+        id: rjm_files
         uses: andstor/file-existence-action@v1
         with:
-          files: "~/.rjm/test"
+          files: "~/.rjm/rjm_tokens.json, ~/.rjm/rjm_config.ini"
 
-      - name: file exists
-        if: steps.check_files.outputs.files_exists == 'true'
-        run: echo "test file exists"
-      - name: file does not exist
-        if: steps.check_files.outputs.files_exists == 'false'
-        run: echo "test file does not exist"
-
-
-
+      # If the secrets were set, run some real tests
       - name: Run the health check script
         run: rjm_health_check
+        if: steps.rjm_files.outputs.files_exists == 'true'
       - name: Run batch_submit for nonmem example
         run: rjm_batch_submit -f localdirs.txt -ll debug
         working-directory: ./examples/nonmem
+        if: steps.rjm_files.outputs.files_exists == 'true'
       - name: Run batch_wait for nonmem example
         run: rjm_batch_wait -f localdirs.txt -ll debug -z 15
         working-directory: ./examples/nonmem
+        if: steps.rjm_files.outputs.files_exists == 'true'
 
-      # Build executables just on Windows
+      # Build executables using PyInstaller just on Windows
       - name: Build rjm_batch_submit
         run: pyinstaller -F ../../rjm/cli/rjm_batch_submit.py
         working-directory:  ./extra/pyinstaller
@@ -109,17 +100,17 @@ jobs:
         working-directory: ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
 
-      # Run Pyinstaller built health check on Windows
+      # Run Pyinstaller built health check on Windows, if the secrets existed
       - name: Run pyinstaller built health check
         run: dist/rjm_health_check.exe
         working-directory: ./extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exists == 'true' }}
 
-      # Run Pyinstaller built rjm_authenticate on Windows
+      # Run Pyinstaller built rjm_authenticate on Windows, if the secrets existed
       - name: Run pyinstaller built rjm_authenticate
         run: dist/rjm_authenticate.exe
         working-directory: ./extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exists == 'true' }}
 
       # Cleanup rjm config used for tests
       - run: rm ~/.rjm/*
@@ -132,11 +123,15 @@ jobs:
           directory: extra/pyinstaller/dist
           filename: RemoteJobManager-${{ runner.os }}.zip
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+
+      # upload as an artifact of the build
       - uses: actions/upload-artifact@v2
         with:
           name: RemoteJobManager-${{ runner.os }}
           path: extra/pyinstaller/dist/RemoteJobManager-*.zip
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+
+      # only if it's a tag, add the archive to the release
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
