@@ -54,7 +54,7 @@ jobs:
         id: rjm_files
         shell: bash
         run: |
-          if [[ -f "~/.rjm/rjm_tokens.json" ]] && [[ -f "~/.rjm/rjm_config.ini" ]]; then
+          if [[ -r "~/.rjm/rjm_tokens.json" ]] && [[ -r "~/.rjm/rjm_config.ini" ]]; then
             echo "files exist"
             echo '::set-output name=files_exists::true'
           else
