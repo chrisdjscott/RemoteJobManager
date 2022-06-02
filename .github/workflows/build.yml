@@ -117,7 +117,8 @@ jobs:
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exists == 'true' }}
 
       # Cleanup rjm config directory
-      - run: rm -rf ~/.rjm
+      - run: rm ~/.rjm/*
+        if: steps.rjm_files.outputs.files_exists == 'true'
         
       # archive the binaries and upload
       - name: Archive binaries
