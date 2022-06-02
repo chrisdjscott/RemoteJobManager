@@ -116,8 +116,8 @@ jobs:
         working-directory: ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exists == 'true' }}
 
-      # Cleanup rjm config used for tests
-      - run: rm ~/.rjm/*
+      # Cleanup rjm config directory
+      - run: rm -rf ~/.rjm
         
       # archive the binaries and upload
       - name: Archive binaries
