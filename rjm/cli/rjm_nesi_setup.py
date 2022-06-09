@@ -5,6 +5,8 @@ import argparse
 import logging
 import getpass
 
+import pwinput
+
 from rjm import utils
 from rjm import config as config_helper
 from rjm import __version__
@@ -53,11 +55,14 @@ def nesi_setup():
         print("You will be required to enter information along the way, including NeSI credentials and to")
         print("authenticate with Globus in a browser when asked to do so")
         print("="*120)
+        print("Please be prepared to enter you NeSI password and second factor below")
+        print("Also, please ensure the second factor has at least 5 seconds remaining before it refreshes")
+        print()
 
         # get extra info from user
         username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
-        password = getpass.getpass("Enter NeSI Login Password (First Factor): ")
-        token = input("Enter NeSI Authenticator Code (Second Factor with >5 seconds remaining): ")
+        password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
+        token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
 
         # create the setup object
         nesi = NeSISetup(username, password, token)
