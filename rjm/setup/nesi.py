@@ -517,7 +517,7 @@ class NeSISetup:
             funcx_running_nodes = []
             funcx_endpoint_id = None
             for node in FUNCX_NODES:
-                status, stdout, stderr = self.run_command(f"ssh {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'")
+                status, stdout, stderr = self.run_command(f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'")
                 assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
 
                 for line in stdout.splitlines():
