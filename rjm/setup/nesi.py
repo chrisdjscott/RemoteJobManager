@@ -381,6 +381,7 @@ class NeSISetup:
         logger.info("Installed scrontab entry to ensure funcx endpoint keeps ruuning (run 'scrontab -l' on mahuika to view)")
         print("A scrontab entry has been added to periodically check the status of the funcx endpoint and restart it if needed")
         print("On mahuika, run 'scrontab -l' to view it")
+        print("You may also notice a Slurm job has been created with name 'funcxcheck', please do not cancel it!")
         print("="*120)
 
     def _setup_funcx_scrontab(self):
