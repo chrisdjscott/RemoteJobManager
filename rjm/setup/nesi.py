@@ -1,5 +1,6 @@
 
 import os
+import sys
 import logging
 import getpass
 import tempfile
@@ -88,7 +89,12 @@ class NeSISetup:
             raise RuntimeError("Expected initial connection attempt to fail but it did not")
 
         # now get the transport and run auth_interactive
-        self._lander_client.get_transport().auth_interactive(username=self._username, handler=self._auth_handler)
+        try:
+            self._lander_client.get_transport().auth_interactive(username=self._username, handler=self._auth_handler)
+        except paramiko.ssh_exception.AuthenticationException as exc:
+            logger.error(repr(exc))
+            sys.stderr.write("Authentication error: please check your NeSI credentials and try again!" + os.linesep)
+            sys.exit(1)
 
         # run command
         stdin, stdout, stderr = self._lander_client.exec_command("echo $HOSTNAME")
