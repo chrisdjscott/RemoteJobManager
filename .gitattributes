@@ -3,3 +3,6 @@
 
 # nonmem example files must have LF endings, even on Windows
 examples/nonmem/files/* text eol=lf
+
+# funcx script must have LF endings too
+rjm/setup/funcx-endpoint-persist-nesi.sh text eol=lf
