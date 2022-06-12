@@ -42,10 +42,11 @@ class NeSISetup:
     - install scrontab entry to persist default endpoint (TODO: also, restart if newer version of endpoint?)
 
     """
-    def __init__(self, username, password, token):
+    def __init__(self, username, password, token, account):
         self._username = username
         self._password = password
         self._token = token
+        self._account = account
         self._num_handler_requests = 0
         self._client = None
         self._sftp = None
@@ -187,9 +188,7 @@ class NeSISetup:
         print("Setting up Globus...")
 
         # select directory for sharing
-        print("Enter your NeSI project code below or press enter to select the default (note: you must be a member of the project)")
-        account = input("Enter NeSI project code [uoa00106]: ").strip() or "uoa00106"
-        guest_collection_dir = f"/nesi/nobackup/{account}/{self._username}/rjm-jobs"
+        guest_collection_dir = f"/nesi/nobackup/{self._account}/{self._username}/rjm-jobs"
         print("="*120)
         print(f"Creating Globus guest collection at:\n    {guest_collection_dir}")
         response = input("Press enter to accept the above location or specify an alternative here: ").strip()
@@ -223,7 +222,7 @@ class NeSISetup:
             print("                     Globus is used by RJM to transfer files to and from NeSI")
             print("")
             print("NOTE: You may be asked for a linked identity with the NeSI Wellington OIDC Server")
-            print("      If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
+            print(f"      If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
             print("      If so, please select it and follow the instructions to authenticate with your NeSI credentials")
             print("      Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
             print("")
@@ -271,12 +270,19 @@ class NeSISetup:
                     print("="*120)
                     print("You must activate the NeSI Globus Endpoint at the following URL, which should")
                     print("require entering your NeSI credentials:")
+                    print("")
+                    print("NOTE: You may be asked for a linked identity with the NeSI Wellington OIDC Server")
+                    print(f"      If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
+                    print("      If so, please select it and follow the instructions to authenticate with your NeSI credentials")
+                    print("      Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
+                    print("")
+                    print("Open this link in a browser:")
                     print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
                     print("")
                     print("NOTE: Please confirm you can see your files on NeSI via the above link before continuing")
                     print("")
                     input("Once you can access your NeSI files at the above link, press enter to continue... ")
-                    # TODO: add link to some documentation...
+                    print("Continuing...")
 
                     # now try to create the collection again
                     response = client.create_collection(doc)
@@ -408,6 +414,10 @@ class NeSISetup:
         status, stdout, stderr = self.run_command(f"chmod +x {script_path}")
         assert status == 0, f"Failed to make script executable: {stdout} {stderr}"
 
+        # make sure it has unix line endings
+        status, stdout, stderr = self.run_command(f"dos2unix {script_path}")
+        assert status == 0, f"Failed to convert convert script to unix format: {stdout} {stderr}"
+
         # retrieve current scrontab
         status, stdout, stderr = self.run_command('scrontab -l')
         if status != 0:
@@ -443,15 +453,18 @@ class NeSISetup:
         if len(new_scrontab_lines) > 0 and len(new_scrontab_lines[-1].strip()) > 0:
             new_scrontab_lines.append("")  # insert space if there were lines before
         new_scrontab_lines.append(rjm_section_start)
-        new_scrontab_lines.append("#SCRON -t 08:00")
-        new_scrontab_lines.append("#SCRON -J funcxcheck")
+        new_scrontab_lines.append("#SCRON --time=08:00")
+        new_scrontab_lines.append("#SCRON --job-name=funcxcheck")
+        new_scrontab_lines.append(f"#SCRON --account={self._account}")
         new_scrontab_lines.append("#SCRON --mem=128")
         new_scrontab_lines.append(f"@hourly {script_path}")
         new_scrontab_lines.append(rjm_section_end)
         new_scrontab_lines.append("")  # end with a newline
 
         # install new scrontab
-        status, stdout, stderr = self.run_command("scrontab -", input_text="\n".join(new_scrontab_lines))
+        new_scrontab_text = "\n".join(new_scrontab_lines)
+        logger.debug(f"New scrontab content follows:\n{new_scrontab_text}")
+        status, stdout, stderr = self.run_command("scrontab -", input_text=new_scrontab_text)
         assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
 
     def _remote_dir_create(self, path):
