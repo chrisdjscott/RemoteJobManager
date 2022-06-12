@@ -61,11 +61,12 @@ def nesi_setup():
 
         # get extra info from user
         username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
+        account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
         password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
         token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
 
         # create the setup object
-        nesi = NeSISetup(username, password, token)
+        nesi = NeSISetup(username, password, token, account)
 
         # do the funcx setup
         if args.funcx or args.config:
