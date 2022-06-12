@@ -20,7 +20,7 @@ running_nodes=()
 for node in ${LOGIN_NODES[@]}; do
     echo "  checking for endpoint running on ${node}" >> $LOG
 
-    ssh ${node} "source /etc/profile; module load funcx-endpoint; funcx-endpoint list" | grep "${ENDPOINT_NAME}" | grep Running > /dev/null
+    ssh -oStrictHostKeyChecking=no ${node} "source /etc/profile; module load funcx-endpoint; funcx-endpoint list" | grep "${ENDPOINT_NAME}" | grep Running > /dev/null
     if [ $? -eq 0 ]; then
         echo "    funcx '${ENDPOINT_NAME}' endpoint is running on ${node}" >> $LOG
         running=$((running+1))
@@ -35,7 +35,7 @@ if [ $running -gt 1 ]; then
     echo "  warning: funcx '${ENDPOINT_NAME}' endpoint is running on multiple nodes; stopping them" >> $LOG
     for node in ${running_nodes[@]}; do
         echo "    stopping endpoint running on ${node}"
-        ssh ${node} "source /etc/profile; module load funcx-endpoint; funcx-endpoint stop ${ENDPOINT_NAME}" >> $LOG 2>&1
+        ssh -oStrictHostKeyChecking=no ${node} "source /etc/profile; module load funcx-endpoint; funcx-endpoint stop ${ENDPOINT_NAME}" >> $LOG 2>&1
     done
 fi
 
@@ -46,8 +46,8 @@ else
     # start the default endpoint
     echo "  the funcx '${ENDPOINT_NAME}' endpoint is not running, starting it" >> $LOG
 
-    primary=$(ssh ${PRIMARY_NODE} hostname)
-    ssh ${PRIMARY_NODE} "source /etc/profile; module load funcx-endpoint; funcx-endpoint start ${ENDPOINT_NAME}" >> $LOG 2>&1
+    primary=$(ssh -oStrictHostKeyChecking=no ${PRIMARY_NODE} hostname)
+    ssh -oStrictHostKeyChecking=no ${PRIMARY_NODE} "source /etc/profile; module load funcx-endpoint; funcx-endpoint start ${ENDPOINT_NAME}" >> $LOG 2>&1
     if [ $? -eq 0 ]; then
         echo "    started funcx '${ENDPOINT_NAME}' endpoint on ${primary}" >> $LOG
     else
