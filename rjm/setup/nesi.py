@@ -414,6 +414,10 @@ class NeSISetup:
         status, stdout, stderr = self.run_command(f"chmod +x {script_path}")
         assert status == 0, f"Failed to make script executable: {stdout} {stderr}"
 
+        # make sure it has unix line endings
+        status, stdout, stderr = self.run_command(f"dos2unix {script_path}")
+        assert status == 0, f"Failed to convert convert script to unix format: {stdout} {stderr}"
+
         # retrieve current scrontab
         status, stdout, stderr = self.run_command('scrontab -l')
         if status != 0:
