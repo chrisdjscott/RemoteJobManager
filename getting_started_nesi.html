@@ -39,16 +39,21 @@
 <nav class="contents local" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#install-rjm" id="id1">Install RJM</a></p></li>
-<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once" id="id2">Run the NeSI setup script (once)</a></p>
+<li><p><a class="reference internal" href="#prerequisites-for-running-the-setup-script" id="id2">Prerequisites for running the setup script</a></p>
 <ul>
-<li><p><a class="reference internal" href="#transferring-config-to-a-different-machine" id="id3">Transferring config to a different machine</a></p></li>
+<li><p><a class="reference internal" href="#linking-globus-and-nesi-accounts" id="id3">Linking Globus and NeSI accounts</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#authenticate-rjm" id="id4">Authenticate RJM</a></p></li>
-<li><p><a class="reference internal" href="#run-a-simple-test" id="id5">Run a simple test</a></p>
+<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once" id="id4">Run the NeSI setup script (once)</a></p>
 <ul>
-<li><p><a class="reference internal" href="#health-check-script" id="id6">Health check script</a></p></li>
-<li><p><a class="reference internal" href="#example-simulation" id="id7">Example simulation</a></p></li>
+<li><p><a class="reference internal" href="#transferring-config-to-a-different-machine" id="id5">Transferring config to a different machine</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#authenticate-rjm" id="id6">Authenticate RJM</a></p></li>
+<li><p><a class="reference internal" href="#run-a-simple-test" id="id7">Run a simple test</a></p>
+<ul>
+<li><p><a class="reference internal" href="#health-check-script" id="id8">Health check script</a></p></li>
+<li><p><a class="reference internal" href="#example-simulation" id="id9">Example simulation</a></p></li>
 </ul>
 </li>
 </ul>
@@ -64,6 +69,33 @@ environment and installing the <em>main</em> branch from the git repo:</p>
 python -m pip install git+https://github.com/chrisdjscott/RemoteJobManager
 </pre></div>
 </div>
+</section>
+<section id="prerequisites-for-running-the-setup-script">
+<h2>Prerequisites for running the setup script<a class="headerlink" href="#prerequisites-for-running-the-setup-script" title="Permalink to this heading">¶</a></h2>
+<p>In order to proceed with the setup you will need the following:</p>
+<ul class="simple">
+<li><p>NeSI credentials (username, first and second factor passwords)</p></li>
+<li><p>NeSI project code that you belong to (e.g. uoa00106)</p></li>
+<li><p>Globus account (<a class="reference external" href="https://app.globus.org/">https://app.globus.org/</a>)</p>
+<ul>
+<li><p>You can usually sign up with your institutional credentials (e.g.
+University of Auckland) for convenience but it is not essential</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>Note:</strong> during the setup you may be asked to authenticate multiple times and
+in some cases a browser window may be opened automatically for you to
+authenticate in and in other cases you may need to copy a link to a browser
+manually and authenticate there. Please follow the instructions that show up
+when running the setup script.</p>
+<section id="linking-globus-and-nesi-accounts">
+<h3>Linking Globus and NeSI accounts<a class="headerlink" href="#linking-globus-and-nesi-accounts" title="Permalink to this heading">¶</a></h3>
+<p>You may be asked for a linked identity with the <em>NeSI Wellington OIDC Server</em>.
+If you already have a linked identity it should appear in the list like
+<em>&lt;username&gt;&#64;wlg-dtn-oidc.nesi.org.nz</em> (where <em>&lt;username&gt;</em> is your NeSI username).
+Otherwise, you can follow the instructions to <em>Link an identity from NeSI
+Wellington OIDC Server</em>.</p>
+</section>
 </section>
 <section id="run-the-nesi-setup-script-once">
 <h2>Run the NeSI setup script (once)<a class="headerlink" href="#run-the-nesi-setup-script-once" title="Permalink to this heading">¶</a></h2>
@@ -170,6 +202,7 @@ option to <code class="code docutils literal notranslate"><span class="pre">rjm_
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started on NeSI</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#install-rjm">Install RJM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites-for-running-the-setup-script">Prerequisites for running the setup script</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#run-the-nesi-setup-script-once">Run the NeSI setup script (once)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#authenticate-rjm">Authenticate RJM</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#run-a-simple-test">Run a simple test</a></li>
