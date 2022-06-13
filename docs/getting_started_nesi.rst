@@ -22,6 +22,33 @@ environment and installing the *main* branch from the git repo:
 
 .. _GitHub repository: https://github.com/chrisdjscott/RemoteJobManager/releases
 
+Prerequisites for running the setup script
+------------------------------------------
+
+In order to proceed with the setup you will need the following:
+
+* NeSI credentials (username, first and second factor passwords)
+* NeSI project code that you belong to (e.g. uoa00106)
+* Globus account (https://app.globus.org/)
+
+  - You can usually sign up with your institutional credentials (e.g.
+    University of Auckland) for convenience but it is not essential
+
+**Note:** during the setup you may be asked to authenticate multiple times and
+in some cases a browser window may be opened automatically for you to
+authenticate in and in other cases you may need to copy a link to a browser
+manually and authenticate there. Please follow the instructions that show up
+when running the setup script.
+
+Linking Globus and NeSI accounts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You may be asked for a linked identity with the *NeSI Wellington OIDC Server*.
+If you already have a linked identity it should appear in the list like
+*<username>@wlg-dtn-oidc.nesi.org.nz* (where *<username>* is your NeSI username).
+Otherwise, you can follow the instructions to *Link an identity from NeSI
+Wellington OIDC Server*.
+
 Run the NeSI setup script (once)
 --------------------------------
 
