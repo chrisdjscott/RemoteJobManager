@@ -38,7 +38,7 @@ def configobj():
 
 
 @pytest.fixture
-def rjb(mocker, configobj, tmpdir):
+def rjb(mocker, configobj):
     mocker.patch('rjm.config.load_config', return_value=configobj)
     rjb = RemoteJobBatch()
     rjb._timestamp = "timestamp"
@@ -46,18 +46,61 @@ def rjb(mocker, configobj, tmpdir):
     return rjb
 
 
-@pytest.fixture
-def rjb_setup(mocker, rjb, tmpdir):
-    mocker.patch('rjm.remote_job.RemoteJob.setup')
-    localdirsfile = tmpdir / "localdirs.txt"
-    localdirsfile.write_text("testdir1" + os.linesep + "testdir2" + os.linesep)
-    mocker.patch('rjm.remote_job_batch.RemoteJobBatch._read_jobs_file', return_value=["testdir1", "testdir2"])
-    mocker.patch('rjm.runners.funcx_slurm_batch_runner.FuncxSlurmBatchRunner.get_globus_scopes')
-    mocker.patch('rjm.runners.funcx_slurm_batch_runner.FuncxSlurmBatchRunner.setup_globus_auth')
+def test_write_stderr(mocker, rjb, tmp_path):
+    localdir1 = tmp_path / "testdir1"
+    localdir1.mkdir()
+    (localdir1 / "uploads.txt").write_text("file2upload" + os.linesep)
+    (localdir1 / "downloads.txt").write_text("file2download" + os.linesep)
+    (localdir1 / "file2upload").write_text("test" + os.linesep)
+
+    localdir2 = tmp_path / "testdir2"
+    localdir2.mkdir()
+    (localdir2 / "uploads.txt").write_text("file2upload" + os.linesep)
+    (localdir2 / "downloads.txt").write_text("file2download" + os.linesep)
+    (localdir2 / "file2upload").write_text("test" + os.linesep)
+
+    localdir3 = tmp_path / "testdir3"
+    localdir3.mkdir()
+    (localdir3 / "uploads.txt").write_text("file2upload" + os.linesep)
+    (localdir3 / "downloads.txt").write_text("file2download" + os.linesep)
+    (localdir3 / "file2upload").write_text("test" + os.linesep)
+
+    localdir4 = tmp_path / "testdir4"
+    localdir4.mkdir()
+    (localdir4 / "uploads.txt").write_text("file2upload" + os.linesep)
+    (localdir4 / "downloads.txt").write_text("file2download" + os.linesep)
+    (localdir4 / "file2upload").write_text("test" + os.linesep)
+    (localdir4 / "stderr.txt").write_text("stderr already exists")
+
+    localdirsfile = tmp_path / "localdirs.txt"
+    localdirsfile.write_text(os.linesep.join([str(localdir1), str(localdir2), str(localdir3), str(localdir4)]) + os.linesep)
+
+    mocker.patch('rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.get_globus_scopes')
+    mocker.patch('rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.setup_globus_auth')
+    mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.get_globus_scopes')
+    mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.setup_globus_auth')
     mocker.patch('rjm.utils.handle_globus_auth')
+
     rjb.setup(str(localdirsfile))
 
-    return rjb
+    # both marked as not completed
+    rjb._remote_jobs[0]._downloaded = False
+    rjb._remote_jobs[1]._downloaded = False
+    rjb._remote_jobs[2]._downloaded = True
+    rjb._remote_jobs[3]._downloaded = False
+
+    # run the stderr writing function
+    rjb.write_stderr_for_unfinshed_jobs("testing stderr")
+
+    # check they were written
+    assert (localdir1 / "stderr.txt").is_file()
+    assert "testing stderr" in (localdir1 / "stderr.txt").read_text()
+    assert (localdir2 / "stderr.txt").is_file()
+    assert "testing stderr" in (localdir2 / "stderr.txt").read_text()
+    assert not (localdir3 / "stderr.txt").exists()
+    assert (localdir4 / "stderr-rjm.txt").is_file()
+    assert "testing stderr" in (localdir4 / "stderr-rjm.txt").read_text()
+    assert (localdir4 / "stderr.txt").read_text() == "stderr already exists"
 
 
 def test_make_directories(rjb, mocker):

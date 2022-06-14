@@ -228,6 +228,14 @@ class RemoteJobBatch:
         if len(errors):
             raise RemoteJobBatchError(errors)
 
+    def write_stderr_for_unfinshed_jobs(self, msg):
+        """
+        Write stderr files for WFN compatibility for jobs that have not finished
+
+        """
+        for rj in self._remote_jobs:
+            rj.write_stderr_if_not_finished(msg)
+
     def _handle_errors(self, errors: list[str]):
         """
         Print summary of errors and exit
