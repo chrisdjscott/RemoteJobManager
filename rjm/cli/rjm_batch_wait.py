@@ -29,14 +29,14 @@ def make_parser():
     return parser
 
 
-def batch_wait():
+def batch_wait(args=None):
     """
     Wait for run completion and download files for all remote jobs.
 
     """
     # command line args
     parser = make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # setup logging
     utils.setup_logging(log_name="batch_wait", log_file=args.logfile, log_level=args.loglevel)
