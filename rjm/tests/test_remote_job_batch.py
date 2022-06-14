@@ -1,13 +1,11 @@
 
 import os
 import configparser
-import json
 
 import pytest
 
 from rjm.remote_job_batch import RemoteJobBatch
 from rjm.remote_job import RemoteJob
-from rjm.errors import RemoteJobRunnerError
 
 
 @pytest.fixture

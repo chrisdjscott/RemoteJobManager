@@ -1,12 +1,42 @@
 
 import os
+import configparser
 
 import pytest
 
 from rjm.cli import rjm_batch_wait
 
 
-def test_write_stderr_on_exception(mocker, tmp_path):
+@pytest.fixture
+def configobj():
+    config = configparser.ConfigParser()
+    config["GLOBUS"] = {
+        "remote_endpoint": "qwerty",
+        "remote_path": "asdfg",
+    }
+    config["FUNCX"] = {
+        "remote_endpoint": "abcdefg",
+    }
+    config["SLURM"] = {
+        "slurm_script": "run.sl",
+        "poll_interval": "1",
+    }
+    config["RETRY"] = {
+        "delay": "1",
+        "backoff": "1",
+        "tries": "4",
+    }
+    config["FILES"] = {
+        "uploads_file": "uploads.txt",
+        "downloads_file": "downloads.txt",
+    }
+
+    return config
+
+
+def test_write_stderr_on_exception(mocker, tmp_path, configobj):
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+
     localdir1 = tmp_path / "testdir1"
     localdir1.mkdir()
     (localdir1 / "uploads.txt").write_text("file2upload" + os.linesep)
