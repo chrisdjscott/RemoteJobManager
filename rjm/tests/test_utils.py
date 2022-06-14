@@ -9,7 +9,7 @@ def test_backup(tmp_path):
     fn = tmp_path / "file.txt"
     fn.write_text("test contents")
 
-    bn = utils.backup_file(fn)
+    bn = utils.backup_file(str(fn))
 
     assert os.path.exists(fn)
     assert os.path.exists(bn)
