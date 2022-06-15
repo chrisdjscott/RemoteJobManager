@@ -96,8 +96,6 @@ def test_write_stderr(mocker, rjb, tmp_path):
     assert (localdir2 / "stderr.txt").is_file()
     assert "testing stderr" in (localdir2 / "stderr.txt").read_text()
     assert not (localdir3 / "stderr.txt").exists()
-    assert (localdir4 / "stderr-rjm.txt").is_file()
-    assert "testing stderr" in (localdir4 / "stderr-rjm.txt").read_text()
     assert (localdir4 / "stderr.txt").read_text() == "stderr already exists"
 
 
