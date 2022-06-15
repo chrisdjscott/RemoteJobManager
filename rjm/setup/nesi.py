@@ -76,6 +76,7 @@ class NeSISetup:
 
     def _connect(self):
         # create SSH client for lander
+        print("Connecting to NeSI, please wait...")
         logger.info(f"Connecting to {LOGIN_NODE} via {GATEWAY} as {self._username}")
         self._lander_client = paramiko.SSHClient()
         self._lander_client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -185,7 +186,7 @@ class NeSISetup:
         3. Report back the endpoint id and url for managing the new guest collection
 
         """
-        print("Setting up Globus...")
+        print("Setting up Globus, please wait...")
 
         # select directory for sharing
         guest_collection_dir = f"/nesi/nobackup/{self._account}/{self._username}/rjm-jobs"
@@ -198,6 +199,7 @@ class NeSISetup:
             else:
                 raise ValueError("Valid guest collection directories must start with '/nesi/nobackup'")
         logger.info(f"Guest collection directory: {guest_collection_dir}")
+        print("Continuing, please wait...")
 
         # create the directory if it doesn't exist
         if self._remote_path_exists(guest_collection_dir):
@@ -221,10 +223,10 @@ class NeSISetup:
             print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
             print("                     Globus is used by RJM to transfer files to and from NeSI")
             print("")
-            print("NOTE: You may be asked for a linked identity with the NeSI Wellington OIDC Server")
-            print(f"      If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
-            print("      If so, please select it and follow the instructions to authenticate with your NeSI credentials")
-            print("      Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
+            print("NOTE: If you are asked for a linked identity with the NeSI Wellington OIDC Server please do one of the following:")
+            print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
+            print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
+            print("      - Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
             print("")
             print("="*120)
 
@@ -235,7 +237,7 @@ class NeSISetup:
                 token_file=tmp_token_file,
             )
             authorisers = globus_cli.get_authorizers_by_scope(endpoint_scope)
-            print("Authentication done. Continuing...")
+            print("Authentication done. Continuing, please wait...")
 
             # GCS client
             client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=authorisers[endpoint_scope])
@@ -243,7 +245,13 @@ class NeSISetup:
             # user credentials
             cred = client.get("/user_credentials")
             assert cred["code"] == "success", "Error getting user_credentials"
-            user_cred = cred["data"][0]
+            try:
+                user_cred = cred["data"][0]
+            except IndexError as exc:
+                logger.error("Error retrieving user credentials")
+                print("user_credentials:")
+                print(cred)
+                raise exc
 
             # collection document specifying options for new guest collection
             doc = GuestCollectionDocument(
@@ -271,10 +279,10 @@ class NeSISetup:
                     print("You must activate the NeSI Globus Endpoint at the following URL, which should")
                     print("require entering your NeSI credentials:")
                     print("")
-                    print("NOTE: You may be asked for a linked identity with the NeSI Wellington OIDC Server")
-                    print(f"      If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
-                    print("      If so, please select it and follow the instructions to authenticate with your NeSI credentials")
-                    print("      Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
+                    print("NOTE: If you are asked for a linked identity with the NeSI Wellington OIDC Server, please do one of the following:")
+                    print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
+                    print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
+                    print("      - Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
                     print("")
                     print("Open this link in a browser:")
                     print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
@@ -282,7 +290,7 @@ class NeSISetup:
                     print("NOTE: Please confirm you can see your files on NeSI via the above link before continuing")
                     print("")
                     input("Once you can access your NeSI files at the above link, press enter to continue... ")
-                    print("Continuing...")
+                    print("Continuing, please wait...")
 
                     # now try to create the collection again
                     response = client.create_collection(doc)
@@ -320,7 +328,7 @@ class NeSISetup:
         3. ...
 
         """
-        print("Setting up funcX...")
+        print("Setting up funcX, please wait...")
 
         # make sure funcx is authorised
         if not self.is_funcx_authorised():
@@ -346,7 +354,7 @@ class NeSISetup:
                     name="RJM on behalf of FuncX Endpoint",
                 )
                 assert os.path.exists(tmp_token_file)
-                print("Authentication done. Continuing...")
+                print("Authentication done. Continuing, please wait...")
 
                 # upload funcx tokens to correct place if needed
                 logger.debug("Transferring token file to NeSI")
@@ -363,6 +371,7 @@ class NeSISetup:
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
             logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
+            print("Configuring funcX, please wait...")
 
             status, stdout, stderr = self.run_command(f"module load {FUNCX_MODULE} && funcx-endpoint configure {FUNCX_ENDPOINT_NAME}")
             assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
@@ -374,6 +383,7 @@ class NeSISetup:
         endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
         if not endpoint_running:
             logger.info(f"Starting funcx '{FUNCX_ENDPOINT_NAME}' endpoint")
+            print("Starting funcX endpoint, please wait...")
             status, stdout, stderr = self.run_command(f"module load {FUNCX_MODULE} && funcx-endpoint start {FUNCX_ENDPOINT_NAME}")
             assert status == 0, f"Starting endpoint failed: {stdout} {stderr}"
             endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
@@ -390,7 +400,7 @@ class NeSISetup:
 
         # install scrontab if not already installed
         self._setup_funcx_scrontab()
-        logger.info("Installed scrontab entry to ensure funcx endpoint keeps ruuning (run 'scrontab -l' on mahuika to view)")
+        logger.info("Installed scrontab entry to ensure funcx endpoint keeps running (run 'scrontab -l' on mahuika to view)")
         print("A scrontab entry has been added to periodically check the status of the funcx endpoint and restart it if needed")
         print("On mahuika, run 'scrontab -l' to view it")
         print("You may also notice a Slurm job has been created with name 'funcxcheck', please do not cancel it!")
@@ -401,6 +411,8 @@ class NeSISetup:
         Create a scrontab job for keeping funcx endpoint running
 
         """
+        print("Setting up funcX scrontab entry, please wait...")
+
         # write script to NeSI
         with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
             # upload the script to NeSI
