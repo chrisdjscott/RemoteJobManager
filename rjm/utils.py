@@ -97,16 +97,16 @@ def pretty_size_from_bytes(size_bytes):
     return s, size_name[i]
 
 
-def backup_file(path):
+def backup_file(file_path):
     """Backup the given file"""
-    if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
+    if os.path.exists(file_path):
         now = datetime.now().strftime("%Y%m%dT%H%M%S")
-        bkp_file = config_helper.CONFIG_FILE_LOCATION + f'-{now}'
+        bkp_file = file_path + f'-{now}'
         bkp_file_base = bkp_file
         count = 1
         while os.path.exists(bkp_file):
             bkp_file = f"{bkp_file_base}-{count}"
             count += 1
-        shutil.copy(config_helper.CONFIG_FILE_LOCATION, bkp_file)
+        shutil.copy(file_path, bkp_file)
 
         return bkp_file

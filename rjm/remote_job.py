@@ -398,6 +398,30 @@ class RemoteJob:
         """Return runner"""
         return self._runner
 
+    def write_stderr_if_not_finished(self, msg):
+        """
+        Write an stderr.txt file to the directory to indicate failure.
+
+        :param msg: The message to be written to the stderr.txt file
+
+        If the job has completed (i.e. downloaded files), don't do anything
+
+        If stderr.txt already exists, then write stderr-rjm.txt
+
+        Note: this functionality exists only to help WFN (wings for nonmem) to
+              detect when RJM has exited with an error
+
+        """
+        if self.files_downloaded():
+            self._log(logging.DEBUG, "Skipping writing stderr on error since files have been downloaded already")
+        else:
+            stderr_file = os.path.join(self._local_path, "stderr.txt")
+            if os.path.exists(stderr_file):
+                stderr_file = os.path.join(self._local_path, "stderr-rjm.txt")
+            self._log(logging.DEBUG, f"Writing stderr file: {stderr_file}")
+            with open(stderr_file, "w") as fh:
+                fh.write(msg)
+
 
 if __name__ == "__main__":
     import sys

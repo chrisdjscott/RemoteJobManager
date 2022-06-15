@@ -29,14 +29,14 @@ def make_parser():
     return parser
 
 
-def batch_wait():
+def batch_wait(args=None):
     """
     Wait for run completion and download files for all remote jobs.
 
     """
     # command line args
     parser = make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # setup logging
     utils.setup_logging(log_name="batch_wait", log_file=args.logfile, log_level=args.loglevel)
@@ -46,7 +46,12 @@ def batch_wait():
     rjb.setup(args.localjobdirfile)
 
     # wait for jobs to complete
-    rjb.wait_and_download(polling_interval=args.pollingintervalsec)
+    try:
+        rjb.wait_and_download(polling_interval=args.pollingintervalsec)
+    except BaseException as exc:
+        # writing an stderr.txt file into the directory of unfinished jobs, for wfn
+        rjb.write_stderr_for_unfinshed_jobs(f"RJM exited with the following error (check logs for more info): {repr(exc)}")
+        raise exc
 
 
 if __name__ == "__main__":
