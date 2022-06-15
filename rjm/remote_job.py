@@ -11,6 +11,7 @@ from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
 from rjm.runners.funcx_slurm_runner import FuncxSlurmRunner
+from rjm.errors import RemoteJobRunnerError
 
 
 logger = logging.getLogger(__name__)
@@ -324,13 +325,15 @@ class RemoteJob:
             # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
-            # TODO: disable retries if run failed...
             self._transfer.download_files(self._download_files, downloads_checksums, retries=self._run_succeeded)
-            # TODO: if run failed, raise exception saying so
             download_time = time.perf_counter() - download_time
             self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
             self._save_state()
+
+            # if the run failed, raise an exception now
+            if not self._run_succeeded:
+                raise RemoteJobRunnerError("Running the job failed")
 
     def run_start(self):
         """Start running the processing"""
