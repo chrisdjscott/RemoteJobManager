@@ -139,7 +139,7 @@ def test_categorise_jobs(rjb):
     rj._label = "1"
     rj._uploaded = True
     rj._run_started = True
-    rj._run_completed = True
+    rj._run_succeeded = True
     rj._downloaded = False
     remote_jobs.append(rj)
     rj = RemoteJob()  # not uploaded
@@ -150,7 +150,7 @@ def test_categorise_jobs(rjb):
     rj._label = "3"
     rj._uploaded = True
     rj._run_started = True
-    rj._run_completed = False
+    rj._run_succeded = False
     rj._runner._jobid = '123456'
     remote_jobs.append(rj)
     rj = RemoteJob()  # not started
@@ -162,7 +162,7 @@ def test_categorise_jobs(rjb):
     rj._label = "5"
     rj._uploaded = True
     rj._run_started = True
-    rj._run_completed = True
+    rj._run_failed = True
     rj._downloaded = True
     remote_jobs.append(rj)
     rjb._remote_jobs = remote_jobs

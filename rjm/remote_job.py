@@ -35,7 +35,8 @@ class RemoteJob:
         self._uploaded = False
         self._downloaded = False
         self._run_started = False
-        self._run_completed = False
+        self._run_succeeded = False
+        self._run_failed = False
         self._cancelled = False
         self._state_file = None
 
@@ -71,12 +72,17 @@ class RemoteJob:
         return self._run_started
 
     def run_completed(self):
-        """Return whether the run has completed"""
-        return self._run_completed
+        """Return whether the run has completed (regardless of success)"""
+        return self._run_succeeded or self._run_failed
 
-    def set_run_completed(self):
+    def set_run_completed(self, success=True):
         """Marks the run as having been completed"""
-        self._run_completed = True
+        if success:
+            self._run_succeeded = True
+            self._run_failed = False
+        else:
+            self._run_failed = True
+            self._run_succeeded = False
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -234,8 +240,9 @@ class RemoteJob:
             self._remote_full_path = state_dict["remote_directory"]
             self._remote_basename = state_dict["remote_basename"]
             self._uploaded = state_dict["uploaded"]
-            self._run_started = state_dict["started_run"]
-            self._run_completed = state_dict["finished_run"]
+            self._run_started = state_dict["run_started"]
+            self._run_succeeded = state_dict["run_succeeded"]
+            self._run_failed = state_dict["run_failed"]
             self._downloaded = state_dict["downloaded"]
             self._cancelled = state_dict["cancelled"]
 
@@ -254,8 +261,9 @@ class RemoteJob:
                 "remote_directory": self._remote_full_path,
                 "remote_basename": self._remote_basename,
                 "uploaded": self._uploaded,
-                "started_run": self._run_started,
-                "finished_run": self._run_completed,
+                "run_started": self._run_started,
+                "run_succeeded": self._run_succeeded,
+                "run_failed": self._run_failed,
                 "downloaded": self._downloaded,
                 "cancelled": self._cancelled,
             }
@@ -297,7 +305,7 @@ class RemoteJob:
         elif self._cancelled:
             self._log(logging.ERROR, "Cannot download files for a cancelled run")
             raise RuntimeError("Cannot download files for a cancelled run")
-        elif not self._run_completed:
+        elif not self.run_completed():
             self._log(logging.ERROR, "Run must be completed before we can download files")
             raise RuntimeError("Run must be completed before we can download files")
         else:
@@ -316,7 +324,9 @@ class RemoteJob:
             # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
-            self._transfer.download_files(self._download_files, downloads_checksums)
+            # TODO: disable retries if run failed...
+            self._transfer.download_files(self._download_files, downloads_checksums, retries=self._run_succeeded)
+            # TODO: if run failed, raise exception saying so
             download_time = time.perf_counter() - download_time
             self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
@@ -340,7 +350,7 @@ class RemoteJob:
 
     def run_wait(self, polling_interval=None):
         """Wait for the processing to complete"""
-        if self._run_completed:
+        if self.run_completed():
             self._log(logging.INFO, "Run already completed")
         elif self._cancelled:
             self._log(logging.ERROR, "Cannot wait for a run that has been cancelled")
@@ -350,16 +360,17 @@ class RemoteJob:
             raise RuntimeError("Run must be started before we can wait for it to complete")
         else:
             self._log(logging.INFO, "Waiting for run to complete...")
-            self._run_completed = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval},
-                                             tries=self._retry_tries, backoff=self._retry_backoff,
-                                             delay=self._retry_delay)
+            run_succeeded = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval},
+                                       tries=self._retry_tries, backoff=self._retry_backoff,
+                                       delay=self._retry_delay)
+            self.set_run_completed(success=run_succeeded)
             self._save_state()
 
     def run_cancel(self):
         """Cancel the run."""
         if not self._run_started:
             self._log(logging.WARNING, "Cannot cancel a run that hasn't started")
-        elif self._run_completed:
+        elif self.run_completed():
             self._log(logging.WARNING, "Cannot cancel a run that has already completed")
         elif self._cancelled:
             self._log(logging.WARNING, "Already cancelled")

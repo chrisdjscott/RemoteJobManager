@@ -201,16 +201,22 @@ class RemoteJobBatch:
             while len(unfinished_jobs):
                 # get the finished status
                 logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
-                finished_jobs, unfinished_jobs = self._runner.check_finished_jobs(unfinished_jobs)
-                logger.debug(f"{len(finished_jobs)} finished; {len(unfinished_jobs)} unfinished")
+                successful_jobs, failed_jobs, unfinished_jobs = self._runner.check_finished_jobs(unfinished_jobs)
+                logger.debug(f"{len(successful_jobs)} succeeded; {len(failed_jobs)} failed; {len(unfinished_jobs)} unfinished")
 
-                # handle finished jobs
-                for rj in finished_jobs:
-                    logger.info(f"{rj} has finished")
+                # handle successful jobs
+                for rj in successful_jobs:
+                    logger.info(f"{rj} run has finished successfully")
                     rj.set_run_completed()
                     future_to_rj[downloader.submit(rj.download_files)] = rj
 
-                # wait before checking for finished jobs again again
+                # handle unsuccessful jobs
+                for rj in failed_jobs:
+                    logger.info(f"{rj} run has finished unsuccessfully")
+                    rj.set_run_completed(success=False)
+                    future_to_rj[downloader.submit(rj.download_files)] = rj
+
+                # wait before checking for finished jobs again
                 if len(unfinished_jobs):
                     time.sleep(polling_interval)
 
