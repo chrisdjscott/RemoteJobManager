@@ -15,6 +15,8 @@ from rjm.errors import RemoteJobRunnerError
 
 FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
 FUNCX_TIMEOUT = 180  # default timeout for waiting for funcx functions
+SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING']
+SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +200,12 @@ class FuncxSlurmRunner(RunnerBase):
         return started
 
     def wait(self, polling_interval=None):
-        """Wait for the Slurm job to finish"""
+        """
+        Wait for the Slurm job to finish
+
+        Return True if the job succeeded, False if it failed
+
+        """
         if self._jobid is None:
             raise ValueError("Must call 'run_start' before 'run_wait'")
 
@@ -210,12 +217,17 @@ class FuncxSlurmRunner(RunnerBase):
         self._log(logging.INFO, f"Waiting for Slurm job {self._jobid} to finish")
         self._log(logging.DEBUG, f"Polling interval is: {polling_interval} seconds")
         job_finished = False
+        job_succeeded = None
         while not job_finished:
             returncode, job_status = self.run_function(check_slurm_job_status, self._jobid)
             if returncode == 0:
                 self._log(logging.INFO, f"Current job status is: '{job_status}'")
-                if len(job_status) and job_status not in ("RUNNING", "PENDING"):
+                if len(job_status) and job_status not in SLURM_UNFINISHED_STATUS:
                     job_finished = True
+                    if job_status in SLURM_SUCCESSFUL_STATUS:
+                        job_succeeded = True
+                    else:
+                        job_succeeded = False
                 else:
                     time.sleep(polling_interval)
             else:
@@ -224,10 +236,11 @@ class FuncxSlurmRunner(RunnerBase):
                 self._log(logging.ERROR, f'output: {job_status}')
                 raise RemoteJobRunnerError(f"{self._label}failed to get Slurm job status: {job_status}")
 
+        assert job_succeeded is not None, "Unexpected error during wait"
         if job_finished:
             self._log(logging.INFO, f"Slurm job {self._jobid} has finished")
 
-        return job_finished
+        return job_succeeded
 
     def cancel(self):
         """Cancel the Slurm job"""
@@ -274,7 +287,8 @@ class FuncxSlurmRunner(RunnerBase):
 
         # parse output for statuses
         count = 0
-        finished_jobs = []
+        successful_jobs = []
+        failed_jobs = []
         unfinished_jobs = []
         for line in job_status_text.splitlines():
             if not len(line.strip()):
@@ -296,10 +310,14 @@ class FuncxSlurmRunner(RunnerBase):
             job_ids.pop(idx)
             rj = remote_jobs.pop(idx)
 
-            if len(job_status) and job_status not in ("RUNNING", "PENDING"):
-                # job has finished
-                finished_jobs.append(rj)
-                self._log(logging.DEBUG, f"Job {jobid} has finished: {job_status}")
+            if len(job_status) and job_status not in SLURM_UNFINISHED_STATUS:
+                # job has finished, was it successful
+                if job_status in SLURM_SUCCESSFUL_STATUS:
+                    successful_jobs.append(rj)
+                    self._log(logging.DEBUG, f"Job {jobid} has finished successfully: {job_status}")
+                else:
+                    failed_jobs.append(rj)
+                    self._log(logging.DEBUG, f"Job {jobid} has finished unsuccessfully: {job_status}")
             else:
                 unfinished_jobs.append(rj)
                 self._log(logging.DEBUG, f"Job {jobid} is unfinished: {job_status}")
@@ -308,7 +326,7 @@ class FuncxSlurmRunner(RunnerBase):
             self._log(logging.WARNING, "No job statuses parsed, trying again later")
             unfinished_jobs = remote_jobs
 
-        return finished_jobs, unfinished_jobs
+        return successful_jobs, failed_jobs, unfinished_jobs
 
     def get_checksums(self, working_directory, files):
         """

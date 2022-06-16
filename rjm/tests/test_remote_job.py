@@ -87,7 +87,7 @@ def test_run_wait_restarts_fail(rj, mocker):
     with pytest.raises(RemoteJobRunnerError):
         rj.run_wait()
     assert mocked.call_count == 4
-    assert rj._run_completed is False
+    assert rj.run_completed() is False
 
 
 def test_run_wait_restarts_succeed(rj, mocker):
@@ -106,14 +106,16 @@ def test_run_wait_restarts_succeed(rj, mocker):
     rj.run_wait()
 
     assert mocked.call_count == 3
-    assert rj._run_completed is True
+    assert rj.run_completed() is True
+    assert rj._run_succeeded is True
 
 
 def test_save_state(rj, tmpdir, mocker):
     rj._state_file = tmpdir / "test_state.json"
     rj._uploaded = True
     rj._run_started = False
-    rj._run_completed = False
+    rj._run_succeeded = True
+    rj._run_failed = False
     rj._downloaded = True
     rj._cancelled = False
     runner_state = {"jobid": "12345"}
@@ -137,8 +139,9 @@ def test_save_state(rj, tmpdir, mocker):
     with open(rj._state_file) as fh:
         state_dict = json.load(fh)
     assert rj._uploaded == state_dict["uploaded"]
-    assert rj._run_started == state_dict["started_run"]
-    assert rj._run_completed == state_dict["finished_run"]
+    assert rj._run_started == state_dict["run_started"]
+    assert rj._run_succeeded == state_dict["run_succeeded"]
+    assert rj._run_failed == state_dict["run_failed"]
     assert rj._downloaded == state_dict["downloaded"]
     assert rj._cancelled == state_dict["cancelled"]
     assert state_dict["runner"] == runner_state
@@ -155,8 +158,9 @@ def test_load_state(rj, mocker, tmpdir, force):
     state_file = tmpdir / "state.json"
     state_dict = {
         "uploaded": True,
-        "started_run": True,
-        "finished_run": False,
+        "run_started": True,
+        "run_succeeded": False,
+        "run_failed": True,
         "downloaded": False,
         "cancelled": False,
         "runner": {
@@ -186,14 +190,16 @@ def test_load_state(rj, mocker, tmpdir, force):
         assert mocked_runner_load_state.call_count == 0
         assert rj._uploaded is False
         assert rj._run_started is False
-        assert rj._run_completed is False
+        assert rj._run_succeeded is False
+        assert rj._run_failed is False
         assert rj._downloaded is False
         assert rj._cancelled is False
     else:
         assert mocked_transfer_load_state.called_once_with(state_dict["transfer"])
         assert mocked_runner_load_state.called_once_with(state_dict["runner"])
         assert rj._uploaded == state_dict["uploaded"]
-        assert rj._run_started == state_dict["started_run"]
-        assert rj._run_completed == state_dict["finished_run"]
+        assert rj._run_started == state_dict["run_started"]
+        assert rj._run_succeeded == state_dict["run_succeeded"]
+        assert rj._run_failed == state_dict["run_failed"]
         assert rj._downloaded == state_dict["downloaded"]
         assert rj._cancelled == state_dict["cancelled"]
