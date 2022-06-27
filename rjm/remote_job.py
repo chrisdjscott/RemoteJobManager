@@ -177,7 +177,7 @@ class RemoteJob:
         self._transfer.set_remote_directory(remote_basename)
         self._save_state()
 
-    def make_remote_directory(self, prefix=None):
+    def make_remote_directory(self, prefix=None, retries=True):
         """Create the remote directory"""
         # creating a remote directory for running in
         if self._remote_full_path is None:
@@ -191,6 +191,7 @@ class RemoteJob:
             remote_full_path, remote_basename = self._runner.make_remote_directory(
                 self._transfer.get_remote_base_directory(),
                 prefix,
+                retries=retries,
             )
             self._log(logging.DEBUG, f"Remote directory created: {remote_full_path} ({remote_basename})")
             self._remote_full_path = remote_full_path

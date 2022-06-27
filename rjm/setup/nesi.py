@@ -306,8 +306,7 @@ class NeSISetup:
         print("="*120)
         print(f"Globus guest collection endpoint id: '{endpoint_id}'")
         print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
-        print("The above values will be required when configuring RJM")
-        print(f"You can manage the endpoint online at: https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
+        print(f"You can manage the endpoint you just created online at: https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
         print("="*120)
 
         # also store the endpoint id and path
@@ -392,7 +391,6 @@ class NeSISetup:
         # report endpoint id for configuring rjm
         print("="*120)
         print(f"funcX endpoint is running and has id: '{endpoint_id}'")
-        print("The above value will be required when configuring RJM")
         print("="*120)
 
         # store endpoint id
