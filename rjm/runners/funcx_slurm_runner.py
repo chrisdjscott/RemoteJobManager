@@ -135,7 +135,7 @@ class FuncxSlurmRunner(RunnerBase):
 
         return result
 
-    def make_remote_directory(self, remote_base_path, prefix):
+    def make_remote_directory(self, remote_base_path, prefix, retries=True):
         """
         Make one or more remote directories, using the given prefix(es).
 
@@ -155,10 +155,16 @@ class FuncxSlurmRunner(RunnerBase):
             single = False
             prefix_list = prefix
 
+        # with or without retries
+        if retries:
+            run_func = self.run_function_with_retries
+        else:
+            run_func = self.run_function
+
         # run the remote function
         self._log(logging.DEBUG, f"Creating remote directories for: {prefix_list}")
         self._log(logging.DEBUG, f"Creating remote directories in: {remote_base_path}")
-        remote_dirs = self.run_function_with_retries(_make_remote_directories, remote_base_path, prefix_list)
+        remote_dirs = run_func(_make_remote_directories, remote_base_path, prefix_list)
 
         # handle result
         if type(remote_dirs) is list:  # success

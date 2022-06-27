@@ -60,7 +60,7 @@ def health_check():
         prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}"
         print()
         print("Testing creation of unique remote directory...")
-        rj.make_remote_directory(prefix=prefix)
+        rj.make_remote_directory(prefix=prefix, retries=False)
         remote_dir = rj.get_remote_directory()
         print(f'Created remote directory: "{remote_dir}"')
 
@@ -79,7 +79,7 @@ def health_check():
         # use runner to check the directory and file exists (tests funcx)
         print()
         print("Using runner to check directory and file exist...")
-        result = r.run_function_with_retries(_remote_health_check, remote_dir, test_file_name)
+        result = r.run_function(_remote_health_check, remote_dir, test_file_name)
         if result is None:
             print("Finished checking directory and file exist")
         else:
