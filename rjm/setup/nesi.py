@@ -237,7 +237,19 @@ class NeSISetup:
                 token_file=tmp_token_file,
             )
             authorisers = globus_cli.get_authorizers_by_scope(endpoint_scope)
-            print("Authentication done. Continuing, please wait...")
+
+            # make certain they can view files on NeSI
+            print("="*120)
+            print("Before proceeding, please open this link in a browser and, if required, authenticate")
+            print("with the NeSI Wellington OIDC Server (see instructions above):")
+            print()
+            print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
+            print("")
+            print("Please confirm you can see your files on NeSI via the above link before continuing")
+            print("")
+            input("Once you can access your NeSI files at the above link, press enter to continue... ")
+            print()
+            print("Continuing, please wait...")
 
             # GCS client
             client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=authorisers[endpoint_scope])
@@ -265,40 +277,7 @@ class NeSISetup:
             logger.debug(f"Collection document: {doc}")
 
             # create Globus collection, report back endpoint id for config
-            try:
-                response = client.create_collection(doc)
-            except GCSAPIError as exc:
-                # first attempt might result in authentication error if they haven't
-                # authenticated with their NeSI credentials recently?
-                logger.debug("Initial attempt to create collection failed with error {exc.http_status}. {exc.code}, {exc.message}")
-                if exc.http_status == 403 and exc.code == "permission_denied" and exc.message.startswith("You must reauthenticate one of your identities"):
-                    logger.warning(exc.message)
-
-                    # ask them to login to the NeSI endpoint via Globus Web App, then try again
-                    print("="*120)
-                    print("You must activate the NeSI Globus Endpoint at the following URL, which should")
-                    print("require entering your NeSI credentials:")
-                    print("")
-                    print("NOTE: If you are asked for a linked identity with the NeSI Wellington OIDC Server, please do one of the following:")
-                    print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
-                    print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
-                    print("      - Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
-                    print("")
-                    print("Open this link in a browser:")
-                    print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
-                    print("")
-                    print("NOTE: Please confirm you can see your files on NeSI via the above link before continuing")
-                    print("")
-                    input("Once you can access your NeSI files at the above link, press enter to continue... ")
-                    print("Continuing, please wait...")
-
-                    # now try to create the collection again
-                    response = client.create_collection(doc)
-
-                else:
-                    # otherwise raise the original error
-                    raise exc
-
+            response = client.create_collection(doc)
             endpoint_id = response.data["id"]
             logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
 
@@ -306,7 +285,8 @@ class NeSISetup:
         print("="*120)
         print(f"Globus guest collection endpoint id: '{endpoint_id}'")
         print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
-        print(f"You can manage the endpoint you just created online at: https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
+        print("You can manage the endpoint you just created online at:")
+        print(f"    https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
         print("="*120)
 
         # also store the endpoint id and path
