@@ -293,18 +293,11 @@ class NeSISetup:
         self._globus_id = endpoint_id
         self._globus_path = guest_collection_dir
 
-    def setup_funcx(self):
+    def setup_funcx(self, restart=False):
         """
-        Sets up funcx:
+        Sets up the funcX endpoint on NeSI.
 
-        1. Check if funcx is configured, if not configure it (default endpoint)
-           - TODO: handle auth centrally and copy tokens across, if possible
-        2. Check if funcx endpoint is running, if not start it
-           - TODO: option to restart it (or maybe make that the default)
-
-        1. Check if funcx is authorised
-        2. If not, get required scopes including globus
-        3. ...
+        If restart is True, then restart the endpoint if it is already running
 
         """
         print("Setting up funcX, please wait...")
@@ -364,7 +357,7 @@ class NeSISetup:
         self._remote_dir_create(worker_logs_dir)
 
         # start the funcX endpoint
-        endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
+        endpoint_running, endpoint_id = self.is_funcx_endpoint_running(stop=restart)
         if not endpoint_running:
             logger.info(f"Starting funcx '{FUNCX_ENDPOINT_NAME}' endpoint")
             print("Starting funcX endpoint, please wait...")
@@ -521,9 +514,11 @@ class NeSISetup:
 
         return configured
 
-    def is_funcx_endpoint_running(self):
+    def is_funcx_endpoint_running(self, stop=False):
         """
         Check whether the funcx default endpoint is running already
+
+        If stop is True, then stop the endpoint if it is running
 
         """
         # test whether funcx endpoint is actually running
@@ -542,17 +537,24 @@ class NeSISetup:
                             funcx_running_nodes.append(node)
                             break
 
-            if len(funcx_running_nodes) == 1:
-                logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint is running on '{funcx_running_nodes[0]}' with endpoint id '{funcx_endpoint_id}'")
-            elif len(funcx_running_nodes) > 1:
-                logger.warning(f'funcX endpoint running on multiple nodes -> attempting to stop them all: {funcx_running_nodes}')
+            # report which nodes the endpoint is running on
+            if len(funcx_running_nodes) > 0:
+                logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint (id: {funcx_endpoint_id}) is running on: {funcx_running_nodes}")
+            else:
+                logger.debug("funcX endpoint is not running")
+
+            # stop the endpoint if multiple are running or we're specfically asked to
+            if len(funcx_running_nodes) > 1 or stop:
+                if len(funcx_running_nodes) > 1:
+                    logger.warning(f'funcX endpoint running on multiple nodes -> attempting to stop them all: {funcx_running_nodes}')
+                else:
+                    print("Stopping funcX endpoint for restart, please wait...")
+
                 for node in funcx_running_nodes:
-                    status, stdout, stderr = self.run_command(f"ssh {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'")
+                    status, stdout, stderr = self.run_command(f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'")
                     if status:
                         raise RuntimeError(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
                 funcx_running_nodes = []
-            else:
-                logger.debug("funcX endpoint is not running")
 
             return len(funcx_running_nodes) != 0, funcx_endpoint_id
 

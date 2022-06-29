@@ -23,6 +23,7 @@ def make_parser():
     parser.add_argument('--funcx', action="store_true", help="Set up funcX on NeSI")
     parser.add_argument('--globus', action="store_true", help="Set up Globus for NeSI")
     parser.add_argument('--config', action="store_true", help="Write config values to config file (--config implies --funcx and --globus)")
+    parser.add_argument('--restart', action="store_true", help="Restart the funcX endpoint if it is already running (--restart implies --funcx)")
 
     parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
     parser.add_argument('-ll', '--loglevel', required=False,
@@ -43,8 +44,8 @@ def nesi_setup():
     parser = make_parser()
     args = parser.parse_args()
 
-    if not args.funcx and not args.globus and not args.config:
-        print("Neither '--funcx', '--globus' nor '--config' specified; nothing to do")
+    if not args.funcx and not args.globus and not args.config and not args.restart:
+        print("Neither '--funcx', '--globus', '--restart' nor '--config' specified; nothing to do")
 
     else:
         # setup logging
@@ -73,8 +74,8 @@ def nesi_setup():
         nesi = NeSISetup(username, password, token, account)
 
         # do the funcx setup
-        if args.funcx or args.config:
-            nesi.setup_funcx()
+        if args.funcx or args.config or args.restart:
+            nesi.setup_funcx(restart=args.restart)
 
         # do the globus setup
         if args.globus or args.config:
@@ -124,7 +125,7 @@ def nesi_setup():
             # just report the values
             print("="*120)
             print("RJM configuration values:")
-            if args.funcx:
+            if args.funcx or args.restart:
                 funcx_ep = nesi.get_funcx_config()
                 print(f"- funcX endpoint id: {funcx_ep}")
             if args.globus:
