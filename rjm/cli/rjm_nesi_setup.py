@@ -123,7 +123,7 @@ def nesi_setup():
         else:
             # just report the values
             print("="*120)
-            print("Configuration values for use with rjm_configure:")
+            print("RJM configuration values:")
             if args.funcx:
                 funcx_ep = nesi.get_funcx_config()
                 print(f"- funcX endpoint id: {funcx_ep}")
@@ -131,7 +131,6 @@ def nesi_setup():
                 globus_ep, globus_path = nesi.get_globus_config()
                 print(f"- Globus endpoint id: {globus_ep}")
                 print(f"- Globus endpoint path: {globus_path}")
-            print("Please run rjm_configure to continue with the configuration")
             print("="*120)
 
 

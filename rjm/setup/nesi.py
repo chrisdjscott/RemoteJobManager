@@ -358,6 +358,11 @@ class NeSISetup:
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("funcX endpoint configuration complete")
 
+        # make sure the worker_logs directory exists
+        worker_logs_dir = f"/home/{self._username}/.funcx/{FUNCX_ENDPOINT_NAME}/HighThroughputExecutor/worker_logs"
+        logger.debug(f"Making sure worker_logs dir exists: {worker_logs_dir}")
+        self._remote_dir_create(worker_logs_dir)
+
         # start the funcX endpoint
         endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
         if not endpoint_running:
