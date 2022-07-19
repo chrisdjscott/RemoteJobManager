@@ -1,6 +1,7 @@
 
 import logging
 import argparse
+import traceback
 
 from rjm import __version__
 from rjm import utils
@@ -50,7 +51,7 @@ def batch_wait(args=None):
         rjb.wait_and_download(polling_interval=args.pollingintervalsec)
     except BaseException as exc:
         # writing an stderr.txt file into the directory of unfinished jobs, for wfn
-        rjb.write_stderr_for_unfinshed_jobs(f"RJM exited with the following error (check logs for more info): {repr(exc)}")
+        rjb.write_stderr_for_unfinshed_jobs(traceback.format_exc())
         raise exc
 
 
