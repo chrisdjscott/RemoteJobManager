@@ -15,7 +15,8 @@ from rjm.errors import RemoteJobRunnerError
 
 FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
 FUNCX_TIMEOUT = 180  # default timeout for waiting for funcx functions
-SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING']
+SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL']
+SLURM_WARN_STATUS = ["NODE_FAIL"]
 SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
 
 logger = logging.getLogger(__name__)
@@ -228,6 +229,8 @@ class FuncxSlurmRunner(RunnerBase):
             returncode, job_status = self.run_function(check_slurm_job_status, self._jobid)
             if returncode == 0:
                 self._log(logging.INFO, f"Current job status is: '{job_status}'")
+                if job_status in SLURM_WARN_STATUS:  # job should (?) be requeued so keep checking
+                    self._log(logging.WARNING, f'Job status "{job_status}" may require manual intervention, continuing to check')
                 if len(job_status) and job_status not in SLURM_UNFINISHED_STATUS:
                     job_finished = True
                     if job_status in SLURM_SUCCESSFUL_STATUS:
