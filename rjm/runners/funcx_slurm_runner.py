@@ -175,10 +175,9 @@ class FuncxSlurmRunner(RunnerBase):
             result = future.result(timeout=FUNCX_TIMEOUT)
         except concurrent.futures.TimeoutError as exc:
             # reset the funcx client
-            self._log.warning("Caught timeout error while waiting for funcX result => going to attempt restarting the funcX client", exc_info=exc)
+            self._log(logging.WARNING, "Caught timeout error while waiting for funcX result => going to attempt restarting the funcX client", exc_info=exc)
             self.reset_funcx_client(propagate=True)
-            # restart are handled outside this function, so reraise the exception
-            # once we've reset the funcx client
+            # retries are handled outside this function, so reraise the exception
             raise
 
         return result
