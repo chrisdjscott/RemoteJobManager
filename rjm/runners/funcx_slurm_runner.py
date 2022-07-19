@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import logging
+import concurrent.futures
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
@@ -33,10 +34,18 @@ class FuncxSlurmRunner(RunnerBase):
     def __init__(self, config=None):
         super(FuncxSlurmRunner, self).__init__(config=config)
 
+        self._setup_done = False
+
         # the FuncX endpoint on the remote machine
         self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")
 
+        # globus authorisers
+        self._search_authoriser = None
+        self._funcx_authoriser = None
+        self._openid_authoriser = None
+
         # funcx client and executor
+        self._external_runner = None
         self._funcx_client = None
         self._funcx_executor = None
 
@@ -86,31 +95,61 @@ class FuncxSlurmRunner(RunnerBase):
 
     def setup_globus_auth(self, globus_cli, runner=None):
         """Do any Globus auth setup here, if required"""
+        self._setup_done = True
+
+        # prepare to create the funcx client
         if runner is None:
             # offprocess checker not working well with freezing currently
             if getattr(sys, "frozen", False):
                 # application is frozen
-                use_offprocess_checker = False
+                self._use_offprocess_checker = False
                 self._log(logging.DEBUG, "Disabling offprocess_checker when frozen")
             else:
-                use_offprocess_checker = True
+                self._use_offprocess_checker = True
+
+            # store the authorisers
+            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
+            self._funcx_authoriser = authorisers[FUNCX_SCOPE]
+            self._search_authoriser = authorisers[utils.SEARCH_SCOPE]
+            self._openid_authoriser = authorisers[utils.OPENID_SCOPE]
+
+        else:
+            # store reference to passed in runner
+            self._log(logging.DEBUG, "Initialising runner from another")
+            self._external_runner = runner
+
+        # now create the funcx client
+        self.reset_funcx_client()
+
+    def reset_funcx_client(self, propagate=False):
+        """Force the runner to create a new funcX client"""
+        if not self._setup_done:
+            raise RuntimeError("setup_globus_auth must be called before reset_funcx_client")
+
+        if self._external_runner is None:
+            self._log(logging.DEBUG, "Creating funcX client")
 
             # setting up the FuncX client
-            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
             self._funcx_client = FuncXClient(
-                fx_authorizer=authorisers[FUNCX_SCOPE],
-                search_authorizer=authorisers[utils.SEARCH_SCOPE],
-                openid_authorizer=authorisers[utils.OPENID_SCOPE],
-                use_offprocess_checker=use_offprocess_checker,
+                fx_authorizer=self._funcx_authoriser,
+                search_authorizer=self._search_authoriser,
+                openid_authorizer=self._openid_authoriser,
+                use_offprocess_checker=self._use_offprocess_checker,
             )
 
             # create a funcX executor
             self._funcx_executor = FuncXExecutor(self._funcx_client)
+
         else:
-            # use client and executor from passed in runner
-            self._log(logging.DEBUG, "Initialising runner from another")
-            self._funcx_client = runner.get_funcx_client()
-            self._funcx_executor = runner.get_funcx_executor()
+            # if required, force the external runner to reset too
+            if propagate:
+                self._log(logging.DEBUG, "Resetting funcX client on passed in runner")
+                self._external_runner.reset_funcx_client(propagate=True)
+
+            # update our references
+            self._log(logging.DEBUG, "Storing reference to funcX client on passed in runner")
+            self._funcx_client = self._external_runner.get_funcx_client()
+            self._funcx_executor = self._external_runner.get_funcx_executor()
 
     def get_funcx_client(self):
         """Returns the funcx client"""
@@ -132,7 +171,14 @@ class FuncxSlurmRunner(RunnerBase):
 
         # wait for it to complete and get the result
         self._log(logging.DEBUG, "Waiting for FuncX function to complete")
-        result = future.result(timeout=FUNCX_TIMEOUT)
+        try:
+            result = future.result(timeout=FUNCX_TIMEOUT)
+        except concurrent.futures.TimeoutError as exc:
+            # reset the funcx client
+            self._log(logging.WARNING, "Caught timeout error while waiting for funcX result => going to attempt restarting the funcX client", exc_info=exc)
+            self.reset_funcx_client(propagate=True)
+            # retries are handled outside this function, so reraise the exception
+            raise
 
         return result
 
