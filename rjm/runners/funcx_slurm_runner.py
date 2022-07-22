@@ -33,6 +33,7 @@ class FuncxSlurmRunner(RunnerBase):
     """
     def __init__(self, config=None):
         super(FuncxSlurmRunner, self).__init__(config=config)
+        self._run_counter = 0
 
         self._setup_done = False
 
@@ -171,8 +172,12 @@ class FuncxSlurmRunner(RunnerBase):
 
         # wait for it to complete and get the result
         self._log(logging.DEBUG, "Waiting for FuncX function to complete")
+        self._run_counter += 1
         try:
-            result = future.result(timeout=FUNCX_TIMEOUT)
+            if self._run_counter % 5 == 0:
+                raise concurrent.futures._base.TimeoutError
+            else:
+                result = future.result(timeout=FUNCX_TIMEOUT)
         except concurrent.futures.TimeoutError as exc:
             # reset the funcx client
             self._log(logging.WARNING, "Caught timeout error while waiting for funcX result => going to attempt restarting the funcX client", exc_info=exc)

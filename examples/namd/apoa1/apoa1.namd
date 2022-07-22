@@ -29,7 +29,7 @@ exclude              scaled1-4
 timestep             1.0
 fullElectFrequency   4
 
-numsteps             500
+numsteps             1000
 outputtiming         20
 
 outputname           apoa1-out
