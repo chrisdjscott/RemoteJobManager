@@ -1,0 +1,6 @@
+apoa1.namd
+apoa1.pdb
+apoa1.psf
+par_all22_popc.xplor
+par_all22_prot_lipid.xplor
+run.sl
