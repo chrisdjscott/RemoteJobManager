@@ -175,15 +175,22 @@ def test_run_function_timeout(runner, mocker):
     assert mocked.call_count == 1
 
 
-class MockedFuncXClient:
-    """dummy class"""
-
-
-class MockedFuncXExecutor:
-    """dummy class"""
-
-
 def test_reset_funcx_client(configobj, mocker):
+    class MockedFuncXClient:
+        """dummy class"""
+
+    class DummyFuture:
+        def result(self, timeout=None):
+            return "dummyresult"
+
+    class MockedFuncXExecutor:
+        """dummy class"""
+        def shutdown(self):
+            pass
+
+        def submit(self, *args, **kwargs):
+            return DummyFuture()
+
     mocked_create_client = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner._create_funcx_client',
     )
@@ -238,4 +245,7 @@ def test_reset_funcx_client(configobj, mocker):
     assert mocked_create_client.call_count == 2
     assert runner._funcx_executor.id == 2
     assert child1._funcx_executor.id == 2
+
+    # child 2 should get the updated executor after it calls run_function...
+    child2.run_function(None)
     assert child2._funcx_executor.id == 2
