@@ -121,24 +121,46 @@ class FuncxSlurmRunner(RunnerBase):
         # now create the funcx client
         self.reset_funcx_client()
 
+    def _create_funcx_client(self):
+        """Return new Funcx client instance"""
+        if not self._setup_done:
+            raise RuntimeError("setup_globus_auth must be called before create_funcx_client")
+
+        self._log(logging.DEBUG, "Creating funcX client")
+
+        # setting up the FuncX client
+        funcx_client = FuncXClient(
+            fx_authorizer=self._funcx_authoriser,
+            search_authorizer=self._search_authoriser,
+            openid_authorizer=self._openid_authoriser,
+            use_offprocess_checker=self._use_offprocess_checker,
+        )
+
+        return funcx_client
+
+    def _create_funcx_executor(self):
+        """Return new funcx executor instance"""
+        if self._funcx_client is None:
+            raise RuntimeError("create_funcx_executor requires _funcx_client to be set first")
+
+        self._log(logging.DEBUG, "Creating funcX executor")
+
+        # create a funcx executor
+        funcx_executor = FuncXExecutor(self._funcx_client)
+
+        return funcx_executor
+
     def reset_funcx_client(self, propagate=False):
         """Force the runner to create a new funcX client"""
         if not self._setup_done:
             raise RuntimeError("setup_globus_auth must be called before reset_funcx_client")
 
         if self._external_runner is None:
-            self._log(logging.DEBUG, "Creating funcX client")
-
-            # setting up the FuncX client
-            self._funcx_client = FuncXClient(
-                fx_authorizer=self._funcx_authoriser,
-                search_authorizer=self._search_authoriser,
-                openid_authorizer=self._openid_authoriser,
-                use_offprocess_checker=self._use_offprocess_checker,
-            )
+            # create a funcx client
+            self._funcx_client = self._create_funcx_client()
 
             # create a funcX executor
-            self._funcx_executor = FuncXExecutor(self._funcx_client)
+            self._funcx_executor = self._create_funcx_executor()
 
         else:
             # if required, force the external runner to reset too
