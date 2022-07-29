@@ -128,7 +128,9 @@ class FuncxSlurmRunner(RunnerBase):
             raise RuntimeError("setup_globus_auth must be called before reset_funcx_client")
 
         if self._external_runner is None:
-            self._log(logging.DEBUG, "Creating funcX client")
+            if self._funcx_executor is not None:
+                self._log(logging.DEBUG, f"Shutting down old funcX executor ({self._funcx_executor})")
+                self._funcx_executor.shutdown()
 
             # setting up the FuncX client
             self._funcx_client = FuncXClient(
@@ -137,37 +139,51 @@ class FuncxSlurmRunner(RunnerBase):
                 openid_authorizer=self._openid_authoriser,
                 use_offprocess_checker=self._use_offprocess_checker,
             )
+            self._log(logging.DEBUG, f"Created funcX client: {self._funcx_client}")
 
             # create a funcX executor
             self._funcx_executor = FuncXExecutor(self._funcx_client)
+            self._log(logging.DEBUG, f"Created funcX executor: {self._funcx_executor}")
 
         else:
+            self._funcx_executor = None
+            self._funcx_client = None
+
             # if required, force the external runner to reset too
             if propagate:
                 self._log(logging.DEBUG, "Resetting funcX client on passed in runner")
                 self._external_runner.reset_funcx_client(propagate=True)
 
-            # update our references
-            self._log(logging.DEBUG, "Storing reference to funcX client on passed in runner")
-            self._funcx_client = self._external_runner.get_funcx_client()
-            self._funcx_executor = self._external_runner.get_funcx_executor()
-
     def get_funcx_client(self):
         """Returns the funcx client"""
-        return self._funcx_client
+        if self._external_runner is not None:
+            client = self._external_runner.get_funcx_client()
+        else:
+            client = self._funcx_client
+
+        return client
 
     def get_funcx_executor(self):
         """Returns the funcx executor"""
-        return self._funcx_executor
+        if self._external_runner is not None:
+            executor = self._external_runner.get_funcx_executor()
+        else:
+            executor = self._funcx_executor
+
+        return executor
 
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""
+        if self._external_runner is not None:
+            # update reference to executor
+            self._funcx_executor = self._external_runner.get_funcx_executor()
+
         if self._funcx_executor is None:
             self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
             raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
 
         # start the function
-        self._log(logging.DEBUG, f"Submitting function to FuncX executor: {function}")
+        self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
         future = self._funcx_executor.submit(function, *args, endpoint_id=self._funcx_endpoint, **kwargs)
 
         # wait for it to complete and get the result

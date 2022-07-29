@@ -1,0 +1,4 @@
+apoa1-out.*
+slurm.out
+remote_job.json
+stderr.txt
