@@ -7,6 +7,7 @@ import concurrent.futures
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
+from funcx.sdk.login_manager.manager import LoginManager
 from retry.api import retry_call
 
 from rjm import utils
@@ -43,6 +44,9 @@ class FuncxSlurmRunner(RunnerBase):
         self._search_authoriser = None
         self._funcx_authoriser = None
         self._openid_authoriser = None
+
+        # funcx login manager
+        self._login_manager = CustomLoginManager()
 
         # funcx client and executor
         self._external_runner = None
@@ -85,13 +89,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
-        self._required_scopes = [
-            utils.OPENID_SCOPE,
-            utils.SEARCH_SCOPE,
-            FUNCX_SCOPE,
-        ]
-
-        return self._required_scopes
+        return self._login_manager.get_scopes()
 
     def setup_globus_auth(self, globus_cli, runner=None):
         """Do any Globus auth setup here, if required"""
@@ -107,11 +105,8 @@ class FuncxSlurmRunner(RunnerBase):
             else:
                 self._use_offprocess_checker = True
 
-            # store the authorisers
-            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=self._required_scopes)
-            self._funcx_authoriser = authorisers[FUNCX_SCOPE]
-            self._search_authoriser = authorisers[utils.SEARCH_SCOPE]
-            self._openid_authoriser = authorisers[utils.OPENID_SCOPE]
+            # create the login manager
+            self._login_manager.set_cli(globus_cli)
 
         else:
             # store reference to passed in runner
@@ -130,9 +125,7 @@ class FuncxSlurmRunner(RunnerBase):
 
         # setting up the FuncX client
         funcx_client = FuncXClient(
-            fx_authorizer=self._funcx_authoriser,
-            search_authorizer=self._search_authoriser,
-            openid_authorizer=self._openid_authoriser,
+            login_manager=self._login_manager,
             use_offprocess_checker=self._use_offprocess_checker,
         )
 
@@ -596,3 +589,45 @@ def _make_remote_directories(base_path, prefixes):
         remote_dirs = repr(exc)
 
     return remote_dirs
+
+
+class CustomLoginManager(LoginManager):
+    """
+    Custom login manager that uses RJM token storage
+
+    """
+    def __init__(self):
+        self._cli = None
+        self._logger = logging.getLogger(__name__ + ".CustomLoginManager")
+
+    def set_cli(self, cli):
+        """Set the native auth client"""
+        self._cli = cli
+
+    def get_scopes(self):
+        """Return list of required scopes"""
+        scopes = [
+            s for _rs_name, rs_scopes in self.login_requirements for s in rs_scopes
+        ]
+
+        return scopes
+
+    def ensure_logged_in(self):
+        self._logger.warning("ensure_logged_in has not been implemented")
+
+    def logout(self):
+        self._logger.warning("logout has not been implemented")
+
+    def _get_authorizer(self, resource_server):
+        if self._cli is None:
+            raise RuntimeError('Must call "set_cli" on "CustomLoginManager"')
+
+        # get the authorisers
+        authorisers = self._cli.get_authorizers(self.get_scopes())
+
+        # check the selected authoriser exists
+        if resource_server not in authorisers:
+            raise RuntimeError(f'resource server "{resource_server}" is authorised - try "rjm_authenticate"')
+
+        # return the selected authoriser
+        return authorisers[resource_server]
