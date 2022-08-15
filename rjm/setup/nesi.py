@@ -199,6 +199,9 @@ class NeSISetup:
                 stdin.flush()
                 stdin.channel.shutdown_write()  # send EOF
 
+                print("="*120)
+                print("Continuing with funcX setup, please wait...")
+
         else:
             output = ""
 
@@ -546,6 +549,8 @@ class NeSISetup:
         If stop is True, then stop the endpoint if it is running
 
         """
+        print("Checking if a funcX endpoint is running, please wait...")
+
         # test whether funcx endpoint is actually running
         # loop over nodes where funcx could be running
         funcx_running_nodes = []
