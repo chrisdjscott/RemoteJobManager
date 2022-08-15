@@ -183,14 +183,14 @@ class NeSISetup:
 
         if have_output:
             logger.debug("Receiving stdout...")
-            output = stdout.channel.recv(2048).decode('utf-8').strip()
+            output = stdout.channel.recv(2048).decode('utf-8')
 
             # handling authentication here...
             if "Please Paste your Auth Code Below" in output:
                 # need to do auth
                 print("="*120)
                 print("Follow these instructions to authenticate funcX on NeSI:")
-                print(output)
+                print(output.strip())
                 auth_code = input().strip()
 
                 # send auth code
@@ -199,9 +199,12 @@ class NeSISetup:
                 stdin.flush()
                 stdin.channel.shutdown_write()  # send EOF
 
+        else:
+            output = ""
+
         # wait for process to complete
         logger.debug("Waiting for process to finish")
-        output = stdout.read().decode('utf-8').strip()
+        output = (output + stdout.read().decode('utf-8')).strip()
         error = stderr.read().decode('utf-8').strip()
         status = stdout.channel.recv_exit_status()
 
