@@ -1,6 +1,7 @@
 
 import os
 import sys
+import time
 import logging
 import getpass
 import tempfile
@@ -153,6 +154,59 @@ class NeSISetup:
 
         return return_val
 
+    def _run_command_handle_funcx_authentication(self, command):
+        """
+        Execute funcx command on NeSI
+
+        Try to detect if funcx requests authentication before executing the command
+
+        If so, request the code from the user and then continue
+
+        Ensure /etc/profile is sourced prior to running the command.
+
+        """
+        full_command = f"source /etc/profile && {command}"
+        logger.debug(f"Running command: '{full_command}'")
+        stdin, stdout, stderr = self._client.exec_command(full_command)
+
+        # wait until stdout channel has data ready
+        have_output = True
+        while not stdout.channel.recv_ready():
+            # check if the process exited without any output
+            if stdout.channel.exit_status_ready():
+                logger.debug("Breaking recv loop due to exit status ready")
+                have_output = False
+                break
+            else:
+                time.sleep(5)
+                logger.debug("Waiting for stdout to have some data")
+
+        if have_output:
+            logger.debug("Receiving stdout...")
+            output = stdout.channel.recv(2048).decode('utf-8').strip()
+
+            # handling authentication here...
+            if "Please Paste your Auth Code Below" in output:
+                # need to do auth
+                print("="*120)
+                print("Follow these instructions to authenticate funcX on NeSI:")
+                print(output)
+                auth_code = input().strip()
+
+                # send auth code
+                logger.debug("Sending auth code to remote")
+                stdin.write(auth_code)
+                stdin.flush()
+                stdin.channel.shutdown_write()  # send EOF
+
+        # wait for process to complete
+        logger.debug("Waiting for process to finish")
+        output = stdout.read().decode('utf-8').strip()
+        error = stderr.read().decode('utf-8').strip()
+        status = stdout.channel.recv_exit_status()
+
+        return status, output, error
+
     def run_command(self, command, input_text=None):
         """
         Execute command on NeSI and return stdout and stderr.
@@ -302,50 +356,16 @@ class NeSISetup:
         """
         print("Setting up funcX, please wait...")
 
-        # make sure funcx is authorised
-        if not self.is_funcx_authorised():
-            logger.info("Authorising funcX")
-            print("="*120)
-            print("Authorising funcX - this should open a browser where you need to authenticate with Globus and approve access")
-            print("="*120)
-
-            required_scopes = [
-                utils.OPENID_SCOPE,
-                utils.SEARCH_SCOPE,
-                FUNCX_SCOPE,
-            ]
-
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmp_token_file = os.path.join(tmpdir, "tokens.json")
-                logger.debug(f"Requesting funcX tokens and storing in tmpfile: {tmp_token_file}")
-                logger.debug(f"Using funcx client id: {FuncXClient.FUNCX_SDK_CLIENT_ID}")
-                utils.handle_globus_auth(
-                    required_scopes,
-                    token_file=tmp_token_file,
-                    client_id=FuncXClient.FUNCX_SDK_CLIENT_ID,  # using their client id so refreshing works
-                    name="RJM on behalf of FuncX Endpoint",
-                )
-                assert os.path.exists(tmp_token_file)
-                print("Authentication done. Continuing, please wait...")
-
-                # upload funcx tokens to correct place if needed
-                logger.debug("Transferring token file to NeSI")
-
-                # create the credentials directory
-                self._remote_dir_create(f'/home/{self._username}/.funcx/credentials')
-
-                # transfer the token file we just created
-                self._sftp.put(tmp_token_file, self._funcx_cred_file)
-
-            assert self.is_funcx_authorised(), "funcX authorisation failed"
-            logger.info("funcX authorisation complete")
+        authed = self.is_funcx_authorised()
+        logger.debug(f"funcX is authorised: {authed}")
 
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
             logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
             print("Configuring funcX, please wait...")
 
-            status, stdout, stderr = self.run_command(f"module load {FUNCX_MODULE} && funcx-endpoint configure {FUNCX_ENDPOINT_NAME}")
+            command = f"module load {FUNCX_MODULE} && funcx-endpoint configure {FUNCX_ENDPOINT_NAME}"
+            status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
             assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
 
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
@@ -361,7 +381,9 @@ class NeSISetup:
         if not endpoint_running:
             logger.info(f"Starting funcx '{FUNCX_ENDPOINT_NAME}' endpoint")
             print("Starting funcX endpoint, please wait...")
-            status, stdout, stderr = self.run_command(f"module load {FUNCX_MODULE} && funcx-endpoint start {FUNCX_ENDPOINT_NAME}")
+
+            command = f"module load {FUNCX_MODULE} && funcx-endpoint start {FUNCX_ENDPOINT_NAME}"
+            status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
             assert status == 0, f"Starting endpoint failed: {stdout} {stderr}"
             endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
             assert endpoint_running, f'Starting funcX endpoint failed: {stdout} {stderr}'
@@ -522,41 +544,39 @@ class NeSISetup:
 
         """
         # test whether funcx endpoint is actually running
-        if self.is_funcx_authorised():
-            # loop over nodes where funcx could be running
-            funcx_running_nodes = []
-            funcx_endpoint_id = None
-            for node in FUNCX_NODES:
-                status, stdout, stderr = self.run_command(f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'")
-                assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
+        # loop over nodes where funcx could be running
+        funcx_running_nodes = []
+        funcx_endpoint_id = None
+        for node in FUNCX_NODES:
+            command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'"
+            status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
+            assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
 
-                for line in stdout.splitlines():
-                    if FUNCX_ENDPOINT_NAME in line:
-                        funcx_endpoint_id = line.split('|')[3].strip()
-                        if "Running" in line:
-                            funcx_running_nodes.append(node)
-                            break
+            for line in stdout.splitlines():
+                if FUNCX_ENDPOINT_NAME in line:
+                    funcx_endpoint_id = line.split('|')[3].strip()
+                    if "Running" in line:
+                        funcx_running_nodes.append(node)
+                        break
 
-            # report which nodes the endpoint is running on
-            if len(funcx_running_nodes) > 0:
-                logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint (id: {funcx_endpoint_id}) is running on: {funcx_running_nodes}")
-            else:
-                logger.debug("funcX endpoint is not running")
-
-            # stop the endpoint if multiple are running or we're specfically asked to
-            if len(funcx_running_nodes) > 1 or stop:
-                if len(funcx_running_nodes) > 1:
-                    logger.warning(f'funcX endpoint running on multiple nodes -> attempting to stop them all: {funcx_running_nodes}')
-                else:
-                    print("Stopping funcX endpoint for restart, please wait...")
-
-                for node in funcx_running_nodes:
-                    status, stdout, stderr = self.run_command(f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'")
-                    if status:
-                        raise RuntimeError(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
-                funcx_running_nodes = []
-
-            return len(funcx_running_nodes) != 0, funcx_endpoint_id
-
+        # report which nodes the endpoint is running on
+        if len(funcx_running_nodes) > 0:
+            logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint (id: {funcx_endpoint_id}) is running on: {funcx_running_nodes}")
         else:
-            raise RuntimeError("ensure funcX is authorised before checking whether the endpoint is running")
+            logger.debug("funcX endpoint is not running")
+
+        # stop the endpoint if multiple are running or we're specfically asked to
+        if len(funcx_running_nodes) > 1 or stop:
+            if len(funcx_running_nodes) > 1:
+                logger.warning(f'funcX endpoint running on multiple nodes -> attempting to stop them all: {funcx_running_nodes}')
+            else:
+                print("Stopping funcX endpoint for restart, please wait...")
+
+            for node in funcx_running_nodes:
+                command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'"
+                status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
+                if status:
+                    raise RuntimeError(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
+            funcx_running_nodes = []
+
+        return len(funcx_running_nodes) != 0, funcx_endpoint_id
