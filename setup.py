@@ -67,9 +67,9 @@ setup(
         "retry",
         "requests",
         "paramiko",
-        "fair-research-login==0.2.6",  # pinned to same version as funcx requires
+        "fair-research-login",
         "globus-sdk>=3",
-        "funcx==0.3.6",
+        "funcx==0.4.0a2",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
