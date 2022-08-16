@@ -10,7 +10,6 @@ from funcx.sdk.executor import FuncXExecutor
 from funcx.sdk.login_manager.manager import LoginManager
 from retry.api import retry_call
 
-from rjm import utils
 from rjm.runners.runner_base import RunnerBase
 from rjm.errors import RemoteJobRunnerError
 
