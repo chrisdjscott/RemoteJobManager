@@ -12,6 +12,7 @@ from rjm import utils
 from rjm import config as config_helper
 from rjm import __version__
 from rjm.setup.nesi import NeSISetup
+from rjm.auth import do_authentication
 
 
 logger = logging.getLogger(__name__)
@@ -80,6 +81,7 @@ def nesi_setup():
     account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
     password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
     token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
+    print("="*120)
 
     # create the setup object
     nesi = NeSISetup(username, password, token, account)
@@ -129,7 +131,14 @@ def nesi_setup():
 
         print("="*120)
         print("Configuration file has been updated")
-        print("Please run rjm_authenticate to finish setup")
+        print("="*120)
+        print("Running authenticate next...")
+
+        # force fresh authentication
+        do_authentication(force=True, verbose=True)
+
+        print("="*120)
+        print("You should be ready to start using rjm now")
         print("="*120)
 
     else:
