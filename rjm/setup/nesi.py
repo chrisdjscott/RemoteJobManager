@@ -22,7 +22,7 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "funcx-endpoint/1.0.0-gimkl-2020a-Python-3.9.9"
+FUNCX_MODULE = "funcx-endpoint/1.0.1-gimkl-2020a-Python-3.9.9"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
@@ -49,9 +49,6 @@ class NeSISetup:
         self._client = None
         self._sftp = None
         self._lander_client = None
-        self._funcx_authorised = None
-        self._funcx_configured = None
-        self._funcx_running = None
 
         # initialise values we are setting up
         self._funcx_id = None  # funcX endpoint id
@@ -359,9 +356,6 @@ class NeSISetup:
         """
         print("Setting up funcX, please wait...")
 
-        authed = self.is_funcx_authorised()
-        logger.debug(f"funcX is authorised: {authed}")
-
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
             logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
@@ -508,21 +502,6 @@ class NeSISetup:
         # assume it is configured if the credentials and default endpoint files exist
         # or run status and see if we can tell from that
         # first test if funcx
-
-    def is_funcx_authorised(self):
-        """
-        Check whether funcx is authorised already
-
-        """
-        # test if credentials file exists, if so, we assume it is authorised
-        if self._remote_path_exists(self._funcx_cred_file):
-            logger.debug("Assuming funcx is authorised as credentials file exists")
-            authorised = True
-        else:
-            logger.debug("funcX credentials file does not exist")
-            authorised = False
-
-        return authorised
 
     def is_funcx_endpoint_configured(self):
         """
