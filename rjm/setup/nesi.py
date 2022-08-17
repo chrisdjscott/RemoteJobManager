@@ -9,12 +9,9 @@ import importlib.resources
 
 import paramiko
 from globus_sdk import GCSClient
-from globus_sdk import GCSAPIError
 from globus_sdk.services.gcs.data import GuestCollectionDocument
-from funcx import FuncXClient
 
 from rjm import utils
-from rjm.runners.funcx_slurm_runner import FUNCX_SCOPE
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +22,7 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "funcx-endpoint/0.3.6-gimkl-2020a-Python-3.9.9"
+FUNCX_MODULE = "funcx-endpoint/1.0.0-gimkl-2020a-Python-3.9.9"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
