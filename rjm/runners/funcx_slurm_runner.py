@@ -96,15 +96,7 @@ class FuncxSlurmRunner(RunnerBase):
 
         # prepare to create the funcx client
         if runner is None:
-            # offprocess checker not working well with freezing currently
-            if getattr(sys, "frozen", False):
-                # application is frozen
-                self._use_offprocess_checker = False
-                self._log(logging.DEBUG, "Disabling offprocess_checker when frozen")
-            else:
-                self._use_offprocess_checker = True
-
-            # create the login manager
+            # setting up the login manager
             self._login_manager.set_cli(globus_cli)
 
         else:
@@ -125,7 +117,6 @@ class FuncxSlurmRunner(RunnerBase):
         # setting up the FuncX client
         funcx_client = FuncXClient(
             login_manager=self._login_manager,
-            use_offprocess_checker=self._use_offprocess_checker,
         )
 
         return funcx_client
