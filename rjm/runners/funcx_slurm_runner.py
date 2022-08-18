@@ -617,7 +617,7 @@ class CustomLoginManager(LoginManager):
 
         # check the selected authoriser exists
         if resource_server not in authorisers:
-            raise RuntimeError(f'resource server "{resource_server}" is authorised - try "rjm_authenticate"')
+            raise RuntimeError(f'resource server "{resource_server}" is not authorised - try "rjm_authenticate"')
 
         # return the selected authoriser
         return authorisers[resource_server]
