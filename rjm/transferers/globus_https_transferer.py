@@ -17,6 +17,7 @@ from rjm.errors import RemoteJobTransfererError
 
 DOWNLOAD_CHUNK_SIZE = 8192
 FILE_CHUNK_SIZE = 8192
+REQUESTS_TIMEOUT = 20
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ class GlobusHttpsTransferer(TransfererBase):
         # upload
         start_time = time.perf_counter()
         with open(filename, 'rb') as f:
-            r = requests.put(upload_url, data=f, headers=headers)
+            r = requests.put(upload_url, data=f, headers=headers, timeout=REQUESTS_TIMEOUT)
             r.raise_for_status()
         upload_time = time.perf_counter() - start_time
         self.log_transfer_time("Uploaded", filename, upload_time)
@@ -279,7 +280,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # download with temporary local file name
         start_time = time.perf_counter()
-        with requests.get(download_url, headers=headers, stream=True) as r:
+        with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
             r.raise_for_status()
             with open(local_file_tmp, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
