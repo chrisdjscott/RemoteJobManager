@@ -81,8 +81,7 @@ def health_check():
         print("Using runner to check directory and file exist...")
         # for some reason, funcx isn't able to extract the source when in a pyinstaller bundle unless
         #  we import it, looks like dill can't get the source file path correct otherwise
-        import rjm.cli.rjm_health_check
-        result = r.run_function(rjm.cli.rjm_health_check._remote_health_check, remote_dir, test_file_name)
+        result = r.run_function(_remote_health_check, remote_dir, test_file_name)
         if result is None:
             print("Finished checking directory and file exist")
         else:

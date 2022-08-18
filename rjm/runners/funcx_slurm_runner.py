@@ -23,14 +23,6 @@ SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
 
 logger = logging.getLogger(__name__)
 
-# TEMPORARY FIX
-# remove DillCode from dict of methods to serialise code, because it doesn't work for us
-if fxs.DillCode.identifier in fxs.METHODS_MAP_CODE:
-    logger.warning("Removing DillCode from funcx serialisers")
-    fxs.METHODS_MAP_CODE.pop(fxs.DillCode.identifier)
-    logger.debug(f"Remaining methods: {fxs.METHODS_MAP_CODE}")
-# END OF TEMPORARY FIX
-
 
 class FuncxSlurmRunner(RunnerBase):
     """
