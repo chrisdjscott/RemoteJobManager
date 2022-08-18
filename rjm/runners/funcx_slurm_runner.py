@@ -7,7 +7,6 @@ import concurrent.futures
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
-import funcx.serialize.concretes as fxs
 from funcx.sdk.login_manager.manager import LoginManager
 from retry.api import retry_call
 
