@@ -69,7 +69,7 @@ setup(
         "paramiko",
         "fair-research-login",
         "globus-sdk>=3",
-        "funcx @ git+https://github.com/funcx-faas/funcX.git@b1491df7a10ab4bf3567718819fea207b9d17ed3#subdirectory=funcx_sdk",
+        "funcx==1.0.2",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
