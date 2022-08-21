@@ -16,12 +16,14 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', default="critical",
                         help="level of log verbosity (default: %(default)s)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-k', '--keep', action="store_true",
+                        help="Keep health check files on remote system, i.e. do not delete them after completing the check (default=%(default)s)")
     parser.add_argument("-v", '--version', action='version', version='%(prog)s ' + __version__)
 
     return parser
 
 
-def _remote_health_check(remote_dir, remote_file):
+def _remote_health_check(remote_dir, remote_file, keep):
     """Check the directory and file exist"""
     import os
 
@@ -34,9 +36,10 @@ def _remote_health_check(remote_dir, remote_file):
     if not os.path.isfile(full_path_file):
         return f"Remote file does not exist: '{full_path_file}'"
 
-    # everything worked if we got this far, so delete the remote file and directory
-    os.unlink(full_path_file)
-    os.rmdir(remote_dir)
+    if not keep:
+        # everything worked if we got this far, so delete the remote file and directory
+        os.unlink(full_path_file)
+        os.rmdir(remote_dir)
 
 
 def health_check():
@@ -79,7 +82,7 @@ def health_check():
         # use runner to check the directory and file exists (tests funcx)
         print()
         print("Using runner to check directory and file exist...")
-        result = r.run_function(_remote_health_check, remote_dir, test_file_name)
+        result = r.run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
         if result is None:
             print("Finished checking directory and file exist")
         else:
