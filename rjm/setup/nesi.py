@@ -1,6 +1,7 @@
 
 import os
 import sys
+import stat
 import time
 import logging
 import getpass
@@ -28,6 +29,8 @@ GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
 GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"
 NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
+SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
+SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
 
 
 class NeSISetup:
@@ -164,46 +167,51 @@ class NeSISetup:
         stdin, stdout, stderr = self._client.exec_command(full_command)
 
         # wait until stdout channel has data ready
-        have_output = True
         while not stdout.channel.recv_ready():
             # check if the process exited without any output
             if stdout.channel.exit_status_ready():
-                logger.debug("Breaking recv loop due to exit status ready")
-                have_output = False
+                logger.debug("Breaking wait loop due to exit status ready")
                 break
             else:
                 time.sleep(5)
-                logger.debug("Waiting for stdout to have some data")
+                logger.debug("Waiting for remote process")
 
-        if have_output:
-            logger.debug("Receiving stdout...")
-            output = stdout.channel.recv(2048).decode('utf-8')
+        # set a timeout on the channel
+        stdout.channel.settimeout(30)
 
-            # handling authentication here...
-            if "Please Paste your Auth Code Below" in output:
-                # need to do auth
-                print("="*120)
-                print("Follow these instructions to authenticate funcX on NeSI:")
-                print(output.strip())
-                auth_code = input().strip()
+        # receive any output
+        logger.debug(f"Receiving stdout: {stdout.channel.recv_ready()}")
+        output = ""
+        while stdout.channel.recv_ready():
+            output += stdout.channel.recv(1024).decode('utf-8')
+            logger.debug(f"Received stdout:\n{output}\nEnd of received stdout")
+            logger.debug(f"More to receive: {stdout.channel.recv_ready()}")
 
-                # send auth code
-                logger.debug("Sending auth code to remote")
-                stdin.write(auth_code)
-                stdin.flush()
-                stdin.channel.shutdown_write()  # send EOF
+        # handling funcx authentication here...
+        if "https://auth.globus.org/v2/oauth2/authorize" in output:
+            # need to do auth
+            print("="*120)
+            print("Follow these instructions to authenticate funcX on NeSI:")
+            print(output.strip())
+            auth_code = input().strip()
 
-                print("="*120)
-                print("Continuing with funcX setup, please wait...")
+            # send auth code
+            logger.debug("Sending auth code to remote")
+            stdin.write(auth_code)
+            stdin.flush()
+            stdin.channel.shutdown_write()  # send EOF
 
-        else:
-            output = ""
+            print("="*120)
+            print("Continuing with funcX setup, please wait...")
 
         # wait for process to complete
-        logger.debug("Waiting for process to finish")
+        logger.debug("Reading remaining stdout")
         output = (output + stdout.read().decode('utf-8')).strip()
+        logger.debug("Reading stderr")
         error = stderr.read().decode('utf-8').strip()
+        logger.debug("Waiting for process to finish")
         status = stdout.channel.recv_exit_status()
+        logger.debug("Returning")
 
         return status, output, error
 
@@ -347,6 +355,34 @@ class NeSISetup:
         self._globus_id = endpoint_id
         self._globus_path = guest_collection_dir
 
+    def _check_home_permissions(self):
+        """
+        Check home directory permissions - there was a problem with the provisioner
+        that resulted in some homes having group write permission which results in
+        passwordless ssh between login nodes not working
+
+        """
+        print("Checking for suitable home directory permissions on NeSI, please wait...")
+
+        s = self._sftp.stat(f"/home/{self._username}")
+        logger.debug(f"Home directory stat: {s}")
+        group_write = bool(s.st_mode & stat.S_IWGRP)
+        logger.debug(f"Group write permission on home (should be False): {group_write}")
+
+        if group_write:
+            print("WARNING: your home directory on NeSI has group write permissions")
+            print("         this was probably a mistake when your account was set up")
+            proceed = input('Enter "yes" to fix this now (it should not cause any issues): ').strip() == "yes"
+            if not proceed:
+                sys.exit("Cannot proceed with bad home directory permissions")
+
+            # remove group write from home directory
+            cmd = f"chmod g-w /home/{self._username}"
+            print(f'Fixing home directory permissions: "{cmd}"')
+            status, output, stderr = self.run_command(cmd)
+            if status:
+                raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
+
     def setup_funcx(self, restart=False):
         """
         Sets up the funcX endpoint on NeSI.
@@ -355,6 +391,14 @@ class NeSISetup:
 
         """
         print("Setting up funcX, please wait...")
+
+        # check home directory permissions - there was a problem with the provisioner
+        #  that resulted in some homes having group write permission which results in
+        #  passwordless ssh between login nodes not working
+        self._check_home_permissions()
+
+        # remove existing scrontab to avoid interference
+        self._remove_funcx_scrontab()
 
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
@@ -401,6 +445,65 @@ class NeSISetup:
         print("You may also notice a Slurm job has been created with name 'funcxcheck', please do not cancel it!")
         print("="*120)
 
+    def _retrieve_current_scrontab(self):
+        """
+        Retrieve the current scrontab
+
+        """
+        status, stdout, stderr = self.run_command('scrontab -l')
+        if status != 0:
+            if "no crontab for" in stdout or "no crontab for" in stderr:
+                # blank scrontab
+                current_scrontab = ""
+            else:
+                raise RuntimeError(f"Failed to retrieve current scrontab contents: '{stdout}' '{stderr}'")
+        else:
+            current_scrontab = stdout
+
+        return current_scrontab
+
+    def _remove_funcx_scrontab(self):
+        """
+        Remove existing funcx scrontab entry
+
+        """
+        print("Removing existing scrontab to avoid interferences, please wait...")
+
+        current_scrontab = self._retrieve_current_scrontab()
+
+        # remove rjm section from current scrontab, if any
+        new_scrontab_lines = []
+        in_rjm_section = False
+        modified = False
+        for line in current_scrontab.splitlines():
+            if SCRON_SECTION_START in line:
+                in_rjm_section = True
+                logger.debug("Found beginning of rjm section in existing scrontab")
+                modified = True
+            elif in_rjm_section and SCRON_SECTION_END in line:
+                in_rjm_section = False
+                logger.debug("Found end of rjm section in existing scrontab")
+                modified = True
+            elif in_rjm_section:
+                logger.debug(f"Removing current rjm section ({line})")
+                modified = True
+            else:
+                new_scrontab_lines.append(line)
+
+        # write the new scrontab if changed
+        if modified:
+            new_scrontab_text = "\n".join(new_scrontab_lines)
+            self._write_new_scrontab(new_scrontab_text)
+
+    def _write_new_scrontab(self, scrontab_text):
+        """
+        Write the text to the scrontab
+
+        """
+        logger.debug(f"New scrontab content follows:\n{scrontab_text}")
+        status, stdout, stderr = self.run_command("scrontab -", input_text=scrontab_text)
+        assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
+
     def _setup_funcx_scrontab(self):
         """
         Create a scrontab job for keeping funcx endpoint running
@@ -426,53 +529,26 @@ class NeSISetup:
         assert status == 0, f"Failed to convert convert script to unix format: {stdout} {stderr}"
 
         # retrieve current scrontab
-        status, stdout, stderr = self.run_command('scrontab -l')
-        if status != 0:
-            if "no crontab for" in stdout or "no crontab for" in stderr:
-                # blank scrontab
-                current_scrontab = ""
-            else:
-                raise RuntimeError(f"Failed to retrieve current scrontab contents: '{stdout}' '{stderr}'")
-        else:
-            current_scrontab = stdout
+        current_scrontab = self._retrieve_current_scrontab()
 
         # for storing new scrontab
-        new_scrontab_lines = []
+        scrontab_lines = current_scrontab.splitlines()
 
-        # remove rjm section from current scrontab, if any
-        in_rjm_section = False
-        rjm_section_start = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
-        rjm_section_end = "# END RJM AUTOMATICALLY ADDED SECTION"
-        for line in current_scrontab.splitlines():
-            if rjm_section_start in line:
-                in_rjm_section = True
-                logger.debug("Found beginning of rjm section in existing scrontab")
-            elif in_rjm_section and rjm_section_end in line:
-                in_rjm_section = False
-                logger.debug("Found end of rjm section in existing scrontab")
-            elif in_rjm_section:
-                logger.debug(f"Removing current rjm section ({line})")
-            else:
-                new_scrontab_lines.append(line)
-                logger.debug(f"Keeping existing scrontab line ({line})")
-
-        # add new rjm section
-        if len(new_scrontab_lines) > 0 and len(new_scrontab_lines[-1].strip()) > 0:
-            new_scrontab_lines.append("")  # insert space if there were lines before
-        new_scrontab_lines.append(rjm_section_start)
-        new_scrontab_lines.append("#SCRON --time=08:00")
-        new_scrontab_lines.append("#SCRON --job-name=funcxcheck")
-        new_scrontab_lines.append(f"#SCRON --account={self._account}")
-        new_scrontab_lines.append("#SCRON --mem=128")
-        new_scrontab_lines.append(f"@hourly {script_path}")
-        new_scrontab_lines.append(rjm_section_end)
-        new_scrontab_lines.append("")  # end with a newline
+        # add new rjm section (assume existing section was already removed)
+        if len(scrontab_lines) > 0 and len(scrontab_lines[-1].strip()) > 0:
+            scrontab_lines.append("")  # insert space if there were lines before
+        scrontab_lines.append(SCRON_SECTION_START)
+        scrontab_lines.append("#SCRON --time=08:00")
+        scrontab_lines.append("#SCRON --job-name=funcxcheck")
+        scrontab_lines.append(f"#SCRON --account={self._account}")
+        scrontab_lines.append("#SCRON --mem=128")
+        scrontab_lines.append(f"@hourly {script_path}")
+        scrontab_lines.append(SCRON_SECTION_END)
+        scrontab_lines.append("")  # end with a newline
 
         # install new scrontab
-        new_scrontab_text = "\n".join(new_scrontab_lines)
-        logger.debug(f"New scrontab content follows:\n{new_scrontab_text}")
-        status, stdout, stderr = self.run_command("scrontab -", input_text=new_scrontab_text)
-        assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
+        new_scrontab_text = "\n".join(scrontab_lines)
+        self._write_new_scrontab(new_scrontab_text)
 
     def _remote_dir_create(self, path):
         """Create directory at the given path"""
@@ -560,7 +636,7 @@ class NeSISetup:
                 command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'"
                 status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
                 if status:
-                    raise RuntimeError(f"Failed to stop funcX endpoint on '{node}': {stdout} {stderr}")
+                    raise RuntimeError(f"Failed to stop funcX endpoint on '{node}':\n\n{stdout}\n\n{stderr}")
             funcx_running_nodes = []
 
         return len(funcx_running_nodes) != 0, funcx_endpoint_id
