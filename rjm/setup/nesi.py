@@ -1,6 +1,7 @@
 
 import os
 import sys
+import stat
 import time
 import logging
 import getpass
@@ -354,6 +355,34 @@ class NeSISetup:
         self._globus_id = endpoint_id
         self._globus_path = guest_collection_dir
 
+    def _check_home_permissions(self):
+        """
+        Check home directory permissions - there was a problem with the provisioner
+        that resulted in some homes having group write permission which results in
+        passwordless ssh between login nodes not working
+
+        """
+        print("Checking for suitable home directory permissions on NeSI, please wait...")
+
+        s = self._sftp.stat(f"/home/{self._username}")
+        logger.debug(f"Home directory stat: {s}")
+        group_write = bool(s.st_mode & stat.S_IWGRP)
+        logger.debug(f"Group write permission on home (should be False): {group_write}")
+
+        if group_write:
+            print("WARNING: your home directory on NeSI has group write permissions")
+            print("         this was probably a mistake when your account was set up")
+            proceed = input('Enter "yes" to fix this now (it should not cause any issues): ').strip() == "yes"
+            if not proceed:
+                sys.exit("Cannot proceed with bad home directory permissions")
+
+            # remove group write from home directory
+            cmd = f"chmod g-w /home/{self._username}"
+            print(f'Fixing home directory permissions: "{cmd}"')
+            status, output, stderr = self.run_command(cmd)
+            if status:
+                raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
+
     def setup_funcx(self, restart=False):
         """
         Sets up the funcX endpoint on NeSI.
@@ -362,6 +391,11 @@ class NeSISetup:
 
         """
         print("Setting up funcX, please wait...")
+
+        # check home directory permissions - there was a problem with the provisioner
+        #  that resulted in some homes having group write permission which results in
+        #  passwordless ssh between login nodes not working
+        self._check_home_permissions()
 
         # remove existing scrontab to avoid interference
         self._remove_funcx_scrontab()
