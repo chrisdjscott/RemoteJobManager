@@ -9,9 +9,10 @@ echo "Running $0 at $(date)" >> $LOG
 
 # delete old funcx endpoint logs
 EP_LOG_DIR=~/.funcx/${ENDPOINT_NAME}/HighThroughputExecutor/worker_logs/
+mkdir -p ${EP_LOG_DIR}
 nold=$(find ${EP_LOG_DIR} -type f -mtime +10 | wc -l)
 find ${EP_LOG_DIR} -type f -mtime +10 -delete
-find ${EP_LOG_DIR} -type d -empty -delete
+find ${EP_LOG_DIR}/* -type d -empty -delete > /dev/null 2>&1
 echo "  deleted ${nold} old funcx endpoint log files" >> $LOG
 
 # check if there is a funcx endpoint already running somewhere
