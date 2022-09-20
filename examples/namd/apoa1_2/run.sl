@@ -1,5 +1,5 @@
 #!/bin/bash -e
-#SBATCH --job-name=funcxnamdtest
+#SBATCH --job-name=rjmnamd2
 #SBATCH --time=00:10:00
 #SBATCH --ntasks=8
 #SBATCH --cpus-per-task=1
