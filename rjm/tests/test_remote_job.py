@@ -82,7 +82,7 @@ def test_run_wait_restarts_fail(rj, mocker):
     rj._runner._jobid = '1234567'
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
-        return_value=(1, "mocking failure")
+        return_value=(None, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
         rj.run_wait()
@@ -97,9 +97,9 @@ def test_run_wait_restarts_succeed(rj, mocker):
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
         side_effect=[
-            (1, "mocking failure"),
-            (0, "RUNNING"),
-            (0, "COMPLETED"),
+            (None, "mocking failure"),
+            ({rj._runner._jobid: "RUNNING"}, "no msg"),
+            ({rj._runner._jobid: "COMPLETED"}, "no msg"),
         ],
     )
 

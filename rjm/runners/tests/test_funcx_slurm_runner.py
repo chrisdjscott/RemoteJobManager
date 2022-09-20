@@ -91,7 +91,7 @@ def test_wait_fail(runner, mocker):
     runner._jobid = '123456'
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
-        return_value=(1, "mocking failure")
+        return_value=(None, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
         runner.wait()
@@ -104,9 +104,9 @@ def test_wait_completed_success(runner, mocker):
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
         side_effect=[
-            (0, "PENDING"),
-            (0, "RUNNING"),
-            (0, "COMPLETED"),
+            ({runner._jobid: "PENDING"}, "no msg"),
+            ({runner._jobid: "RUNNING"}, "no msg"),
+            ({runner._jobid: "COMPLETED"}, "no msg"),
         ],
     )
 
@@ -123,9 +123,9 @@ def test_wait_completed_failed(runner, mocker):
     mocked = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
         side_effect=[
-            (0, "PENDING"),
-            (0, "RUNNING"),
-            (0, "FAILED"),
+            ({runner._jobid: "PENDING"}, "no msg"),
+            ({runner._jobid: "RUNNING"}, "no msg"),
+            ({runner._jobid: "FAILED"}, "no msg"),
         ],
     )
 
@@ -249,3 +249,115 @@ def test_reset_funcx_client(configobj, mocker):
     # child 2 should get the updated executor after it calls run_function...
     child2.run_function(None)
     assert child2._funcx_executor.id == 2
+
+
+class MockedSubprocessReturn:
+    def __init__(self, status, output):
+        self.returncode = status
+        self.stdout = output
+
+
+def test_check_slurm_job_statuses_squeue(mocker):
+    jobids = ["01234", "56789"]
+
+    mocked = mocker.patch(
+        'subprocess.run',
+        side_effect=[
+            MockedSubprocessReturn(0, "01234 COMPLETED\n56789 PENDING"),
+        ],
+    )
+
+    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+
+    assert mocked.call_count == 1
+    assert "01234" in status_dict
+    assert status_dict["01234"] == "COMPLETED"
+    assert "56789" in status_dict
+    assert status_dict["56789"] == "PENDING"
+    assert "sacct" not in "\n".join(msg)
+    assert "Retrieved status after squeue" in "\n".join(msg)
+
+
+def test_check_slurm_job_statuses_squeue_sacct(mocker):
+    jobids = ["01234", "56789"]
+
+    mocked = mocker.patch(
+        'subprocess.run',
+        side_effect=[
+            MockedSubprocessReturn(0, "01234 PENDING"),
+            MockedSubprocessReturn(0, "56789|COMPLETED\n"),
+        ],
+    )
+
+    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+
+    assert mocked.call_count == 2
+    assert "01234" in status_dict
+    assert status_dict["01234"] == "PENDING"
+    assert "56789" in status_dict
+    assert status_dict["56789"] == "COMPLETED"
+    assert "Retrieved status after sacct" in "\n".join(msg)
+    assert "Retrieved status after squeue" in "\n".join(msg)
+
+
+def test_check_slurm_job_statuses_sacct(mocker):
+    jobids = ["01234", "56789"]
+
+    mocked = mocker.patch(
+        'subprocess.run',
+        side_effect=[
+            MockedSubprocessReturn(1, "error running squeue"),
+            MockedSubprocessReturn(0, "56789|PENDING\n01234|RUNNING"),
+        ],
+    )
+
+    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+
+    assert mocked.call_count == 2
+    assert "01234" in status_dict
+    assert status_dict["01234"] == "RUNNING"
+    assert "56789" in status_dict
+    assert status_dict["56789"] == "PENDING"
+    assert "Retrieved status after sacct" in "\n".join(msg)
+    assert "squeue failed with status" in "\n".join(msg)
+    assert "error running squeue" in "\n".join(msg)
+
+
+def test_check_slurm_job_statuses_failed(mocker):
+    jobids = ["01234", "56789"]
+
+    mocked = mocker.patch(
+        'subprocess.run',
+        side_effect=[
+            MockedSubprocessReturn(1, "error running squeue"),
+            MockedSubprocessReturn(1, "error running sacct"),
+        ],
+    )
+
+    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+
+    assert mocked.call_count == 2
+    assert status_dict is None
+    assert "sacct failed with status" in "\n".join(msg)
+    assert "error running sacct" in "\n".join(msg)
+    assert "squeue failed with status" in "\n".join(msg)
+    assert "error running squeue" in "\n".join(msg)
+
+
+def test_check_slurm_job_statuses_missing(mocker):
+    jobids = ["01234", "56789"]
+
+    mocked = mocker.patch(
+        'subprocess.run',
+        side_effect=[
+            MockedSubprocessReturn(0, ""),
+            MockedSubprocessReturn(0, "56789|COMPLETED"),
+        ],
+    )
+
+    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+
+    assert mocked.call_count == 2
+    assert "56789" in status_dict
+    assert status_dict["56789"] == "COMPLETED"
+    assert "01234" not in status_dict

@@ -295,12 +295,21 @@ class FuncxSlurmRunner(RunnerBase):
         job_finished = False
         job_succeeded = None
         while not job_finished:
-            returncode, job_status = self.run_function(check_slurm_job_status, self._jobid)
-            if returncode == 0:
+            job_status_dict, job_status_msg = self.run_function(_check_slurm_job_statuses, [self._jobid])
+            self._log(logging.DEBUG, "Output from check Slurm job status function follows:")
+            self._log(logging.DEBUG, os.linesep.join(job_status_msg))
+
+            if job_status_dict is not None:
+                if self._jobid in job_status_dict:
+                    job_status = job_status_dict[self._jobid]
+                else:
+                    job_status = None
+
                 self._log(logging.INFO, f"Current job status is: '{job_status}'")
                 if job_status in SLURM_WARN_STATUS:  # job should (?) be requeued so keep checking
                     self._log(logging.WARNING, f'Job status "{job_status}" may require manual intervention, continuing to check')
-                if len(job_status) and job_status not in SLURM_UNFINISHED_STATUS:
+
+                if job_status is not None and job_status not in SLURM_UNFINISHED_STATUS:
                     job_finished = True
                     if job_status in SLURM_SUCCESSFUL_STATUS:
                         job_succeeded = True
@@ -308,11 +317,11 @@ class FuncxSlurmRunner(RunnerBase):
                         job_succeeded = False
                 else:
                     time.sleep(polling_interval)
+
             else:
                 self._log(logging.ERROR, f'Checking job status failed for {self._jobid}')
-                self._log(logging.ERROR, f'return code: {returncode}')
-                self._log(logging.ERROR, f'output: {job_status}')
-                raise RemoteJobRunnerError(f"{self._label}failed to get Slurm job status: {job_status}")
+                self._log(logging.ERROR, f'output: {job_status_msg}')
+                raise RemoteJobRunnerError(f"{self._label}failed to get Slurm job status: {job_status_msg}")
 
         assert job_succeeded is not None, "Unexpected error during wait"
         if job_finished:
@@ -439,7 +448,7 @@ class FuncxSlurmRunner(RunnerBase):
         """
         job_status_dict, msg = self.run_function(_check_slurm_job_statuses, unfinished_jobids)
 
-        self._log(logging.DEBUG, "Output from check Slurm status function follows:")
+        self._log(logging.DEBUG, "Output from check Slurm job status function follows:")
         self._log(logging.DEBUG, os.linesep.join(msg))
 
         if job_status_dict is None:
@@ -509,19 +518,6 @@ def submit_slurm_job(submit_script, submit_dir=None):
         return 1, repr(exc)
 
 
-# function that checks Slurm job status
-def check_slurm_job_status(jobid):
-    """Check Slurm job status."""
-    # have to load modules within the function
-    import subprocess
-
-    # query the status of the job using sacct
-    p = subprocess.run(['sacct', '-j', jobid, '-X', '-o', 'State', '-n'], universal_newlines=True,
-                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-
-    return p.returncode, p.stdout.strip()
-
-
 # function to cancel a Slurm job
 def cancel_slurm_job(jobid):
     """Cancel the Slurm job"""
@@ -579,10 +575,10 @@ def _check_slurm_job_statuses(jobids):
         sacct_status, sacct_output = run_cmd(cmd_args)
         if sacct_status == 0:
             parse_output(status_dict, sacct_output, delim="|")
+            msg.append(f"Retrieved status after sacct: {status_dict}")
         else:
             msg.append(f"sacct failed with status {sacct_status}")
-            msg.append(f"Retrieved status after squeue and sacct: {status_dict}")
-            msg.append(sq_output)
+            msg.append(sacct_output)
     else:
         sacct_status = 0
 
