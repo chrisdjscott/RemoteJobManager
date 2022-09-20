@@ -1,13 +1,10 @@
 
-import sys
 import argparse
 import logging
-from datetime import datetime
 
 from rjm.remote_job_batch import RemoteJobBatch
 from rjm import utils
 from rjm import __version__
-from rjm.cli import read_local_dirs_file
 
 
 logger = logging.getLogger(__name__)

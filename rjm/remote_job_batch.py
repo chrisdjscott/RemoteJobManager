@@ -202,7 +202,7 @@ class RemoteJobBatch:
                 # get the finished status
                 logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
                 successful_jobs, failed_jobs, unfinished_jobs = self._runner.check_finished_jobs(unfinished_jobs)
-                logger.debug(f"{len(successful_jobs)} succeeded; {len(failed_jobs)} failed; {len(unfinished_jobs)} unfinished")
+                logger.info(f"{len(successful_jobs)} succeeded; {len(failed_jobs)} failed; {len(unfinished_jobs)} unfinished")
 
                 # handle successful jobs
                 for rj in successful_jobs:
