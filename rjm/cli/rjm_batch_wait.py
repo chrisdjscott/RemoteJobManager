@@ -6,6 +6,7 @@ import traceback
 from rjm import __version__
 from rjm import utils
 from rjm.remote_job_batch import RemoteJobBatch
+from rjm.runners.funcx_slurm_runner import MIN_POLLING_INTERVAL
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,8 @@ def make_parser():
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-z', '--pollingintervalsec', type=int,
                         help="number of seconds to wait between attempts to poll for job status")
+    parser.add_argument('-o', '--min-polling-override', action='store_true',
+                        help=f'Override minimum polling interval of {MIN_POLLING_INTERVAL} s')
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
@@ -48,7 +51,7 @@ def batch_wait(args=None):
 
     # wait for jobs to complete
     try:
-        rjb.wait_and_download(polling_interval=args.pollingintervalsec)
+        rjb.wait_and_download(polling_interval=args.pollingintervalsec, min_polling_override=args.min_polling_override)
     except BaseException as exc:
         # writing an stderr.txt file into the directory of unfinished jobs, for wfn
         rjb.write_stderr_for_unfinshed_jobs(traceback.format_exc())
