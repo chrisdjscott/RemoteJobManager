@@ -1,13 +1,17 @@
 
 import os
 import sys
+import logging
 
 from rjm import utils
 from rjm.remote_job import RemoteJob
 from rjm import config as config_helper
 
 
-def do_authentication(force=False, verbose=False):
+logger = logging.getLogger(__name__)
+
+
+def do_authentication(force=False, verbose=False, retry=True):
     """
     Run through the steps to authenticate RJM
 
@@ -27,23 +31,30 @@ def do_authentication(force=False, verbose=False):
     # create the remote job object and get Globus scopes
     try:
         rj = RemoteJob()
-        globus_scopes = rj.get_runner().get_globus_scopes()
-        globus_scopes.extend(rj.get_transferer().get_globus_scopes())
     except Exception as exc:
+        logger.exception("Failed to create RemoteJob")
         sys.stderr.write(f"ERROR: failed to create RemoteJob: {exc}" + os.linesep)
         sys.exit(1)
 
-    # do the Globus authentication
     if verbose:
         print("===============================================================================")
         print("Requesting Globus authentication - will open link in web browser if required...")
         print("===============================================================================")
+
     # TODO: run this in separate thread with timeout and fail if not completed in time
     try:
-        utils.handle_globus_auth(globus_scopes)
+        rj.do_globus_auth()
     except Exception as exc:
-        sys.stderr.write(f"ERROR: failed to do Globus auth: {exc}" + os.linesep)
-        sys.exit(1)
-    else:
-        if verbose:
-            print("RJM authentication completed")
+        if retry and os.path.isfile(utils.TOKEN_FILE_LOCATION):
+            logger.exception("Authentication failed, retrying")
+            print("===========================================================")
+            print("Authentication failed; attempting to force reauthentication")
+            print("===========================================================")
+            do_authentication(force=True, verbose=verbose, retry=False)
+        else:
+            logger.exception("Failed to do Globus auth")
+            sys.stderr.write(f"ERROR: failed to do Globus auth: {exc}" + os.linesep)
+            sys.exit(1)
+
+    if verbose:
+        print("RJM authentication completed")
