@@ -193,11 +193,15 @@ class RemoteJobBatch:
             # loop until jobs have finished
             logger.info(f"Waiting for {len(unfinished_jobs)} Slurm jobs to finish")
             logger.debug(f"Polling interval is: {polling_interval} seconds")
+            count_succeeded = 0
+            count_failed = 0
             while len(unfinished_jobs):
                 # get the finished status
                 logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
                 successful_jobs, failed_jobs, unfinished_jobs = self._runner.check_finished_jobs(unfinished_jobs)
-                logger.debug(f"{len(successful_jobs)} succeeded; {len(failed_jobs)} failed; {len(unfinished_jobs)} unfinished")
+                count_succeeded += len(successful_jobs)
+                count_failed += len(failed_jobs)
+                logger.info(f"{count_succeeded} succeeded; {count_failed} failed; {len(unfinished_jobs)} unfinished")
 
                 # handle successful jobs
                 for rj in successful_jobs:

@@ -295,12 +295,21 @@ class FuncxSlurmRunner(RunnerBase):
         job_finished = False
         job_succeeded = None
         while not job_finished:
-            returncode, job_status = self.run_function(check_slurm_job_status, self._jobid)
-            if returncode == 0:
+            job_status_dict, job_status_msg = self.run_function(_check_slurm_job_statuses, [self._jobid])
+            self._log(logging.DEBUG, "Output from check Slurm job status function follows:")
+            self._log(logging.DEBUG, os.linesep.join(job_status_msg))
+
+            if job_status_dict is not None:
+                if self._jobid in job_status_dict:
+                    job_status = job_status_dict[self._jobid]
+                else:
+                    job_status = None
+
                 self._log(logging.INFO, f"Current job status is: '{job_status}'")
                 if job_status in SLURM_WARN_STATUS:  # job should (?) be requeued so keep checking
                     self._log(logging.WARNING, f'Job status "{job_status}" may require manual intervention, continuing to check')
-                if len(job_status) and job_status not in SLURM_UNFINISHED_STATUS:
+
+                if job_status is not None and job_status not in SLURM_UNFINISHED_STATUS:
                     job_finished = True
                     if job_status in SLURM_SUCCESSFUL_STATUS:
                         job_succeeded = True
@@ -308,11 +317,11 @@ class FuncxSlurmRunner(RunnerBase):
                         job_succeeded = False
                 else:
                     time.sleep(polling_interval)
+
             else:
                 self._log(logging.ERROR, f'Checking job status failed for {self._jobid}')
-                self._log(logging.ERROR, f'return code: {returncode}')
-                self._log(logging.ERROR, f'output: {job_status}')
-                raise RemoteJobRunnerError(f"{self._label}failed to get Slurm job status: {job_status}")
+                self._log(logging.ERROR, f'output: {job_status_msg}')
+                raise RemoteJobRunnerError(f"{self._label}failed to get Slurm job status: {job_status_msg}")
 
         assert job_succeeded is not None, "Unexpected error during wait"
         if job_finished:
@@ -366,7 +375,7 @@ class FuncxSlurmRunner(RunnerBase):
         job_ids = [rj.get_runner().get_jobid() for rj in remote_jobs]
 
         # remote function call with retries
-        job_status_text = retry_call(
+        job_status_dict = retry_call(
             self._check_slurm_jobs_wrapper,
             fargs=(job_ids,),
             tries=self._retry_tries,
@@ -374,25 +383,12 @@ class FuncxSlurmRunner(RunnerBase):
             delay=self._retry_delay,
         )
 
-        # parse output for statuses
-        count = 0
+        # loop over job statuses
         successful_jobs = []
         failed_jobs = []
         unfinished_jobs = []
-        for line in job_status_text.splitlines():
-            if not len(line.strip()):
-                continue
-
-            count += 1  # checking whether there was anything to parse
-
-            try:
-                jobid, job_status = line.split("|")
-            except ValueError as exc:
-                msg = f"Error parsing job status line: '{line}' (line.split('|'))"
-                logger.error(repr(exc))
-                logger.error(msg)
-                logger.error("Full job status output:" + os.linesep + job_status)
-                raise RemoteJobRunnerError(msg)
+        for jobid in job_status_dict:
+            job_status = job_status_dict[jobid]
 
             # pop this job out of the incoming list
             idx = job_ids.index(jobid)
@@ -411,7 +407,7 @@ class FuncxSlurmRunner(RunnerBase):
                 unfinished_jobs.append(rj)
                 self._log(logging.DEBUG, f"Job {jobid} is unfinished: {job_status}")
 
-        if count == 0:
+        if len(job_status_dict) == 0:
             self._log(logging.WARNING, "No job statuses parsed, trying again later")
             unfinished_jobs = remote_jobs
 
@@ -461,14 +457,17 @@ class FuncxSlurmRunner(RunnerBase):
         due to exception dependency on parsl
 
         """
-        returncode, job_status_text = self.run_function(_check_slurm_job_statuses, unfinished_jobids)
+        job_status_dict, msg = self.run_function(_check_slurm_job_statuses, unfinished_jobids)
 
-        if returncode != 0:
-            msg = f"Checking job statuses failed ({returncode}): {job_status_text}"
-            self._log(logging.ERROR, msg)
+        self._log(logging.DEBUG, "Output from check Slurm job status function follows:")
+        self._log(logging.DEBUG, os.linesep.join(msg))
+
+        if job_status_dict is None:
+            msg = f"Checking job statuses failed: {msg}"
+            self._log(logging.ERROR, os.linesep.join(msg))
             raise RemoteJobRunnerError(msg)
 
-        return job_status_text
+        return job_status_dict
 
 
 # function that calculates checksums for a list of files
@@ -530,19 +529,6 @@ def submit_slurm_job(submit_script, submit_dir=None):
         return 1, repr(exc)
 
 
-# function that checks Slurm job status
-def check_slurm_job_status(jobid):
-    """Check Slurm job status."""
-    # have to load modules within the function
-    import subprocess
-
-    # query the status of the job using sacct
-    p = subprocess.run(['sacct', '-j', jobid, '-X', '-o', 'State', '-n'], universal_newlines=True,
-                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-
-    return p.returncode, p.stdout.strip()
-
-
 # function to cancel a Slurm job
 def cancel_slurm_job(jobid):
     """Cancel the Slurm job"""
@@ -559,18 +545,58 @@ def cancel_slurm_job(jobid):
 # function that checks multiple Slurm job statuses at once
 def _check_slurm_job_statuses(jobids):
     """Return statuses for given jobids"""
-    # have to load modules within the function
     import subprocess
 
-    # query the status of the job using sacct
-    cmd_args = ['sacct', '-X', '-o', 'JobID,State', '-n', '-P']
-    for jobid in jobids:
-        cmd_args.extend(['-j', jobid])
+    def run_cmd(cmd):
+        p = subprocess.run(cmd, universal_newlines=True, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, check=False)
+        return p.returncode, p.stdout.strip()
 
-    p = subprocess.run(cmd_args, universal_newlines=True,
-                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
+    def parse_output(store, output, delim=None):
+        for line in output.splitlines():
+            if len(line.strip()):
+                try:
+                    jobid, jobstate = line.split(delim)
+                except ValueError:
+                    pass
+                else:
+                    store[jobid] = jobstate
 
-    return p.returncode, p.stdout.strip()
+    status_dict = {}
+    msg = []
+
+    # query job statuses using squeue first
+    cmd_args = ['squeue', '--state', 'all', '-O', 'JobID,State', '--noheader', '--jobs', ','.join(jobids)]
+    sq_status, sq_output = run_cmd(cmd_args)
+    if sq_status == 0:
+        # successful, parse list
+        parse_output(status_dict, sq_output)
+        msg.append(f"Retrieved status after squeue: {status_dict}")
+    else:
+        msg.append(f"squeue failed with status {sq_status}")
+        msg.append(sq_output)
+
+    # use sacct for job ids not returned by squeue
+    remaining_job_ids = [j for j in jobids if j not in status_dict]
+    if len(remaining_job_ids):
+        # query the status of the job using sacct
+        cmd_args = ['sacct', '-X', '-o', 'JobID,State', '-n', '-P']
+        for jobid in remaining_job_ids:
+            cmd_args.extend(['-j', jobid])
+        sacct_status, sacct_output = run_cmd(cmd_args)
+        if sacct_status == 0:
+            parse_output(status_dict, sacct_output, delim="|")
+            msg.append(f"Retrieved status after sacct: {status_dict}")
+        else:
+            msg.append(f"sacct failed with status {sacct_status}")
+            msg.append(sacct_output)
+    else:
+        sacct_status = 0
+
+    if len(status_dict) == 0 and (sq_status or sacct_status):
+        status_dict = None
+
+    return status_dict, msg
 
 
 # function to make directories on the remote machine

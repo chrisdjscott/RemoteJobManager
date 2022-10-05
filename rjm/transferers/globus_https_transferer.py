@@ -17,7 +17,7 @@ from rjm.errors import RemoteJobTransfererError
 
 DOWNLOAD_CHUNK_SIZE = 8192
 FILE_CHUNK_SIZE = 8192
-REQUESTS_TIMEOUT = 20
+REQUESTS_TIMEOUT = 30
 
 logger = logging.getLogger(__name__)
 
