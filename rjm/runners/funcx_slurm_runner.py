@@ -18,6 +18,7 @@ FUNCX_TIMEOUT = 180  # default timeout for waiting for funcx functions
 SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL']
 SLURM_WARN_STATUS = ["NODE_FAIL"]
 SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
+MIN_POLLING_INTERVAL = 60
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +276,7 @@ class FuncxSlurmRunner(RunnerBase):
 
         return started
 
-    def wait(self, polling_interval=None):
+    def wait(self, polling_interval=None, min_polling_override=False):
         """
         Wait for the Slurm job to finish
 
@@ -285,9 +286,8 @@ class FuncxSlurmRunner(RunnerBase):
         if self._jobid is None:
             raise ValueError("Must call 'run_start' before 'run_wait'")
 
-        # override polling interval from config file?
-        if polling_interval is None:
-            polling_interval = self._poll_interval
+        # get the polling interval
+        polling_interval = self.get_poll_interval(polling_interval, min_polling_override=min_polling_override)
 
         # loop until job has finished
         self._log(logging.INFO, f"Waiting for Slurm job {self._jobid} to finish")
@@ -345,9 +345,20 @@ class FuncxSlurmRunner(RunnerBase):
         else:
             self._log(logging.WARNING, f'Cancelling job failed ({returncode}): "{stdout}"')
 
-    def get_poll_interval(self):
+    def get_poll_interval(self, requested_interval, min_polling_override=False):
         """Returns the poll interval from Slurm config"""
-        return self._poll_interval
+        if requested_interval is None:
+            polling_interval = self._poll_interval
+            self._log(logging.DEBUG, f"Using polling interval from config file: {polling_interval}")
+        else:
+            polling_interval = requested_interval
+            self._log(logging.DEBUG, f"Using requested polling interval: {polling_interval}")
+
+        if polling_interval < MIN_POLLING_INTERVAL and not min_polling_override:
+            polling_interval = MIN_POLLING_INTERVAL
+            self._log(logging.DEBUG, f"Overriding polling interval with minimum polling interval: {polling_interval}")
+
+        return polling_interval
 
     def check_finished_jobs(self, remote_jobs):
         """

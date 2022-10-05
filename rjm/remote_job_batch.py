@@ -72,16 +72,12 @@ class RemoteJobBatch:
             for rj, (remote_full_path, remote_basename) in zip(rjs, remote_directories):
                 rj.set_remote_directory(remote_full_path, remote_basename)
 
-    def upload_and_start(self, polling_interval=None):
+    def upload_and_start(self):
         """
         Upload files and start jobs
 
         """
         logger.info(f"Uploading files and starting {len(self._remote_jobs)} jobs")
-
-        # override polling interval from config file?
-        if polling_interval is None:
-            polling_interval = self._runner.get_poll_interval()
 
         # create directories
         self.make_directories()
@@ -165,7 +161,7 @@ class RemoteJobBatch:
 
         return unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs
 
-    def wait_and_download(self, polling_interval=None):
+    def wait_and_download(self, polling_interval=None, min_polling_override=False):
         """
         Wait for jobs to complete and download once completed.
 
@@ -173,8 +169,7 @@ class RemoteJobBatch:
         logger.info(f"Waiting and downloading {len(self._remote_jobs)} jobs")
 
         # override polling interval from config file?
-        if polling_interval is None:
-            polling_interval = self._runner.get_poll_interval()
+        polling_interval = self._runner.get_poll_interval(polling_interval, min_polling_override=min_polling_override)
 
         # categorising remote_jobs
         unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs = self._categorise_jobs()

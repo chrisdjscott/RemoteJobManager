@@ -1,57 +1,56 @@
 
-import logging
 import argparse
+import logging
 import traceback
 
-from rjm import __version__
-from rjm import utils
 from rjm.remote_job_batch import RemoteJobBatch
-from rjm.runners.funcx_slurm_runner import MIN_POLLING_INTERVAL
+from rjm import utils
+from rjm import __version__
 
 
 logger = logging.getLogger(__name__)
 
 
 def make_parser():
-    """
-    Create arg parser for batch_* commands
-
-    """
-    parser = argparse.ArgumentParser(description="Wait for the jobs to complete and download files")
+    """Return ArgumentParser"""
+    parser = argparse.ArgumentParser(description="Upload files, run the job and download results")
     parser.add_argument('-f', '--localjobdirfile', required=True,
                         help="file that contains the names of the local job directories, one name per line")
     parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('--force', action="store_true",
+                        help="Ignore progress from previous runs stored in job directory, i.e. start from scratch")
     parser.add_argument('-z', '--pollingintervalsec', type=int,
                         help="number of seconds to wait between attempts to poll for job status")
-    parser.add_argument('-o', '--min-polling-override', action='store_true',
-                        help=f'Override minimum polling interval of {MIN_POLLING_INTERVAL} s')
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
 
 
-def batch_wait(args=None):
+def batch_run():
     """
-    Wait for run completion and download files for all remote jobs.
+    Upload files and start running for the given local directory
 
     """
     # command line args
     parser = make_parser()
-    args = parser.parse_args(args)
+    args = parser.parse_args()
 
     # setup logging
-    utils.setup_logging(log_name="batch_wait", log_file=args.logfile, log_level=args.loglevel)
+    utils.setup_logging(log_name="batch_run", log_file=args.logfile, log_level=args.loglevel)
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
-    rjb.setup(args.localjobdirfile)
+    rjb.setup(args.localjobdirfile, force=args.force)
 
-    # wait for jobs to complete
+    # upload files and start
+    rjb.upload_and_start()
+
+    # wait for jobs to complete and download files
     try:
-        rjb.wait_and_download(polling_interval=args.pollingintervalsec, min_polling_override=args.min_polling_override)
+        rjb.wait_and_download(polling_interval=args.pollingintervalsec)
     except BaseException as exc:
         # writing an stderr.txt file into the directory of unfinished jobs, for wfn
         rjb.write_stderr_for_unfinshed_jobs(traceback.format_exc())
@@ -59,4 +58,4 @@ def batch_wait(args=None):
 
 
 if __name__ == "__main__":
-    batch_wait()
+    batch_run()

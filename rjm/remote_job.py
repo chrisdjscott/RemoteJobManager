@@ -207,16 +207,20 @@ class RemoteJob:
         # get the scopes
         runner_scopes = self._runner.get_globus_scopes() if runner is None else []
         transfer_scopes = self._transfer.get_globus_scopes() if transfer is None else []
+        all_scopes = runner_scopes + transfer_scopes
+        self._log(logging.DEBUG, f"Globus scopes: {all_scopes}")
 
         # do the auth if required
         globus_cli = None
-        if len(runner_scopes) + len(transfer_scopes) > 0:
-            globus_cli = utils.handle_globus_auth(runner_scopes.extend(transfer_scopes))
+        if len(all_scopes) > 0:
+            globus_cli = utils.handle_globus_auth(all_scopes)
 
         # setup runner
+        self._log(logging.DEBUG, "Setting up globus auth for runner")
         self._runner.setup_globus_auth(globus_cli, runner=runner)
 
         # setup transferer
+        self._log(logging.DEBUG, "Setting up globus auth for transferer")
         self._transfer.setup_globus_auth(globus_cli, transfer=transfer)
 
     def cleanup(self):
@@ -352,7 +356,7 @@ class RemoteJob:
                                            delay=self._retry_delay)
             self._save_state()
 
-    def run_wait(self, polling_interval=None):
+    def run_wait(self, polling_interval=None, min_polling_override=False):
         """Wait for the processing to complete"""
         if self.run_completed():
             self._log(logging.INFO, "Run already completed")
@@ -364,7 +368,8 @@ class RemoteJob:
             raise RuntimeError("Run must be started before we can wait for it to complete")
         else:
             self._log(logging.INFO, "Waiting for run to complete...")
-            run_succeeded = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval},
+            run_succeeded = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval,
+                                                                   'min_polling_override': min_polling_override},
                                        tries=self._retry_tries, backoff=self._retry_backoff,
                                        delay=self._retry_delay)
             self.set_run_completed(success=run_succeeded)
@@ -392,12 +397,12 @@ class RemoteJob:
         self.upload_files()
         self.run_start()
 
-    def wait_and_download(self, polling_interval=None):
+    def wait_and_download(self, polling_interval=None, min_polling_override=False):
         """
         Wait for the run to complete and then download files.
 
         """
-        self.run_wait(polling_interval=polling_interval)
+        self.run_wait(polling_interval=polling_interval, min_polling_override=min_polling_override)
         self.download_files()
 
     def workflow(self):
@@ -437,23 +442,3 @@ class RemoteJob:
                     fh.write(msg)
             else:
                 self._log(logging.DEBUG, "Skipping writing stderr file on error since it already exists")
-
-
-if __name__ == "__main__":
-    import sys
-
-    utils.setup_logging()
-
-    rj = RemoteJob()
-    rj.setup(sys.arv[1])
-    print(rj)
-
-    print(">>> uploading files")
-    rj.upload_files()
-
-    print(">>> running script")
-    rj.run_start()
-    rj.run_wait()
-
-    print(">>> downloading files")
-    rj.download_files()
