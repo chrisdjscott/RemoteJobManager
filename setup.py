@@ -51,6 +51,7 @@ setup(
         'console_scripts': [
             'rjm_batch_submit = rjm.cli.rjm_batch_submit:batch_submit',
             'rjm_batch_wait = rjm.cli.rjm_batch_wait:batch_wait',
+            'rjm_batch_run = rjm.cli.rjm_batch_run:batch_run',
             'rjm_authenticate = rjm.cli.rjm_authenticate:authenticate',
             'rjm_configure = rjm.cli.rjm_configure:configure',
             'rjm_health_check = rjm.cli.rjm_health_check:health_check',
