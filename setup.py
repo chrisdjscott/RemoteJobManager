@@ -69,7 +69,7 @@ setup(
         "paramiko",
         "fair-research-login",
         "globus-sdk>=3",
-        "funcx==1.0.2",
+        "funcx==1.0.4",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
