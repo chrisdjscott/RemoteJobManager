@@ -64,7 +64,7 @@ jobs:
         working-directory: ./examples/nonmem
         if: steps.rjm_files.outputs.files_exists == 'true'
       - name: Run batch_wait for nonmem example
-        run: rjm_batch_wait -f localdirs.txt -ll debug -z 15
+        run: rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o
         working-directory: ./examples/nonmem
         if: steps.rjm_files.outputs.files_exists == 'true'
 
