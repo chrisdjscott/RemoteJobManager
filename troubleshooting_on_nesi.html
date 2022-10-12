@@ -38,7 +38,7 @@
 <h1>Troubleshooting on NeSI<a class="headerlink" href="#troubleshooting-on-nesi" title="Permalink to this heading">¶</a></h1>
 <p>The NeSI platform occasionally experiences stability issues related the filesystems, Slurm, networking and Globus.
 RJM attempts to handle these issues by retrying commands that have failed but it is not always successful.</p>
-<p>If RJM isn’t working well first try running the <code class="code docutils literal notranslate"><span class="pre">rjm_health_check</span></code> program (<code class="code docutils literal notranslate"><span class="pre">-ll</span> <span class="pre">debug</span></code> will print additional
+<p>If RJM isn't working well first try running the <code class="code docutils literal notranslate"><span class="pre">rjm_health_check</span></code> program (<code class="code docutils literal notranslate"><span class="pre">-ll</span> <span class="pre">debug</span></code> will print additional
 output that can be useful for debugging):</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_health_check -ll debug
 </pre></div>
@@ -49,7 +49,7 @@ nodes went down:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_nesi_setup --restart -ll debug
 </pre></div>
 </div>
-<p>After running this command, try the <code class="code docutils literal notranslate"><span class="pre">rjm_health_check</span></code> program. If it still doesn’t work, there is likely to be a
+<p>After running this command, try the <code class="code docutils literal notranslate"><span class="pre">rjm_health_check</span></code> program. If it still doesn't work, there is likely to be a
 bigger issue, please contact <a class="reference external" href="https://support.nesi.org.nz/hc/en-gb/requests/new">NeSI support</a> with the error message
 and mention you are using Globus, funcX and the RemoteJobManager tool.</p>
 <section id="common-errors">

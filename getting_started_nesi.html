@@ -18,7 +18,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Command line interface" href="command_line_interface.html" />
-    <link rel="prev" title="Welcome to RemoteJobManager’s documentation!" href="index.html" />
+    <link rel="prev" title="Welcome to RemoteJobManager&#39;s documentation!" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -102,11 +102,11 @@ Wellington OIDC Server</em>.</p>
 <p>Running the NeSI setup script with no arguments (<code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup</span></code>) will
 do the following:</p>
 <ul class="simple">
-<li><p>configure and start a “funcX endpoint” on NeSI, which RJM will use to execute
+<li><p>configure and start a &quot;funcX endpoint&quot; on NeSI, which RJM will use to execute
 commands on NeSI</p></li>
 <li><p>setup a periodic task (via scrontab) to check that the funcX endpoint is
 running and restart it if it has stopped</p></li>
-<li><p>create a “Globus Guest Collection” in your NeSI nobackup directory, which will
+<li><p>create a &quot;Globus Guest Collection&quot; in your NeSI nobackup directory, which will
 be used to transfer files to and from NeSI</p></li>
 <li><p>write configutation values from the above steps into the RJM config file on
 your local machine</p></li>
@@ -115,7 +115,7 @@ your local machine</p></li>
 reauthenticate on the same machine)</p></li>
 </ul>
 <p>When you run the setup script you will need to input values and authenticate
-multiple times, which can’t be avoided at this time unfortunately. In some cases
+multiple times, which can't be avoided at this time unfortunately. In some cases
 a browser window will open where you will need to do the authentication, in other
 cases you will enter details directly at the terminal. You will
 need to authenticate with NeSI (first and sector factor) and with Globus, which
@@ -167,7 +167,7 @@ are in your PATH or provide the full path to them.</p>
 <p>If the above worked there should be a file created at <em>files/output.zip</em>.</p>
 <p>You should also notice the file <em>files/remote_job.json</em>. This file records the
 progress of the remote job. If you try to run a simulation again in the same
-directory, RJM should detect that it already ran before and won’t repeat the
+directory, RJM should detect that it already ran before and won't repeat the
 same steps again. You can override this behaviour by passing the <code class="code docutils literal notranslate"><span class="pre">--force</span></code>
 option to <code class="code docutils literal notranslate"><span class="pre">rjm_batch_submit</span></code> or delete the <em>remote_job.json</em> file.</p>
 </section>
@@ -201,7 +201,7 @@ option to <code class="code docutils literal notranslate"><span class="pre">rjm_
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="index.html" title="previous chapter">Welcome to RemoteJobManager’s documentation!</a></li>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to RemoteJobManager's documentation!</a></li>
       <li>Next: <a href="command_line_interface.html" title="next chapter">Command line interface</a></li>
   </ul></li>
 </ul>
