@@ -17,7 +17,7 @@
     <script src="_static/sphinx_highlight.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Getting started (manual steps)" href="getting_started_manual.html" />
+    <link rel="next" title="Command line interface" href="command_line_interface.html" />
     <link rel="prev" title="Welcome to RemoteJobManager’s documentation!" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -50,11 +50,10 @@
 <li><p><a class="reference internal" href="#transferring-config-to-a-different-machine" id="id5">Transferring config to a different machine</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#authenticate-rjm" id="id6">Authenticate RJM</a></p></li>
-<li><p><a class="reference internal" href="#run-a-simple-test" id="id7">Run a simple test</a></p>
+<li><p><a class="reference internal" href="#run-a-simple-test" id="id6">Run a simple test</a></p>
 <ul>
-<li><p><a class="reference internal" href="#health-check-script" id="id8">Health check script</a></p></li>
-<li><p><a class="reference internal" href="#example-simulation" id="id9">Example simulation</a></p></li>
+<li><p><a class="reference internal" href="#health-check-script" id="id7">Health check script</a></p></li>
+<li><p><a class="reference internal" href="#example-simulation" id="id8">Example simulation</a></p></li>
 </ul>
 </li>
 </ul>
@@ -100,8 +99,8 @@ Wellington OIDC Server</em>.</p>
 </section>
 <section id="run-the-nesi-setup-script-once">
 <h2>Run the NeSI setup script (once)<a class="headerlink" href="#run-the-nesi-setup-script-once" title="Permalink to this heading">¶</a></h2>
-<p>The NeSI setup script (either <code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup.exe</span></code> or
-<code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup</span></code>) will do the following:</p>
+<p>Running the NeSI setup script with no arguments (<code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup</span></code>) will
+do the following:</p>
 <ul class="simple">
 <li><p>configure and start a “funcX endpoint” on NeSI, which RJM will use to execute
 commands on NeSI</p></li>
@@ -109,45 +108,39 @@ commands on NeSI</p></li>
 running and restart it if it has stopped</p></li>
 <li><p>create a “Globus Guest Collection” in your NeSI nobackup directory, which will
 be used to transfer files to and from NeSI</p></li>
+<li><p>write configutation values from the above steps into the RJM config file on
+your local machine</p></li>
+<li><p>obtain the required authentication tokens so that you can start using RJM
+(tokens are cached on the local machine so you should not need to
+reauthenticate on the same machine)</p></li>
 </ul>
 <p>When you run the setup script you will need to input values and authenticate
 multiple times, which can’t be avoided at this time unfortunately. In some cases
 a browser window will open where you will need to do the authentication, in other
 cases you will enter details directly at the terminal. You will
 need to authenticate with NeSI (first and sector factor) and with Globus, which
-can usually be done using your institutions credentials, e.g. University of
+can usually be done using your institutional credentials, e.g. University of
 Auckland.</p>
-<p>Running the script with the <code class="code docutils literal notranslate"><span class="pre">--config</span></code> option will write the settings to
-the RJM config file:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_nesi_setup.exe --config
-</pre></div>
-</div>
 <p><strong>Note:</strong> you only need to run this script once. You can reuse the config created
 in this step on multiple machines.</p>
 <section id="transferring-config-to-a-different-machine">
 <h3>Transferring config to a different machine<a class="headerlink" href="#transferring-config-to-a-different-machine" title="Permalink to this heading">¶</a></h3>
 <p>Export the config on the machine that you generated it on:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure.exe --export-config myrjmconfig.ini
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure --export-config myrjmconfig.ini
 </pre></div>
 </div>
 <p>This should write a file called <em>myrjmconfig.ini</em> into your current directory.
 Copy this file to another machine and install it by running:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure.exe --import-config myrjmconfig.ini
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure --import-config myrjmconfig.ini
 </pre></div>
 </div>
-<p>You will still need to redo the authentication step below on the new machine.</p>
-</section>
-</section>
-<section id="authenticate-rjm">
-<h2>Authenticate RJM<a class="headerlink" href="#authenticate-rjm" title="Permalink to this heading">¶</a></h2>
-<p>Run the <code class="code docutils literal notranslate"><span class="pre">rjm_authenticate.exe</span></code> executable to authenticate using the
-configuration created in the previous step:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_authenticate.exe
+<p>After transferring your config file to the new machine, you will need to redo
+the authentication step on the new machine:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_authenticate
 </pre></div>
 </div>
 <p>This will open a browser window and ask you to authenticate with Globus.</p>
-<p>You should only need to do this step once per machine because your credentials
-will be cached and reused.</p>
+</section>
 </section>
 <section id="run-a-simple-test">
 <h2>Run a simple test<a class="headerlink" href="#run-a-simple-test" title="Permalink to this heading">¶</a></h2>
@@ -155,7 +148,7 @@ will be cached and reused.</p>
 <h3>Health check script<a class="headerlink" href="#health-check-script" title="Permalink to this heading">¶</a></h3>
 <p>The health check script tests that basic functionality is working by uploading
 a file to NeSI and executing a simple command.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_health_check.exe
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_health_check
 </pre></div>
 </div>
 <p>If should exit successfully with no errors if things are working.</p>
@@ -165,20 +158,18 @@ a file to NeSI and executing a simple command.</p>
 <p>Clone the repository and run the example simulation using the steps below:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/chrisdjscott/RemoteJobManager.git
 <span class="nb">cd</span> RemoteJobManager/examples/nonmem
-rjm_batch_submit.exe -f localdirs.txt -ll info
-rjm_batch_wait.exe -f localdirs.txt -ll info
+rjm_batch_submit -f localdirs.txt -ll info
+rjm_batch_wait -f localdirs.txt -ll info
 </pre></div>
 </div>
 <p><strong>Note:</strong> for the above to work you need to either make sure the RJM executables
-are in your PATH or provide the full path to them. Remove the “.exe” suffix if
-you are using the pip installed python package rather than the Windows
-executables.</p>
+are in your PATH or provide the full path to them.</p>
 <p>If the above worked there should be a file created at <em>files/output.zip</em>.</p>
 <p>You should also notice the file <em>files/remote_job.json</em>. This file records the
 progress of the remote job. If you try to run a simulation again in the same
 directory, RJM should detect that it already ran before and won’t repeat the
 same steps again. You can override this behaviour by passing the <code class="code docutils literal notranslate"><span class="pre">--force</span></code>
-option to <code class="code docutils literal notranslate"><span class="pre">rjm_batch_submit.exe</span></code> or delete the <em>remote_job.json</em> file.</p>
+option to <code class="code docutils literal notranslate"><span class="pre">rjm_batch_submit</span></code> or delete the <em>remote_job.json</em> file.</p>
 </section>
 </section>
 </section>
@@ -201,16 +192,9 @@ option to <code class="code docutils literal notranslate"><span class="pre">rjm_
 
 <h3>Navigation</h3>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started on NeSI</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#install-rjm">Install RJM</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#prerequisites-for-running-the-setup-script">Prerequisites for running the setup script</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#run-the-nesi-setup-script-once">Run the NeSI setup script (once)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#authenticate-rjm">Authenticate RJM</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#run-a-simple-test">Run a simple test</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="getting_started_manual.html">Getting started (manual steps)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="using_rjm.html">Using RJM</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting started on NeSI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="command_line_interface.html">Command line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting_on_nesi.html">Troubleshooting on NeSI</a></li>
 </ul>
 
 <div class="relations">
@@ -218,7 +202,7 @@ option to <code class="code docutils literal notranslate"><span class="pre">rjm_
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="index.html" title="previous chapter">Welcome to RemoteJobManager’s documentation!</a></li>
-      <li>Next: <a href="getting_started_manual.html" title="next chapter">Getting started (manual steps)</a></li>
+      <li>Next: <a href="command_line_interface.html" title="next chapter">Command line interface</a></li>
   </ul></li>
 </ul>
 </div>
