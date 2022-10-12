@@ -40,23 +40,168 @@
 <nav class="contents local" id="available-commands">
 <p class="topic-title">Available commands</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#rjm-nesi-setup" id="id1">rjm_nesi_setup</a></p></li>
+<li><p><a class="reference internal" href="#module-rjm.cli.rjm_nesi_setup" id="id1">rjm_nesi_setup</a></p></li>
 <li><p><a class="reference internal" href="#rjm-health-check" id="id2">rjm_health_check</a></p></li>
 <li><p><a class="reference internal" href="#rjm-batch-submit" id="id3">rjm_batch_submit</a></p></li>
 <li><p><a class="reference internal" href="#rjm-batch-wait" id="id4">rjm_batch_wait</a></p></li>
 </ul>
 </nav>
-<section id="rjm-nesi-setup">
-<h2>rjm_nesi_setup<a class="headerlink" href="#rjm-nesi-setup" title="Permalink to this heading">¶</a></h2>
+<section id="module-rjm.cli.rjm_nesi_setup">
+<span id="rjm-nesi-setup"></span><h2>rjm_nesi_setup<a class="headerlink" href="#module-rjm.cli.rjm_nesi_setup" title="Permalink to this heading">¶</a></h2>
+<p>This is an interactive script to set up Globus and funcX on NeSI for use with RJM.</p>
+<p>The default behaviour is to create a new Globus guest collection (shared directory) on NeSI and check whether the user already has a funcX endpoint running on NeSI. If a funcX endpoint is not already running, one will be created and started on NeSI. Finally, all configuration values from the above steps will be written to the RJM config file on the local machine and the authentication steps will be run.</p>
+<p>If run with the <code class="code docutils literal notranslate"><span class="pre">--restart</span></code> flag, this script will check for an existing funcX endpoint on NeSI. If it finds one, it will restart it (or start it if it wasn’t already running). If the user does not have a funcX endpoint on NeSI, a new one will be created and started. No configuration values are written to the config file. This option is best used after you have already run the default program once (to setup the Globus and funcX endpoints and write the config file) and you need to restart your funcX endpoint for some reason, e.g. it got into a bad state due to network issues on NeSI.</p>
+<p>While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and will need to use a web browser to carry out the Globus authentication as required.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_nesi_setup</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">funcx</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">globus</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">config</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">restart</span><span class="p">]</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="Named Arguments">
+<h3>Named Arguments<a class="headerlink" href="#Named Arguments" title="Permalink to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--funcx</kbd></dt>
+<dd><p>Set up funcX on NeSI</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>--globus</kbd></dt>
+<dd><p>Set up Globus for NeSI</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>--config</kbd></dt>
+<dd><p>Write config values to config file (–config implies –funcx and –globus). This is the default option if nothing else is selected.</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>--restart</kbd></dt>
+<dd><p>Restart the funcX endpoint if it is already running (–restart implies –funcx)</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-l, --logfile</kbd></dt>
+<dd><p>logfile. if not specified, all messages will be printed to the terminal.</p>
+</dd>
+<dt><kbd>-ll, --loglevel</kbd></dt>
+<dd><p>Possible choices: debug, info, warn, error, critical</p>
+<p>level of log verbosity (setting the level here overrides the config file)</p>
+</dd>
+<dt><kbd>-v, --version</kbd></dt>
+<dd><p>show program’s version number and exit</p>
+</dd>
+</dl>
+</section>
 </section>
 <section id="rjm-health-check">
 <h2>rjm_health_check<a class="headerlink" href="#rjm-health-check" title="Permalink to this heading">¶</a></h2>
+<p><p>Perform basic checks of the interface to the remote machine</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_health_check</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span>
+                        <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span> <span class="p">[</span><span class="o">-</span><span class="n">k</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="Named Arguments">
+<h3>Named Arguments<a class="headerlink" href="#Named Arguments" title="Permalink to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>-l, --logfile</kbd></dt>
+<dd><p>logfile. if not specified, all messages will be printed to the terminal.</p>
+</dd>
+<dt><kbd>-ll, --loglevel</kbd></dt>
+<dd><p>Possible choices: debug, info, warn, error, critical</p>
+<p>level of log verbosity (default: “critical”)</p>
+<p>Default: “critical”</p>
+</dd>
+<dt><kbd>-k, --keep</kbd></dt>
+<dd><p>Keep health check files on remote system, i.e. do not delete them after completing the check (default=False)</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-v, --version</kbd></dt>
+<dd><p>show program’s version number and exit</p>
+</dd>
+</dl>
+</section>
 </section>
 <section id="rjm-batch-submit">
 <h2>rjm_batch_submit<a class="headerlink" href="#rjm-batch-submit" title="Permalink to this heading">¶</a></h2>
+<p><p>Upload files and start jobs</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_batch_submit</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">-</span><span class="n">f</span> <span class="n">LOCALJOBDIRFILE</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span>
+                        <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="n">force</span><span class="p">]</span>
+                        <span class="p">[</span><span class="o">-</span><span class="n">c</span> <span class="n">CMD</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">d</span> <span class="n">REMOTEDIR</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">j</span> <span class="n">JOBTYPE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">m</span> <span class="n">MEM</span><span class="p">]</span>
+                        <span class="p">[</span><span class="o">-</span><span class="n">p</span> <span class="n">PROJECTCODE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">w</span> <span class="n">WALLTIME</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="Named Arguments">
+<h3>Named Arguments<a class="headerlink" href="#Named Arguments" title="Permalink to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>-f, --localjobdirfile</kbd></dt>
+<dd><p>file that contains the names of the local job directories, one name per line</p>
+</dd>
+<dt><kbd>-l, --logfile</kbd></dt>
+<dd><p>logfile. if not specified, all messages will be printed to the terminal.</p>
+</dd>
+<dt><kbd>-ll, --loglevel</kbd></dt>
+<dd><p>Possible choices: debug, info, warn, error, critical</p>
+<p>level of log verbosity (setting the level here overrides the config file)</p>
+</dd>
+<dt><kbd>--force</kbd></dt>
+<dd><p>Ignore progress from previous runs stored in job directory, i.e. start from scratch</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-c, --cmd</kbd></dt>
+<dd><p>not used; provided for compatibility with previous versions</p>
+</dd>
+<dt><kbd>-d, --remotedir</kbd></dt>
+<dd><p>not used; provided for compatibility with previous versions</p>
+</dd>
+<dt><kbd>-j, --jobtype</kbd></dt>
+<dd><p>not used; provided for compatibility with previous versions</p>
+</dd>
+<dt><kbd>-m, --mem</kbd></dt>
+<dd><p>not used; provided for compatibility with previous versions</p>
+</dd>
+<dt><kbd>-p, --projectcode</kbd></dt>
+<dd><p>not used; provided for compatibility with previous versions</p>
+</dd>
+<dt><kbd>-w, --walltime</kbd></dt>
+<dd><p>not used; provided for compatibility with previous versions</p>
+</dd>
+<dt><kbd>-v, --version</kbd></dt>
+<dd><p>show program’s version number and exit</p>
+</dd>
+</dl>
+</section>
 </section>
 <section id="rjm-batch-wait">
 <h2>rjm_batch_wait<a class="headerlink" href="#rjm-batch-wait" title="Permalink to this heading">¶</a></h2>
+<p><p>Wait for the jobs to complete and download files</p>
+</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_batch_wait</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="o">-</span><span class="n">f</span> <span class="n">LOCALJOBDIRFILE</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span>
+                      <span class="p">[</span><span class="o">-</span><span class="n">z</span> <span class="n">POLLINGINTERVALSEC</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">o</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="Named Arguments">
+<h3>Named Arguments<a class="headerlink" href="#Named Arguments" title="Permalink to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>-f, --localjobdirfile</kbd></dt>
+<dd><p>file that contains the names of the local job directories, one name per line</p>
+</dd>
+<dt><kbd>-l, --logfile</kbd></dt>
+<dd><p>logfile. if not specified, all messages will be printed to the terminal.</p>
+</dd>
+<dt><kbd>-ll, --loglevel</kbd></dt>
+<dd><p>Possible choices: debug, info, warn, error, critical</p>
+<p>level of log verbosity (setting the level here overrides the config file)</p>
+</dd>
+<dt><kbd>-z, --pollingintervalsec</kbd></dt>
+<dd><p>number of seconds to wait between attempts to poll for job status</p>
+</dd>
+<dt><kbd>-o, --min-polling-override</kbd></dt>
+<dd><p>Override minimum polling interval of 60 s</p>
+<p>Default: False</p>
+</dd>
+<dt><kbd>-v, --version</kbd></dt>
+<dd><p>show program’s version number and exit</p>
+</dd>
+</dl>
+</section>
 </section>
 </section>
 
