@@ -60,6 +60,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# don't convert double dash to long dash (among other things)
+smartquotes = False
 
 # -- Options for HTML output -------------------------------------------------
 
