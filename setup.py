@@ -36,6 +36,7 @@ PACKAGE_REQUIRES = [
 
 DOC_REQUIRES = [
     "sphinx",
+    "sphinx-argparse",
 ]
 
 setup(

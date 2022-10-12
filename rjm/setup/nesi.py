@@ -93,7 +93,7 @@ class NeSISetup:
             self._lander_client.get_transport().auth_interactive(username=self._username, handler=self._auth_handler)
         except paramiko.ssh_exception.AuthenticationException as exc:
             logger.error(repr(exc))
-            sys.stderr.write("Authentication error: please check your NeSI credentials and try again!" + os.linesep)
+            sys.stderr.write("Authentication error: please check your NeSI credentials and try again!\n")
             sys.exit(1)
 
         # run command

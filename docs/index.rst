@@ -16,11 +16,11 @@ before using the tool.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    getting_started_nesi
-   getting_started_manual
-   using_rjm
+   command_line_interface
+   troubleshooting_on_nesi
 
 
 
