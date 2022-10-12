@@ -12,10 +12,10 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 0
+      - name: Install RJM
+        run: python -m pip install .[dev]
       - name: Build and Commit
         uses: sphinx-notes/pages@v2
-        with:
-          requirements_path: docs/requirements.txt
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
