@@ -1,11 +1,20 @@
 """
 This is an interactive script to set up Globus and funcX on NeSI for use with RJM.
 
-The default behaviour is to create a new Globus guest collection (shared directory) on NeSI and check whether the user already has a funcX endpoint running on NeSI. If a funcX endpoint is not already running, one will be created and started on NeSI. Finally, all configuration values from the above steps will be written to the RJM config file on the local machine and the authentication steps will be run.
+The default behaviour (equivalent to running with option :code:`--config`) is to create a new Globus guest collection
+(shared directory) on NeSI and check whether the user already has a funcX endpoint running on NeSI. If a funcX endpoint is
+not already running, one will be created and started on NeSI. If an existing funcX endpoint is found to be running, it will
+not be restarted. Finally, all configuration values from the above steps will be written to the RJM config file on the local
+machine and the authentication steps will be run.
 
-If run with the :code:`--restart` flag, this script will check for an existing funcX endpoint on NeSI. If it finds one, it will restart it (or start it if it wasn't already running). If the user does not have a funcX endpoint on NeSI, a new one will be created and started. No configuration values are written to the config file. This option is best used after you have already run the default program once (to setup the Globus and funcX endpoints and write the config file) and you need to restart your funcX endpoint for some reason, e.g. it got into a bad state due to network issues on NeSI.
+If run with the :code:`--restart` flag, this script will check for an existing funcX endpoint on NeSI. If it finds one, it
+will restart it (or start it if it wasn't already running). If the user does not have a funcX endpoint on NeSI, a new one
+will be created and started. No configuration values are written to the config file. This option is best used after you have
+already run the default program once (to setup the Globus and funcX endpoints and write the config file) and you need to
+restart your funcX endpoint for some reason, e.g. it got into a bad state due to network issues on NeSI.
 
-While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and will need to use a web browser to carry out the Globus authentication as required.
+While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
+will need to use a web browser to carry out the Globus authentication as required.
 
 """
 import os
