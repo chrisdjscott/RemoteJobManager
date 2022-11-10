@@ -2,7 +2,6 @@
 import os
 import time
 import logging
-import concurrent.futures
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
@@ -60,6 +59,11 @@ class FuncxSlurmRunner(RunnerBase):
 
         # Slurm job id
         self._jobid = None
+
+    def __del__(self):
+        # clean up funcx executor
+        if self._funcx_executor is not None:
+            self._funcx_executor.shutdown()
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -125,11 +129,13 @@ class FuncxSlurmRunner(RunnerBase):
         """Return new funcx executor instance"""
         if self._funcx_client is None:
             raise RuntimeError("create_funcx_executor requires _funcx_client to be set first")
+        if self._funcx_endpoint is None:
+            raise RuntimeError("create_funcx_executor requires _funcx_endpoint to be set first")
 
-        self._log(logging.DEBUG, "Creating funcX executor")
+        self._log(logging.DEBUG, f"Creating funcX executor for endpoint: {self._funcx_endpoint}")
 
         # create a funcx executor
-        funcx_executor = FuncXExecutor(self._funcx_client)
+        funcx_executor = FuncXExecutor(funcx_client=self._funcx_client, endpoint_id=self._funcx_endpoint)
 
         return funcx_executor
 
@@ -191,18 +197,11 @@ class FuncxSlurmRunner(RunnerBase):
 
         # start the function
         self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
-        future = self._funcx_executor.submit(function, *args, endpoint_id=self._funcx_endpoint, **kwargs)
+        future = self._funcx_executor.submit(function, *args, **kwargs)
 
         # wait for it to complete and get the result
         self._log(logging.DEBUG, "Waiting for FuncX function to complete")
-        try:
-            result = future.result(timeout=FUNCX_TIMEOUT)
-        except concurrent.futures.TimeoutError as exc:
-            # reset the funcx client
-            self._log(logging.WARNING, "Caught timeout error while waiting for funcX result => going to attempt restarting the funcX client", exc_info=exc)
-            self.reset_funcx_client(propagate=True)
-            # retries are handled outside this function, so reraise the exception
-            raise
+        result = future.result(timeout=FUNCX_TIMEOUT)
 
         return result
 

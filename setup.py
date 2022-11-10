@@ -70,8 +70,8 @@ setup(
         "requests",
         "paramiko",
         "fair-research-login",
-        "globus-sdk>=3",
-        "funcx==1.0.4",
+        "globus-sdk",
+        "funcx==1.0.5",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
