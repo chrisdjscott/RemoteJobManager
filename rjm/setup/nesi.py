@@ -29,6 +29,7 @@ GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
 GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"
 NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
+NESI_PERSIST_FUNCTIONS_PATH = "/home/{username}/.funcx-endpoint-persist-nesi-functions.sh"
 SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
 SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
 
@@ -62,6 +63,10 @@ class NeSISetup:
         funcx_dir = f"/home/{self._username}/.funcx"
         self._funcx_cred_file = f"{funcx_dir}/credentials/funcx_sdk_tokens.json"
         self._funcx_default_config = f"{funcx_dir}/default/config.py"
+
+        # functions file path
+        self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
+        self._functions_path = NESI_PERSIST_FUNCTIONS_PATH.format(username=self._username)
 
         self._connect()
 
@@ -400,6 +405,9 @@ class NeSISetup:
         # remove existing scrontab to avoid interference
         self._remove_funcx_scrontab()
 
+        # upload bash scripts
+        self._upload_funcx_scripts()
+
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
             logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
@@ -412,22 +420,20 @@ class NeSISetup:
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("funcX endpoint configuration complete")
 
-        # make sure the worker_logs directory exists
-        worker_logs_dir = f"/home/{self._username}/.funcx/{FUNCX_ENDPOINT_NAME}/HighThroughputExecutor/worker_logs"
-        logger.debug(f"Making sure worker_logs dir exists: {worker_logs_dir}")
-        self._remote_dir_create(worker_logs_dir)
+        # run the bash script that will ensure one endpoint is running on NeSI
+        print("Ensuring the funcx endpoint is running, please wait...")
+        cmd = f"export ENDPOINT_RESTART={'1' if restart else '0'} && {self._script_path}"
+        logger.debug(f'Running funcx script: "{cmd}"')
+        status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
+        assert status == 0, f"Running funcx script failed: {stdout} {stderr}"
 
-        # start the funcX endpoint
-        endpoint_running, endpoint_id = self.is_funcx_endpoint_running(stop=restart)
-        if not endpoint_running:
-            logger.info(f"Starting funcx '{FUNCX_ENDPOINT_NAME}' endpoint")
-            print("Starting funcX endpoint, please wait...")
-
-            command = f"module load {FUNCX_MODULE} && funcx-endpoint start {FUNCX_ENDPOINT_NAME}"
-            status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
-            assert status == 0, f"Starting endpoint failed: {stdout} {stderr}"
-            endpoint_running, endpoint_id = self.is_funcx_endpoint_running()
-            assert endpoint_running, f'Starting funcX endpoint failed: {stdout} {stderr}'
+        # get the endpoint id
+        cmd = f"source {self._functions_path} && get_endpoint_id && echo ${{ENDPOINT_ID}}"
+        logger.debug(f"Getting endpoint id: '{cmd}'")
+        status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
+        assert status == 0, f"Getting endpoint id failed: {stdout} {stderr}"
+        endpoint_id = stdout.strip()
+        logger.debug(f"Got endpoint id: '{endpoint_id}'")
 
         # report endpoint id for configuring rjm
         print("="*120)
@@ -467,7 +473,7 @@ class NeSISetup:
         Remove existing funcx scrontab entry
 
         """
-        print("Removing existing scrontab to avoid interferences, please wait...")
+        print("Removing existing scrontab to avoid interference, please wait...")
 
         current_scrontab = self._retrieve_current_scrontab()
 
@@ -504,29 +510,54 @@ class NeSISetup:
         status, stdout, stderr = self.run_command("scrontab -", input_text=scrontab_text)
         assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
 
+    def _upload_file(self, local_path, remote_path, executable=False):
+        """
+        Upload the given file, optionally making it executable
+
+        """
+        logger.debug(f"Uploading file '{local_path}' to '{remote_path}'")
+        self._sftp.put(local_path, remote_path)
+
+        if executable:
+            # make sure the script is executable
+            status, stdout, stderr = self.run_command(f"chmod +x {remote_path}")
+            assert status == 0, f"Failed to make file executable: {stdout} {stderr}"
+
+        # make sure it has unix line endings
+        status, stdout, stderr = self.run_command(f"dos2unix {remote_path}")
+        assert status == 0, f"Failed to convert convert file to unix format: {stdout} {stderr}"
+
+    def _upload_funcx_scripts(self):
+        """
+        Upload the bash script and functions for interacting with funcx
+
+        """
+        print("Uploading funcx scripts, please wait...")
+
+        # write script to NeSI
+        with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
+            # upload the script to NeSI
+            script_path = self._script_path
+            assert os.path.exists(p), "Problem finding shell script resource ({p})"
+            self._upload_file(p, script_path, executable=True)
+        assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
+        logger.debug(f"Uploaded file to: {script_path}")
+
+        # write functions file to NeSI
+        with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi-functions.sh') as p:
+            # upload the script to NeSI
+            script_path = self._functions_path
+            assert os.path.exists(p), "Problem finding shell script resource ({p})"
+            self._upload_file(p, script_path, executable=False)
+        assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
+        logger.debug(f"Uploaded file to: {script_path}")
+
     def _setup_funcx_scrontab(self):
         """
         Create a scrontab job for keeping funcx endpoint running
 
         """
         print("Setting up funcX scrontab entry, please wait...")
-
-        # write script to NeSI
-        with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
-            # upload the script to NeSI
-            script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
-            assert os.path.exists(p), "Problem finding shell script resource ({p})"
-            logger.debug(f"Uploading persist script '{p}' to '{script_path}'")
-            self._sftp.put(p, script_path)
-        assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
-
-        # make sure the script is executable
-        status, stdout, stderr = self.run_command(f"chmod +x {script_path}")
-        assert status == 0, f"Failed to make script executable: {stdout} {stderr}"
-
-        # make sure it has unix line endings
-        status, stdout, stderr = self.run_command(f"dos2unix {script_path}")
-        assert status == 0, f"Failed to convert convert script to unix format: {stdout} {stderr}"
 
         # retrieve current scrontab
         current_scrontab = self._retrieve_current_scrontab()
@@ -542,7 +573,7 @@ class NeSISetup:
         scrontab_lines.append("#SCRON --job-name=funcxcheck")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
-        scrontab_lines.append(f"@hourly {script_path}")
+        scrontab_lines.append(f"@hourly {self._script_path}")
         scrontab_lines.append(SCRON_SECTION_END)
         scrontab_lines.append("")  # end with a newline
 
