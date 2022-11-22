@@ -79,6 +79,7 @@ setup(
     package_data={
         'rjm.setup': [
             'funcx-endpoint-persist-nesi.sh',
+            'funcx-endpoint-persist-nesi-functions.sh',
         ],
     },
     classifiers=[
