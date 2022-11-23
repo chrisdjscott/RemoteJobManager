@@ -155,7 +155,7 @@ will need to use a web browser to carry out the Globus authentication as require
 <p>level of log verbosity (setting the level here overrides the config file)</p>
 </dd>
 <dt><kbd>--force</kbd></dt>
-<dd><p>Ignore progress from previous runs stored in job directory, i.e. start from scratch</p>
+<dd><p>ignore progress from previous runs stored in job directory, i.e. start from scratch</p>
 <p>Default: False</p>
 </dd>
 <dt><kbd>-c, --cmd</kbd></dt>
@@ -205,10 +205,10 @@ will need to use a web browser to carry out the Globus authentication as require
 <p>level of log verbosity (setting the level here overrides the config file)</p>
 </dd>
 <dt><kbd>-z, --pollingintervalsec</kbd></dt>
-<dd><p>number of seconds to wait between attempts to poll for job status</p>
+<dd><p>job status polling interval in seconds (minimum is 60 unless <cite>-o</cite> specified too)</p>
 </dd>
 <dt><kbd>-o, --min-polling-override</kbd></dt>
-<dd><p>Override minimum polling interval of 60 s</p>
+<dd><p>override minimum polling interval of 60 s</p>
 <p>Default: False</p>
 </dd>
 <dt><kbd>-v, --version</kbd></dt>
