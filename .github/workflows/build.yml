@@ -81,8 +81,12 @@ jobs:
         run: pyinstaller -F ../../rjm/cli/rjm_authenticate.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
-      - name: Build rjm_configure
-        run: pyinstaller -F ../../rjm/cli/rjm_configure.py
+      - name: Build rjm_config
+        run: pyinstaller -F ../../rjm/cli/rjm_config.py
+        working-directory:  ./extra/pyinstaller
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+      - name: Build rjm_restart
+        run: pyinstaller -F ../../rjm/cli/rjm_restart.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_health_check
@@ -91,10 +95,6 @@ jobs:
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_cancel
         run: pyinstaller -F ../../rjm/cli/rjm_batch_cancel.py
-        working-directory:  ./extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
-      - name: Build rjm_nesi_setup
-        run: pyinstaller -F ../../rjm/cli/rjm_nesi_setup.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_run

@@ -49,10 +49,10 @@ If you already have a linked identity it should appear in the list like
 Otherwise, you can follow the instructions to *Link an identity from NeSI
 Wellington OIDC Server*.
 
-Run the NeSI setup script (once)
---------------------------------
+Run the NeSI setup script (once per machine)
+--------------------------------------------
 
-Running the NeSI setup script with no arguments (:code:`rjm_nesi_setup`) will
+Running the NeSI setup script with no arguments (:code:`rjm_config`) will
 do the following:
 
 * configure and start a "funcX endpoint" on NeSI, which RJM will use to execute
@@ -75,33 +75,7 @@ need to authenticate with NeSI (first and sector factor) and with Globus, which
 can usually be done using your institutional credentials, e.g. University of
 Auckland.
 
-**Note:** you only need to run this script once. You can reuse the config created
-in this step on multiple machines.
-
-Transferring config to a different machine
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Export the config on the machine that you generated it on:
-
-.. code-block:: bash
-
-   rjm_configure --export-config myrjmconfig.ini
-
-This should write a file called *myrjmconfig.ini* into your current directory.
-Copy this file to another machine and install it by running:
-
-.. code-block:: bash
-
-   rjm_configure --import-config myrjmconfig.ini
-
-After transferring your config file to the new machine, you will need to redo
-the authentication step on the new machine:
-
-.. code-block:: bash
-
-   rjm_authenticate
-
-This will open a browser window and ask you to authenticate with Globus.
+**Note:** you only need to run this script once per machine.
 
 Run a simple test
 -----------------
