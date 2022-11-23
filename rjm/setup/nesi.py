@@ -421,7 +421,10 @@ class NeSISetup:
             logger.info("funcX endpoint configuration complete")
 
         # run the bash script that will ensure one endpoint is running on NeSI
-        print("Ensuring the funcx endpoint is running, please wait...")
+        if restart:
+            print("Restarting the funcx endpoint, please wait...")
+        else:
+            print("Ensuring the funcx endpoint is running, please wait...")
         cmd = f"export ENDPOINT_RESTART={'1' if restart else '0'} && {self._script_path}"
         logger.debug(f'Running funcx script: "{cmd}"')
         status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
