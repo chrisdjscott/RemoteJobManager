@@ -45,15 +45,11 @@
 <li><p><a class="reference internal" href="#linking-globus-and-nesi-accounts" id="id3">Linking Globus and NeSI accounts</a></p></li>
 </ul>
 </li>
-<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once" id="id4">Run the NeSI setup script (once)</a></p>
+<li><p><a class="reference internal" href="#run-the-nesi-setup-script-once-per-machine" id="id4">Run the NeSI setup script (once per machine)</a></p></li>
+<li><p><a class="reference internal" href="#run-a-simple-test" id="id5">Run a simple test</a></p>
 <ul>
-<li><p><a class="reference internal" href="#transferring-config-to-a-different-machine" id="id5">Transferring config to a different machine</a></p></li>
-</ul>
-</li>
-<li><p><a class="reference internal" href="#run-a-simple-test" id="id6">Run a simple test</a></p>
-<ul>
-<li><p><a class="reference internal" href="#health-check-script" id="id7">Health check script</a></p></li>
-<li><p><a class="reference internal" href="#example-simulation" id="id8">Example simulation</a></p></li>
+<li><p><a class="reference internal" href="#health-check-script" id="id6">Health check script</a></p></li>
+<li><p><a class="reference internal" href="#example-simulation" id="id7">Example simulation</a></p></li>
 </ul>
 </li>
 </ul>
@@ -97,9 +93,9 @@ Otherwise, you can follow the instructions to <em>Link an identity from NeSI
 Wellington OIDC Server</em>.</p>
 </section>
 </section>
-<section id="run-the-nesi-setup-script-once">
-<h2>Run the NeSI setup script (once)<a class="headerlink" href="#run-the-nesi-setup-script-once" title="Permalink to this heading">¶</a></h2>
-<p>Running the NeSI setup script with no arguments (<code class="code docutils literal notranslate"><span class="pre">rjm_nesi_setup</span></code>) will
+<section id="run-the-nesi-setup-script-once-per-machine">
+<h2>Run the NeSI setup script (once per machine)<a class="headerlink" href="#run-the-nesi-setup-script-once-per-machine" title="Permalink to this heading">¶</a></h2>
+<p>Running the NeSI setup script with no arguments (<code class="code docutils literal notranslate"><span class="pre">rjm_config</span></code>) will
 do the following:</p>
 <ul class="simple">
 <li><p>configure and start a &quot;funcX endpoint&quot; on NeSI, which RJM will use to execute
@@ -121,26 +117,7 @@ cases you will enter details directly at the terminal. You will
 need to authenticate with NeSI (first and sector factor) and with Globus, which
 can usually be done using your institutional credentials, e.g. University of
 Auckland.</p>
-<p><strong>Note:</strong> you only need to run this script once. You can reuse the config created
-in this step on multiple machines.</p>
-<section id="transferring-config-to-a-different-machine">
-<h3>Transferring config to a different machine<a class="headerlink" href="#transferring-config-to-a-different-machine" title="Permalink to this heading">¶</a></h3>
-<p>Export the config on the machine that you generated it on:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure --export-config myrjmconfig.ini
-</pre></div>
-</div>
-<p>This should write a file called <em>myrjmconfig.ini</em> into your current directory.
-Copy this file to another machine and install it by running:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_configure --import-config myrjmconfig.ini
-</pre></div>
-</div>
-<p>After transferring your config file to the new machine, you will need to redo
-the authentication step on the new machine:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_authenticate
-</pre></div>
-</div>
-<p>This will open a browser window and ask you to authenticate with Globus.</p>
-</section>
+<p><strong>Note:</strong> you only need to run this script once per machine.</p>
 </section>
 <section id="run-a-simple-test">
 <h2>Run a simple test<a class="headerlink" href="#run-a-simple-test" title="Permalink to this heading">¶</a></h2>

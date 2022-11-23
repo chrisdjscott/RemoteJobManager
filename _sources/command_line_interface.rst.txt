@@ -6,15 +6,26 @@ Command line interface
    :depth: 1
    :backlinks: none
 
-rjm_nesi_setup
---------------
+rjm_config
+----------
 
-.. automodule:: rjm.cli.rjm_nesi_setup
+.. automodule:: rjm.cli.rjm_config
 
 .. argparse::
-   :module: rjm.cli.rjm_nesi_setup
+   :module: rjm.cli.rjm_config
    :func: make_parser
-   :prog: rjm_nesi_setup
+   :prog: rjm_config
+   :nodescription:
+
+rjm_restart
+-----------
+
+.. automodule:: rjm.cli.rjm_restart
+
+.. argparse::
+   :module: rjm.cli.rjm_restart
+   :func: make_parser
+   :prog: rjm_restart
    :nodescription:
 
 rjm_health_check

@@ -46,7 +46,7 @@ output that can be useful for debugging):</p>
 <p>If this command fails, a good first step is to try resetting your funcX endpoint on NeSI, which can
 sometimes get into a bad state, particularly if there was a network issue on NeSI or one of the login
 nodes went down:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_nesi_setup --restart -ll debug
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_restart -ll debug
 </pre></div>
 </div>
 <p>After running this command, try the <code class="code docutils literal notranslate"><span class="pre">rjm_health_check</span></code> program. If it still doesn't work, there is likely to be a

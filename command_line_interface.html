@@ -40,50 +40,55 @@
 <nav class="contents local" id="available-commands">
 <p class="topic-title">Available commands</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#module-rjm.cli.rjm_nesi_setup" id="id1">rjm_nesi_setup</a></p></li>
-<li><p><a class="reference internal" href="#rjm-health-check" id="id2">rjm_health_check</a></p></li>
-<li><p><a class="reference internal" href="#rjm-batch-submit" id="id3">rjm_batch_submit</a></p></li>
-<li><p><a class="reference internal" href="#rjm-batch-wait" id="id4">rjm_batch_wait</a></p></li>
+<li><p><a class="reference internal" href="#module-rjm.cli.rjm_config" id="id1">rjm_config</a></p></li>
+<li><p><a class="reference internal" href="#module-rjm.cli.rjm_restart" id="id2">rjm_restart</a></p></li>
+<li><p><a class="reference internal" href="#rjm-health-check" id="id3">rjm_health_check</a></p></li>
+<li><p><a class="reference internal" href="#rjm-batch-submit" id="id4">rjm_batch_submit</a></p></li>
+<li><p><a class="reference internal" href="#rjm-batch-wait" id="id5">rjm_batch_wait</a></p></li>
 </ul>
 </nav>
-<section id="module-rjm.cli.rjm_nesi_setup">
-<span id="rjm-nesi-setup"></span><h2>rjm_nesi_setup<a class="headerlink" href="#module-rjm.cli.rjm_nesi_setup" title="Permalink to this heading">¶</a></h2>
-<p>This is an interactive script to set up Globus and funcX on NeSI for use with RJM.</p>
-<p>The default behaviour (equivalent to running with option <code class="code docutils literal notranslate"><span class="pre">--config</span></code>) is to create a new Globus guest collection
+<section id="module-rjm.cli.rjm_config">
+<span id="rjm-config"></span><h2>rjm_config<a class="headerlink" href="#module-rjm.cli.rjm_config" title="Permalink to this heading">¶</a></h2>
+<p>This is an interactive script to set up Globus and funcX on NeSI for use with RJM. It will create a new Globus guest collection
 (shared directory) on NeSI and check whether the user already has a funcX endpoint running on NeSI. If a funcX endpoint is
 not already running, one will be created and started on NeSI. If an existing funcX endpoint is found to be running, it will
 not be restarted. Finally, all configuration values from the above steps will be written to the RJM config file on the local
 machine and the authentication steps will be run.</p>
-<p>If run with the <code class="code docutils literal notranslate"><span class="pre">--restart</span></code> flag, this script will check for an existing funcX endpoint on NeSI. If it finds one, it
-will restart it (or start it if it wasn't already running). If the user does not have a funcX endpoint on NeSI, a new one
-will be created and started. No configuration values are written to the config file. This option is best used after you have
-already run the default program once (to setup the Globus and funcX endpoints and write the config file) and you need to
-restart your funcX endpoint for some reason, e.g. it got into a bad state due to network issues on NeSI.</p>
 <p>While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
 will need to use a web browser to carry out the Globus authentication as required.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_nesi_setup</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">funcx</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">globus</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">config</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">restart</span><span class="p">]</span>
-                      <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_config</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span>
+                  <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
 </pre></div>
 </div>
 <section id="named-arguments">
 <h3>Named Arguments<a class="headerlink" href="#named-arguments" title="Permalink to this heading">¶</a></h3>
 <dl class="option-list">
-<dt><kbd>--funcx</kbd></dt>
-<dd><p>Set up funcX on NeSI</p>
-<p>Default: False</p>
+<dt><kbd>-l, --logfile</kbd></dt>
+<dd><p>logfile. if not specified, all messages will be printed to the terminal.</p>
 </dd>
-<dt><kbd>--globus</kbd></dt>
-<dd><p>Set up Globus for NeSI</p>
-<p>Default: False</p>
+<dt><kbd>-ll, --loglevel</kbd></dt>
+<dd><p>Possible choices: debug, info, warn, error, critical</p>
+<p>level of log verbosity (setting the level here overrides the config file)</p>
 </dd>
-<dt><kbd>--config</kbd></dt>
-<dd><p>Write config values to config file (--config implies --funcx and --globus). This is the default option if nothing else is selected.</p>
-<p>Default: False</p>
+<dt><kbd>-v, --version</kbd></dt>
+<dd><p>show program's version number and exit</p>
 </dd>
-<dt><kbd>--restart</kbd></dt>
-<dd><p>Restart the funcX endpoint if it is already running (--restart implies --funcx)</p>
-<p>Default: False</p>
-</dd>
+</dl>
+</section>
+</section>
+<section id="module-rjm.cli.rjm_restart">
+<span id="rjm-restart"></span><h2>rjm_restart<a class="headerlink" href="#module-rjm.cli.rjm_restart" title="Permalink to this heading">¶</a></h2>
+<p>This is an interactive script that will restart the funcX endpoint running on NeSI. Sometimes the endpoint gets into a
+bad state due to network, file system, etc issues on NeSI and this script will attempt to fix it.</p>
+<p>While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
+will need to use a web browser to carry out the Globus authentication as required.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">rjm_restart</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">l</span> <span class="n">LOGFILE</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">ll</span> <span class="p">{</span><span class="n">debug</span><span class="p">,</span><span class="n">info</span><span class="p">,</span><span class="n">warn</span><span class="p">,</span><span class="n">error</span><span class="p">,</span><span class="n">critical</span><span class="p">}]</span>
+                   <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
+</pre></div>
+</div>
+<section id="named-arguments">
+<h3>Named Arguments<a class="headerlink" href="#named-arguments" title="Permalink to this heading">¶</a></h3>
+<dl class="option-list">
 <dt><kbd>-l, --logfile</kbd></dt>
 <dd><p>logfile. if not specified, all messages will be printed to the terminal.</p>
 </dd>
