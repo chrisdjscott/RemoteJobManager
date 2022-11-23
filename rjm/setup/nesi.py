@@ -451,7 +451,7 @@ class NeSISetup:
         logger.info("Installed scrontab entry to ensure funcx endpoint keeps running (run 'scrontab -l' on mahuika to view)")
         print("A scrontab entry has been added to periodically check the status of the funcx endpoint and restart it if needed")
         print("On mahuika, run 'scrontab -l' to view it")
-        print("You may also notice a Slurm job has been created with name 'funcxcheck', please do not cancel it!")
+        print("You may also notice two Slurm jobs have been created with names 'funcxcheck' and 'funcxrestart', please do not cancel them!")
         print("="*120)
 
     def _retrieve_current_scrontab(self):
@@ -573,10 +573,16 @@ class NeSISetup:
             scrontab_lines.append("")  # insert space if there were lines before
         scrontab_lines.append(SCRON_SECTION_START)
         scrontab_lines.append("#SCRON --time=08:00")
-        scrontab_lines.append("#SCRON --job-name=funcxcheck")
+        scrontab_lines.append("#SCRON --job-name=funcxpersist")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
         scrontab_lines.append(f"@hourly {self._script_path}")
+        scrontab_lines.append("")
+        scrontab_lines.append("#SCRON --time=08:00")
+        scrontab_lines.append("#SCRON --job-name=funcxrestart")
+        scrontab_lines.append(f"#SCRON --account={self._account}")
+        scrontab_lines.append("#SCRON --mem=128")
+        scrontab_lines.append(f"30 12 * * * env ENDPOINT_RESTART=1 {self._script_path}")  # times are in UTC
         scrontab_lines.append(SCRON_SECTION_END)
         scrontab_lines.append("")  # end with a newline
 
