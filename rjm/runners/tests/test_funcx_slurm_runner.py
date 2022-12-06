@@ -154,25 +154,25 @@ def test_calculate_checksums(runner, tmpdir):
     assert checksums[test_file_not_exist] is None
 
 
-def test_run_function_timeout(runner, mocker):
-    class DummyFuture:
-        def result(self, timeout=None):
-            raise concurrent.futures.TimeoutError
-
-    class DummyExecutor:
-        def submit(self, *args, **kwargs):
-            return DummyFuture()
-
-    runner._funcx_executor = DummyExecutor()
-
-    mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.reset_funcx_client',
-    )
-
-    with pytest.raises(concurrent.futures.TimeoutError):
-        runner.run_function(lambda x: print(x), "Hello, World!")
-
-    assert mocked.call_count == 1
+#def test_run_function_timeout(runner, mocker):
+#    class DummyFuture:
+#        def result(self, timeout=None):
+#            raise concurrent.futures.TimeoutError
+#
+#    class DummyExecutor:
+#        def submit(self, *args, **kwargs):
+#            return DummyFuture()
+#
+#    runner._funcx_executor = DummyExecutor()
+#
+#    mocked = mocker.patch(
+#        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.reset_funcx_client',
+#    )
+#
+#    with pytest.raises(concurrent.futures.TimeoutError):
+#        runner.run_function(lambda x: print(x), "Hello, World!")
+#
+#    assert mocked.call_count == 1
 
 
 def test_reset_funcx_client(configobj, mocker):
