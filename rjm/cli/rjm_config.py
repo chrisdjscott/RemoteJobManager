@@ -91,7 +91,7 @@ def nesi_setup():
     nesi.setup_globus()
 
     # do the funcx setup
-    nesi.setup_funcx(restart=False)
+    nesi.setup_funcx(restart=True)
 
     # write values to config file
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS_REQUIRED)

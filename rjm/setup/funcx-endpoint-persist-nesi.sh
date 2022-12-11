@@ -13,19 +13,11 @@ cleanup_logs
 check_endpoint_running_nodes
 
 # restart the endpoint if asked to or if there is not exactly one endpoint running already
-if [ "${ENDPOINT_RUNNING_COUNT}" -ne 1 ] || [ "${ENDPOINT_RESTART}" -eq 1 ]; then
+if [ -z ${ENDPOINT_RUNNING_COUNT+x} ]; then
+    echo "Error: checking if endpoint running did not work!" >> $LOG
+elif [ "${ENDPOINT_RUNNING_COUNT}" != "1" ] || [ "${ENDPOINT_RESTART}" == "1" ]; then
     restart_endpoint
 else
     # endpoint is running, nothing to do
     echo "  the funcx '${ENDPOINT_NAME}' endpoint is already running on ${ENDPOINT_RUNNING_NODES[0]}" >> $LOG
 fi
-
-
-# we want one endpoint to be running
-#if [ ${ENDPOINT_RUNNING_COUNT} -eq 1 ]; then
-#    # endpoint is running, nothing to do
-#    echo "  the funcx '${ENDPOINT_NAME}' endpoint is already running on ${ENDPOINT_RUNNING_NODES[0]}" >> $LOG
-#else
-#    # stop any endpoints that may be running and start one
-#    restart_endpoint
-#fi
