@@ -388,7 +388,7 @@ class NeSISetup:
             if status:
                 raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
 
-    def setup_funcx(self, restart=False):
+    def setup_funcx(self, restart=True):
         """
         Sets up the funcX endpoint on NeSI.
 
