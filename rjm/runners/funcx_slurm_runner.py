@@ -2,7 +2,6 @@
 import os
 import time
 import logging
-import concurrent.futures
 
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
@@ -14,7 +13,7 @@ from rjm.errors import RemoteJobRunnerError
 
 
 FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
-FUNCX_TIMEOUT = 180  # default timeout for waiting for funcx functions
+FUNCX_TIMEOUT = 120  # default timeout for waiting for funcx functions
 SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL', 'COMPLETING']
 SLURM_WARN_STATUS = ["NODE_FAIL"]
 SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
