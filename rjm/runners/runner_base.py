@@ -25,9 +25,7 @@ class RunnerBase:
         else:
             self._config = config
 
-        self._retry_tries = self._config.getint("RETRY", "tries", fallback=utils.DEFAULT_RETRY_TRIES)
-        self._retry_backoff = self._config.getint("RETRY", "backoff", fallback=utils.DEFAULT_RETRY_BACKOFF)
-        self._retry_delay = self._config.getint("RETRY", "delay", fallback=utils.DEFAULT_RETRY_DELAY)
+        self._retry_tries, self._retry_backoff, self._retry_delay = utils.get_retry_values_from_config(self._config)
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
