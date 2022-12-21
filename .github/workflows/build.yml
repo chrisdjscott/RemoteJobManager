@@ -57,7 +57,7 @@ jobs:
 
       # If the secrets were set, run some real tests
       - name: Run the health check script
-        run: rjm_health_check
+        run: rjm_health_check -ll debug
         if: steps.rjm_files.outputs.files_exist == 'true'
       - name: Run batch_submit for nonmem example
         run: rjm_batch_submit -f localdirs.txt -ll debug
@@ -110,7 +110,7 @@ jobs:
 
       # Run Pyinstaller built health check on Windows, if the secrets existed
       - name: Run pyinstaller built health check
-        run: dist/rjm_health_check.exe
+        run: dist/rjm_health_check.exe -ll debug
         working-directory: ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exist == 'true' }}
 
