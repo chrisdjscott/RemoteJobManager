@@ -576,7 +576,7 @@ class NeSISetup:
         scrontab_lines.append("#SCRON --job-name=funcxpersist")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
-        scrontab_lines.append(f"10 0-12,18-23 * * * {self._script_path}")  # times are in UTC
+        scrontab_lines.append(f"30 0-16,18-23 * * * {self._script_path}")  # times are in UTC
         scrontab_lines.append("")
         scrontab_lines.append("#SCRON --time=05:00")
         scrontab_lines.append("#SCRON --job-name=funcxrestart")
