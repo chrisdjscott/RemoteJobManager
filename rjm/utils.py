@@ -31,9 +31,9 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 # defaults for retries
-DEFAULT_RETRY_TRIES = 10  # retry up to 10 times
-DEFAULT_RETRY_BACKOFF = 2  # each time double the delay before trying again
-DEFAULT_RETRY_DELAY = 8  # start with an 8 second delay
+DEFAULT_RETRY_TRIES = 12  # number of times to retry
+DEFAULT_RETRY_BACKOFF = 2  # factor to increase delay by each time
+DEFAULT_RETRY_DELAY = 5  # initial delay
 
 logger = logging.getLogger(__name__)
 
@@ -110,3 +110,32 @@ def backup_file(file_path):
         shutil.copy(file_path, bkp_file)
 
         return bkp_file
+
+
+def get_retry_values_from_config(config):
+    """
+    Return retry values (tries, backoff and delay)
+
+    """
+    use_config_vals = config.getboolean("RETRY", "override_defaults", fallback=False)
+
+    if use_config_vals:
+        retry_tries = config.getint("RETRY", "tries", fallback=DEFAULT_RETRY_TRIES)
+        retry_backoff = config.getint("RETRY", "backoff", fallback=DEFAULT_RETRY_BACKOFF)
+        retry_delay = config.getint("RETRY", "delay", fallback=DEFAULT_RETRY_DELAY)
+        logger.debug(f"Using retry values from config: tries={retry_tries}, backoff={retry_backoff}, delay={retry_delay}")
+    else:
+        retry_tries = DEFAULT_RETRY_TRIES
+        retry_backoff = DEFAULT_RETRY_BACKOFF
+        retry_delay = DEFAULT_RETRY_DELAY
+        logger.debug(f"Using default retry values: tries={retry_tries}, backoff={retry_backoff}, delay={retry_delay}")
+
+    # report how long we will wait for
+    total = 0
+    current = retry_delay
+    for i in range(retry_tries):
+        total += current
+        current *= retry_backoff
+    logger.debug(f"Will retry for a total of {total} seconds")
+
+    return retry_tries, retry_backoff, retry_delay
