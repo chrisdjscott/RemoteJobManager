@@ -37,9 +37,7 @@ class GlobusHttpsTransferer(TransfererBase):
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
 
         # retry params
-        self._retry_tries = self._config.getint("RETRY", "tries", fallback=utils.DEFAULT_RETRY_TRIES)
-        self._retry_backoff = self._config.getint("RETRY", "backoff", fallback=utils.DEFAULT_RETRY_BACKOFF)
-        self._retry_delay = self._config.getint("RETRY", "delay", fallback=utils.DEFAULT_RETRY_DELAY)
+        self._retry_tries, self._retry_backoff, self._retry_delay = utils.get_retry_values_from_config(self._config)
 
         # https uploads/downloads
         self._https_base_url = None

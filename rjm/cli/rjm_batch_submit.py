@@ -20,7 +20,7 @@ def make_parser():
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('--force', action="store_true",
-                        help="Ignore progress from previous runs stored in job directory, i.e. start from scratch")
+                        help="ignore progress from previous runs stored in job directory, i.e. start from scratch")
 
     not_used_help = "not used; provided for compatibility with previous versions"
     parser.add_argument('-c', '--cmd', help=not_used_help, action='append')

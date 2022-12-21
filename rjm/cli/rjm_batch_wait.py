@@ -25,9 +25,9 @@ def make_parser():
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-z', '--pollingintervalsec', type=int,
-                        help="number of seconds to wait between attempts to poll for job status")
+                        help=f"job status polling interval in seconds (minimum is {MIN_POLLING_INTERVAL} unless `-o` specified too)")
     parser.add_argument('-o', '--min-polling-override', action='store_true',
-                        help=f'Override minimum polling interval of {MIN_POLLING_INTERVAL} s')
+                        help=f'override minimum polling interval of {MIN_POLLING_INTERVAL} s')
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser

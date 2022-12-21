@@ -17,7 +17,7 @@ nodes went down:
 
 .. code-block:: bash
 
-   rjm_nesi_setup --restart -ll debug
+   rjm_restart -ll debug
 
 After running this command, try the :code:`rjm_health_check` program. If it still doesn't work, there is likely to be a
 bigger issue, please contact `NeSI support <https://support.nesi.org.nz/hc/en-gb/requests/new>`_ with the error message

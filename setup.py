@@ -54,10 +54,10 @@ setup(
             'rjm_batch_wait = rjm.cli.rjm_batch_wait:batch_wait',
             'rjm_batch_run = rjm.cli.rjm_batch_run:batch_run',
             'rjm_authenticate = rjm.cli.rjm_authenticate:authenticate',
-            'rjm_configure = rjm.cli.rjm_configure:configure',
             'rjm_health_check = rjm.cli.rjm_health_check:health_check',
             'rjm_batch_cancel = rjm.cli.rjm_batch_cancel:batch_cancel',
-            'rjm_nesi_setup = rjm.cli.rjm_nesi_setup:nesi_setup',
+            'rjm_config = rjm.cli.rjm_config:nesi_setup',
+            'rjm_restart = rjm.cli.rjm_restart:nesi_setup',
         ],
         'pyinstaller40': [
             'hook-dirs = rjm.__pyinstaller:get_hook_dirs',
@@ -79,6 +79,7 @@ setup(
     package_data={
         'rjm.setup': [
             'funcx-endpoint-persist-nesi.sh',
+            'funcx-endpoint-persist-nesi-functions.sh',
         ],
     },
     classifiers=[

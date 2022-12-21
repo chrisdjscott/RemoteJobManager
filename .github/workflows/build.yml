@@ -12,9 +12,9 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-2019]
         python-version: ['3.9']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Display Python version
@@ -50,23 +50,23 @@ jobs:
         shell: bash
         run: |
           if [[ -r ~/.rjm/rjm_tokens.json ]] && [[ -r ~/.rjm/rjm_config.ini ]]; then
-            echo '::set-output name=files_exists::true'
+            echo 'files_exist=true' >> $GITHUB_OUTPUT
           else
-            echo '::set-output name=files_exists::false'
+            echo 'files_exist=false' >> $GITHUB_OUTPUT
           fi
 
       # If the secrets were set, run some real tests
       - name: Run the health check script
         run: rjm_health_check
-        if: steps.rjm_files.outputs.files_exists == 'true'
+        if: steps.rjm_files.outputs.files_exist == 'true'
       - name: Run batch_submit for nonmem example
         run: rjm_batch_submit -f localdirs.txt -ll debug
         working-directory: ./examples/nonmem
-        if: steps.rjm_files.outputs.files_exists == 'true'
+        if: steps.rjm_files.outputs.files_exist == 'true'
       - name: Run batch_wait for nonmem example
         run: rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o
         working-directory: ./examples/nonmem
-        if: steps.rjm_files.outputs.files_exists == 'true'
+        if: steps.rjm_files.outputs.files_exist == 'true'
 
       # Build executables using PyInstaller just on Windows
       - name: Build rjm_batch_submit
@@ -81,8 +81,12 @@ jobs:
         run: pyinstaller -F ../../rjm/cli/rjm_authenticate.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
-      - name: Build rjm_configure
-        run: pyinstaller -F ../../rjm/cli/rjm_configure.py
+      - name: Build rjm_config
+        run: pyinstaller -F ../../rjm/cli/rjm_config.py
+        working-directory:  ./extra/pyinstaller
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
+      - name: Build rjm_restart
+        run: pyinstaller -F ../../rjm/cli/rjm_restart.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_health_check
@@ -91,10 +95,6 @@ jobs:
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_cancel
         run: pyinstaller -F ../../rjm/cli/rjm_batch_cancel.py
-        working-directory:  ./extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
-      - name: Build rjm_nesi_setup
-        run: pyinstaller -F ../../rjm/cli/rjm_nesi_setup.py
         working-directory:  ./extra/pyinstaller
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
       - name: Build rjm_batch_run
@@ -112,17 +112,17 @@ jobs:
       - name: Run pyinstaller built health check
         run: dist/rjm_health_check.exe
         working-directory: ./extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exists == 'true' }}
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exist == 'true' }}
 
       # Run Pyinstaller built rjm_authenticate on Windows, if the secrets existed
       - name: Run pyinstaller built rjm_authenticate
         run: dist/rjm_authenticate.exe
         working-directory: ./extra/pyinstaller
-        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exists == 'true' }}
+        if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' && steps.rjm_files.outputs.files_exist == 'true' }}
 
       # Cleanup rjm config directory
       - run: rm ~/.rjm/*
-        if: steps.rjm_files.outputs.files_exists == 'true'
+        if: steps.rjm_files.outputs.files_exist == 'true'
         
       # archive the binaries and upload
       - name: Archive binaries
@@ -134,7 +134,7 @@ jobs:
         if: ${{ matrix.os == 'windows-2019' && matrix.python-version == '3.9' }}
 
       # upload as an artifact of the build
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: RemoteJobManager-${{ runner.os }}
           path: extra/pyinstaller/dist/RemoteJobManager-*.zip
