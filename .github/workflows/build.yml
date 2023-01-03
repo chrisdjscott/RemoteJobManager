@@ -101,7 +101,7 @@ jobs:
         with:
           files: extra/pyinstaller/dist/RemoteJobManager-*.zip
 
-  realtests:
+  realtest:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
