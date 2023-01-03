@@ -144,14 +144,17 @@ jobs:
       - name: Run the health check script
         run: rjm_health_check -ll debug
         if: steps.rjm_config_files.outputs.files_exist == 'true'
+        timeout-minutes: 10
       - name: Run batch_submit for nonmem example
         run: rjm_batch_submit -f localdirs.txt -ll debug
         working-directory: ./examples/nonmem
         if: steps.rjm_config_files.outputs.files_exist == 'true'
+        timeout-minutes: 10
       - name: Run batch_wait for nonmem example
         run: rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o
         working-directory: ./examples/nonmem
         if: steps.rjm_config_files.outputs.files_exist == 'true'
+        timeout-minutes: 10
 
       # Cleanup rjm config directory
       - run: rm ~/.rjm/*
