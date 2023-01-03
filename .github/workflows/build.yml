@@ -44,7 +44,7 @@ jobs:
       - name: Build the package
         run: python -m pip install .[dev]
 
-      # Build executables using PyInstaller just on Windows
+      # Build executables using PyInstaller
       - name: Build rjm_batch_submit
         run: pyinstaller -F ../../rjm/cli/rjm_batch_submit.py
         working-directory:  ./extra/pyinstaller
@@ -75,12 +75,12 @@ jobs:
           echo "Python license: https://docs.python.org/3/license.html" >> dist/bundled_licenses.txt
         working-directory: ./extra/pyinstaller
 
-      # Run Pyinstaller built health check on Windows, if the secrets existed
+      # test the pyinstaller built health check runs
       - name: Run pyinstaller built health check
         run: dist/rjm_health_check.exe --help
         working-directory: ./extra/pyinstaller
 
-      # archive the binaries and upload
+      # archive the binaries
       - name: Archive binaries
         uses: thedoctor0/zip-release@master
         with:
@@ -88,7 +88,7 @@ jobs:
           directory: extra/pyinstaller/dist
           filename: RemoteJobManager-${{ runner.os }}.zip
 
-      # upload as an artifact of the build
+      # upload archive as an artifact of the build
       - uses: actions/upload-artifact@v3
         with:
           name: RemoteJobManager-${{ runner.os }}
