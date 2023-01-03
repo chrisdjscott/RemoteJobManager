@@ -103,7 +103,6 @@ jobs:
 
   realtest:
     runs-on: ${{ matrix.os }}
-    if: (env.RJM_TOKENS != null) && (env.RJM_CONFIG != null)
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
