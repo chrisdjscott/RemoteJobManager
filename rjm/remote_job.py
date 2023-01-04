@@ -50,9 +50,7 @@ class RemoteJob:
         config = config_helper.load_config()
         self._uploads_file = config.get("FILES", "uploads_file")
         self._downloads_file = config.get("FILES", "downloads_file")
-        self._retry_tries = config.getint("RETRY", "tries", fallback=utils.DEFAULT_RETRY_TRIES)
-        self._retry_backoff = config.getint("RETRY", "backoff", fallback=utils.DEFAULT_RETRY_BACKOFF)
-        self._retry_delay = config.getint("RETRY", "delay", fallback=utils.DEFAULT_RETRY_DELAY)
+        self._retry_tries, self._retry_backoff, self._retry_delay = utils.get_retry_values_from_config(config)
 
         # file transferer
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
