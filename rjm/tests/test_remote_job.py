@@ -24,6 +24,7 @@ def configobj():
         "poll_interval": "1",
     }
     config["RETRY"] = {
+        "override_defaults": "1",
         "delay": "1",
         "backoff": "1",
         "tries": "4",

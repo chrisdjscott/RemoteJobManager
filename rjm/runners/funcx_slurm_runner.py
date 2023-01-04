@@ -60,6 +60,12 @@ class FuncxSlurmRunner(RunnerBase):
         # Slurm job id
         self._jobid = None
 
+    def __del__(self):
+        # clean up funcx executor
+        if self._funcx_executor is not None and self._external_runner is None:
+            self._log(logging.DEBUG, "Shutting down funcx executor")
+            self._funcx_executor.shutdown(wait=False)
+
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
         logger.log(level, self._label + message, *args, **kwargs)
@@ -124,11 +130,13 @@ class FuncxSlurmRunner(RunnerBase):
         """Return new funcx executor instance"""
         if self._funcx_client is None:
             raise RuntimeError("create_funcx_executor requires _funcx_client to be set first")
+        if self._funcx_endpoint is None:
+            raise RuntimeError("create_funcx_executor requires _funcx_endpoint to be set first")
 
-        self._log(logging.DEBUG, "Creating funcX executor")
+        self._log(logging.DEBUG, f"Creating funcX executor for endpoint: {self._funcx_endpoint}")
 
         # create a funcx executor
-        funcx_executor = FuncXExecutor(self._funcx_client)
+        funcx_executor = FuncXExecutor(funcx_client=self._funcx_client, endpoint_id=self._funcx_endpoint)
 
         return funcx_executor
 
@@ -190,7 +198,7 @@ class FuncxSlurmRunner(RunnerBase):
 
         # start the function
         self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
-        future = self._funcx_executor.submit(function, *args, endpoint_id=self._funcx_endpoint, **kwargs)
+        future = self._funcx_executor.submit(function, *args, **kwargs)
 
         # wait for it to complete and get the result
         self._log(logging.DEBUG, "Waiting for FuncX function to complete")

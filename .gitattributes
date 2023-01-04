@@ -1,8 +1,12 @@
 # Set the default behavior, in case people don't have core.autocrlf set.
 * text=auto
 
-# nonmem example files must have LF endings, even on Windows
+# example files must have LF endings, even on Windows
 examples/nonmem/files/* text eol=lf
+examples/many/many*/* text eol=lf
+examples/namd/apoal_*/* text eol=lf
+examples/longrunning/dummy*/* text eol=lf
 
-# funcx script must have LF endings too
+# bash scripts must have LF endings too
 rjm/setup/funcx-endpoint-persist-nesi.sh text eol=lf
+rjm/setup/funcx-endpoint-persist-nesi-functions.sh text eol=lf

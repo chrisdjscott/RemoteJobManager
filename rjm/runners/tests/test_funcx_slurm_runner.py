@@ -185,7 +185,7 @@ def test_reset_funcx_client(configobj, mocker):
 
     class MockedFuncXExecutor:
         """dummy class"""
-        def shutdown(self):
+        def shutdown(self, *args, **kwargs):
             pass
 
         def submit(self, *args, **kwargs):
