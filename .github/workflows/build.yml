@@ -142,7 +142,7 @@ jobs:
 
       # If the secrets were set, run some real tests
       - name: Run the health check script
-        run: rjm_health_check -ll debug
+        run: rjm_health_check -ll debug --retries
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10
       - name: Run batch_submit for nonmem example

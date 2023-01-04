@@ -18,6 +18,7 @@ def make_parser():
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-k', '--keep', action="store_true",
                         help="Keep health check files on remote system, i.e. do not delete them after completing the check (default=%(default)s)")
+    parser.add_argument('-r', '--retries', action='store_true', help='Allow retries on function failures')
     parser.add_argument("-v", '--version', action='version', version='%(prog)s ' + __version__)
 
     return parser
@@ -63,7 +64,7 @@ def health_check():
         prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}"
         print()
         print("Testing creation of unique remote directory...")
-        rj.make_remote_directory(prefix=prefix, retries=False)
+        rj.make_remote_directory(prefix=prefix, retries=args.retries)
         remote_dir = rj.get_remote_directory()
         print(f'Created remote directory: "{remote_dir}"')
 
@@ -76,13 +77,14 @@ def health_check():
         # upload that file
         print()
         print("Testing uploading a file...")
-        t.upload_files([test_file_local])
+        t.upload_files([test_file_local])  # this function always does retries
         print("Finished testing uploading a file")
 
         # use runner to check the directory and file exists (tests funcx)
         print()
         print("Using runner to check directory and file exist...")
-        result = r.run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
+        run_function = r.run_function_with_retries if args.retries else r.run_function
+        result = run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
         if result is None:
             print("Finished checking directory and file exist")
         else:
