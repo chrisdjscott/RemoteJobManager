@@ -131,7 +131,7 @@ class RemoteJobBatch:
                             logger.error(repr(exc))
 
         # handle errors
-        logger.debug(f"{len(errors)} errors to be handled")
+        logger.debug(f"{len(errors)} errors to report")
         if len(errors):
             raise RemoteJobBatchError(errors)
 
@@ -190,6 +190,9 @@ class RemoteJobBatch:
         for err in errors:
             logger.error(err)
 
+        logger.info(f"{len(undownloaded_jobs)} jobs to be downloaded")
+        logger.info(f"{len(unfinished_jobs)} jobs to wait for and download")
+
         # executor for processing downloads
         future_to_rj = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as downloader:  # separate thread for downloading
@@ -230,6 +233,7 @@ class RemoteJobBatch:
             if len(future_to_rj):
                 for future in concurrent.futures.as_completed(future_to_rj):
                     rj = future_to_rj[future]
+                    logger.debug(f"Received download result for {rj}")
                     try:
                         future.result()
                     except Exception as exc:
@@ -237,6 +241,7 @@ class RemoteJobBatch:
                         logger.error(repr(exc))
 
         # handle errors
+        logger.debug(f"{len(errors)} errors to report")
         if len(errors):
             raise RemoteJobBatchError(errors)
 
