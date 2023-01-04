@@ -19,6 +19,7 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-le', '--logextra', action='store_true', help='Also log funcx and globus at the chosen loglevel')
     parser.add_argument('--force', action="store_true",
                         help="ignore progress from previous runs stored in job directory, i.e. start from scratch")
     parser.add_argument('-n', '--defaultlogname', action='store_true', help='Use default log name instead of "batch_submit"')
@@ -47,7 +48,7 @@ def batch_submit():
 
     # setup logging
     log_name = None if args.defaultlogname else "batch_submit"
-    utils.setup_logging(log_name=log_name, log_file=args.logfile, log_level=args.loglevel)
+    utils.setup_logging(log_name=log_name, log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()

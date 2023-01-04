@@ -38,7 +38,7 @@ DEFAULT_RETRY_DELAY = 5  # initial delay
 logger = logging.getLogger(__name__)
 
 
-def setup_logging(log_name=None, log_file=None, log_level=None):
+def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False):
     # name
     if log_name is None:
         log_name = "%(name)s"
@@ -67,9 +67,10 @@ def setup_logging(log_name=None, log_file=None, log_level=None):
         level = getattr(logging, log_level.upper(), None)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)
-            # temporary extra debug logging for globus and funcx
-            logging.getLogger("globus").setLevel(level)
-            logging.getLogger("funcx").setLevel(level)
+            if cli_extra:
+                # same level for globus and funcx
+                logging.getLogger("globus").setLevel(level)
+                logging.getLogger("funcx").setLevel(level)
 
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,

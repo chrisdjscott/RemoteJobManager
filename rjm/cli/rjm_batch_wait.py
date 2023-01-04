@@ -24,6 +24,7 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-le', '--logextra', action='store_true', help='Also log funcx and globus at the chosen loglevel')
     parser.add_argument('-z', '--pollingintervalsec', type=int,
                         help=f"job status polling interval in seconds (minimum is {MIN_POLLING_INTERVAL} unless `-o` specified too)")
     parser.add_argument('-o', '--min-polling-override', action='store_true',
@@ -45,7 +46,7 @@ def batch_wait(args=None):
 
     # setup logging
     log_name = None if args.defaultlogname else "batch_wait"
-    utils.setup_logging(log_name=log_name, log_file=args.logfile, log_level=args.loglevel)
+    utils.setup_logging(log_name=log_name, log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
