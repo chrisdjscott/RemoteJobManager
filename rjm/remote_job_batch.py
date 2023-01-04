@@ -85,9 +85,13 @@ class RemoteJobBatch:
         # categorising remote_jobs
         unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs = self._categorise_jobs()
         if len(unfinished_jobs):
-            logger.info(f"Skipping {len(unfinished_jobs)} that have already started running")
+            logger.info(f"Skipping {len(unfinished_jobs)} jobs that have already started running")
         if len(undownloaded_jobs):
-            logger.info(f"Skipping {len(undownloaded_jobs)} that have already finished running")
+            logger.info(f"Skipping {len(undownloaded_jobs)} jobs that have already finished running")
+        if len(unuploaded_jobs):
+            logger.info(f"{len(unuploaded_jobs)} jobs are ready to be uploaded and started")
+        if len(unstarted_jobs):
+            logger.info(f"{len(unstarted_jobs)} jobs are ready to be started")
 
         # tracking errors to report later
         errors = []
@@ -111,6 +115,7 @@ class RemoteJobBatch:
             if len(future_to_rj):
                 for future in concurrent.futures.as_completed(future_to_rj):
                     rj = future_to_rj[future]
+                    logger.debug(f"Received upload result for {rj}")
                     try:
                         future.result()
                     except Exception as exc:
@@ -119,12 +124,14 @@ class RemoteJobBatch:
                     else:
                         # upload succeeded, now start the job
                         try:
+                            logger.debug(f"Starting run for {rj}")
                             rj.run_start()
                         except Exception as exc:
                             errors.append(repr(exc))
                             logger.error(repr(exc))
 
         # handle errors
+        logger.debug(f"{len(errors)} errors to be handled")
         if len(errors):
             raise RemoteJobBatchError(errors)
 
