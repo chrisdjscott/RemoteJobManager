@@ -1,7 +1,6 @@
 
 import os
 import configparser
-import concurrent.futures
 
 import pytest
 
@@ -194,6 +193,8 @@ def test_reset_funcx_client(configobj, mocker):
     mocked_create_client = mocker.patch(
         'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner._create_funcx_client',
     )
+
+    funcx_slurm_runner.USE_EXECUTOR = True
 
     exec1 = MockedFuncXExecutor()
     exec1.id = 1

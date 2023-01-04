@@ -3,6 +3,7 @@ import os
 import time
 import logging
 
+from funcx.errors import TaskPending
 from funcx.sdk.client import FuncXClient
 from funcx.sdk.executor import FuncXExecutor
 from funcx.sdk.login_manager.manager import LoginManager
@@ -12,6 +13,8 @@ from rjm.runners.runner_base import RunnerBase
 from rjm.errors import RemoteJobRunnerError
 
 
+USE_EXECUTOR = False
+CLIENT_POLLING_INTERVAL = 2
 FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
 FUNCX_TIMEOUT = 120  # default timeout for waiting for funcx functions
 SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL', 'COMPLETING']
@@ -49,7 +52,10 @@ class FuncxSlurmRunner(RunnerBase):
         # funcx client and executor
         self._external_runner = None
         self._funcx_client = None
-        self._funcx_executor = None
+        if USE_EXECUTOR:
+            self._funcx_executor = None
+        else:
+            self._registered_functions = {}
 
         # the name of the Slurm script
         self._slurm_script = self._config.get("SLURM", "slurm_script")
@@ -62,9 +68,10 @@ class FuncxSlurmRunner(RunnerBase):
 
     def __del__(self):
         # clean up funcx executor
-        if self._funcx_executor is not None and self._external_runner is None:
-            self._log(logging.DEBUG, "Shutting down funcx executor")
-            self._funcx_executor.shutdown(wait=False)
+        if USE_EXECUTOR:
+            if self._funcx_executor is not None and self._external_runner is None:
+                self._log(logging.DEBUG, "Shutting down funcx executor")
+                self._funcx_executor.shutdown(wait=False)
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -128,6 +135,9 @@ class FuncxSlurmRunner(RunnerBase):
 
     def _create_funcx_executor(self):
         """Return new funcx executor instance"""
+        if not USE_EXECUTOR:
+            return
+
         if self._funcx_client is None:
             raise RuntimeError("create_funcx_executor requires _funcx_client to be set first")
         if self._funcx_endpoint is None:
@@ -146,7 +156,7 @@ class FuncxSlurmRunner(RunnerBase):
             raise RuntimeError("setup_globus_auth must be called before reset_funcx_client")
 
         if self._external_runner is None:
-            if self._funcx_executor is not None:
+            if USE_EXECUTOR and self._funcx_executor is not None:
                 self._log(logging.DEBUG, f"Shutting down old funcX executor ({self._funcx_executor})")
                 self._funcx_executor.shutdown()
 
@@ -155,8 +165,9 @@ class FuncxSlurmRunner(RunnerBase):
             self._log(logging.DEBUG, f"Using new funcX client: {self._funcx_client}")
 
             # create a funcX executor
-            self._funcx_executor = self._create_funcx_executor()
-            self._log(logging.DEBUG, f"Using new funcX executor: {self._funcx_executor}")
+            if USE_EXECUTOR:
+                self._funcx_executor = self._create_funcx_executor()
+                self._log(logging.DEBUG, f"Using new funcX executor: {self._funcx_executor}")
 
         else:
             # if required, force the external runner to reset too
@@ -166,7 +177,8 @@ class FuncxSlurmRunner(RunnerBase):
 
             # update references
             self._funcx_client = self._external_runner.get_funcx_client()
-            self._funcx_executor = self._external_runner.get_funcx_executor()
+            if USE_EXECUTOR:
+                self._funcx_executor = self._external_runner.get_funcx_executor()
 
     def get_funcx_client(self):
         """Returns the funcx client"""
@@ -179,6 +191,9 @@ class FuncxSlurmRunner(RunnerBase):
 
     def get_funcx_executor(self):
         """Returns the funcx executor"""
+        if not USE_EXECUTOR:
+            return None
+
         if self._external_runner is not None:
             executor = self._external_runner.get_funcx_executor()
         else:
@@ -188,21 +203,57 @@ class FuncxSlurmRunner(RunnerBase):
 
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""
-        if self._external_runner is not None:
+        if USE_EXECUTOR and self._external_runner is not None:
             # update reference to executor
             self._funcx_executor = self._external_runner.get_funcx_executor()
 
-        if self._funcx_executor is None:
+        if (USE_EXECUTOR and self._funcx_executor is None) or self._funcx_client is None:
             self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
             raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
 
-        # start the function
-        self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
-        future = self._funcx_executor.submit(function, *args, **kwargs)
+        if USE_EXECUTOR:
+            # start the function
+            self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
+            future = self._funcx_executor.submit(function, *args, **kwargs)
 
-        # wait for it to complete and get the result
-        self._log(logging.DEBUG, "Waiting for FuncX function to complete")
-        result = future.result(timeout=FUNCX_TIMEOUT)
+            # wait for it to complete and get the result
+            self._log(logging.DEBUG, "Waiting for FuncX function to complete")
+            result = future.result(timeout=FUNCX_TIMEOUT)
+
+        else:
+            # register the function
+            if function not in self._registered_functions:
+                self._registered_functions[function] = self._funcx_client.register_function(function, public=False, searchable=False)
+            function_id = self._registered_functions[function]
+
+            # run the function
+            self._log(logging.DEBUG, f"Running function via FuncX client ({self._funcx_client}): {function} (id: {function_id})")
+            task_id = self._funcx_client.run(*args, endpoint_id=self._funcx_endpoint, function_id=function_id, **kwargs)
+            self._log(logging.DEBUG, f"Task submitted with id: {task_id}")
+
+            # wait for the function to complete
+            pending = True
+            start_time = time.time()
+            time.sleep(1)  # short sleep to give task chance to run
+            while pending:
+                try:
+                    result = self._funcx_client.get_result(task_id)
+
+                except TaskPending as exc:
+                    self._log(logging.DEBUG, f"Task pending: {exc}")
+
+                    # check if we've been waiting for too long
+                    if time.time() - start_time > FUNCX_TIMEOUT:
+                        self._log(logging.ERROR, "Timed out waiting for funcX function to run")
+                        raise RuntimeError("Timed out waiting for funcX function to run")
+
+                    # sleep a bit and check again
+                    time.sleep(CLIENT_POLLING_INTERVAL)
+
+                else:
+                    # finished waiting
+                    self._log(logging.DEBUG, f"Task finished after {time.time() - start_time:.1f} seconds")
+                    pending = False
 
         return result
 
