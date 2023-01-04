@@ -86,7 +86,7 @@ def health_check():
         if result is None:
             print("Finished checking directory and file exist")
         else:
-            raise RuntimeError("Error checking directory and file exist: {result}")
+            raise RuntimeError(f"Error checking directory and file exist: {result}")
 
     print()
     print("If there were no errors above it looks like basic functionality is good")
