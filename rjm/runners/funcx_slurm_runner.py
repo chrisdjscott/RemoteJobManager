@@ -40,6 +40,9 @@ class FuncxSlurmRunner(RunnerBase):
 
         # the FuncX endpoint on the remote machine
         self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")
+        self._use_executor = self._config.getboolean("FUNCX", "use_executor", fallback=USE_EXECUTOR)
+        if self._use_executor:
+            self._log(logging.DEBUG, "Using funcX executor")
 
         # globus authorisers
         self._search_authoriser = None
@@ -52,7 +55,7 @@ class FuncxSlurmRunner(RunnerBase):
         # funcx client and executor
         self._external_runner = None
         self._funcx_client = None
-        if USE_EXECUTOR:
+        if self._use_executor:
             self._funcx_executor = None
         else:
             self._registered_functions = {}
@@ -68,7 +71,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def __del__(self):
         # clean up funcx executor
-        if USE_EXECUTOR:
+        if self._use_executor:
             if self._funcx_executor is not None and self._external_runner is None:
                 self._log(logging.DEBUG, "Shutting down funcx executor")
                 self._funcx_executor.shutdown(wait=False)
@@ -135,7 +138,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def _create_funcx_executor(self):
         """Return new funcx executor instance"""
-        if not USE_EXECUTOR:
+        if not self._use_executor:
             return
 
         if self._funcx_client is None:
@@ -156,7 +159,7 @@ class FuncxSlurmRunner(RunnerBase):
             raise RuntimeError("setup_globus_auth must be called before reset_funcx_client")
 
         if self._external_runner is None:
-            if USE_EXECUTOR and self._funcx_executor is not None:
+            if self._use_executor and self._funcx_executor is not None:
                 self._log(logging.DEBUG, f"Shutting down old funcX executor ({self._funcx_executor})")
                 self._funcx_executor.shutdown()
 
@@ -165,7 +168,7 @@ class FuncxSlurmRunner(RunnerBase):
             self._log(logging.DEBUG, f"Using new funcX client: {self._funcx_client}")
 
             # create a funcX executor
-            if USE_EXECUTOR:
+            if self._use_executor:
                 self._funcx_executor = self._create_funcx_executor()
                 self._log(logging.DEBUG, f"Using new funcX executor: {self._funcx_executor}")
 
@@ -177,7 +180,7 @@ class FuncxSlurmRunner(RunnerBase):
 
             # update references
             self._funcx_client = self._external_runner.get_funcx_client()
-            if USE_EXECUTOR:
+            if self._use_executor:
                 self._funcx_executor = self._external_runner.get_funcx_executor()
 
     def get_funcx_client(self):
@@ -191,7 +194,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def get_funcx_executor(self):
         """Returns the funcx executor"""
-        if not USE_EXECUTOR:
+        if not self._use_executor:
             return None
 
         if self._external_runner is not None:
@@ -203,15 +206,15 @@ class FuncxSlurmRunner(RunnerBase):
 
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""
-        if USE_EXECUTOR and self._external_runner is not None:
+        if self._use_executor and self._external_runner is not None:
             # update reference to executor
             self._funcx_executor = self._external_runner.get_funcx_executor()
 
-        if (USE_EXECUTOR and self._funcx_executor is None) or self._funcx_client is None:
+        if (self._use_executor and self._funcx_executor is None) or self._funcx_client is None:
             self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
             raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
 
-        if USE_EXECUTOR:
+        if self._use_executor:
             # start the function
             self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
             future = self._funcx_executor.submit(function, *args, **kwargs)
