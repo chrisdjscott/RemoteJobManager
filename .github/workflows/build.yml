@@ -146,12 +146,12 @@ jobs:
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10
       - name: Run batch_submit for nonmem example
-        run: rjm_batch_submit -f localdirs.txt -ll debug
+        run: rjm_batch_submit -f localdirs.txt -ll debug -n
         working-directory: ./examples/nonmem
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10
       - name: Run batch_wait for nonmem example
-        run: rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o
+        run: rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o -n
         working-directory: ./examples/nonmem
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10

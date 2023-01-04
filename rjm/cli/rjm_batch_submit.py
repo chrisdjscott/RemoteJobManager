@@ -21,6 +21,7 @@ def make_parser():
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('--force', action="store_true",
                         help="ignore progress from previous runs stored in job directory, i.e. start from scratch")
+    parser.add_argument('-n', '--defaultlogname', action='store_true', help='Use default log name instead of "batch_submit"')
 
     not_used_help = "not used; provided for compatibility with previous versions"
     parser.add_argument('-c', '--cmd', help=not_used_help, action='append')
@@ -45,7 +46,8 @@ def batch_submit():
     args = parser.parse_args()
 
     # setup logging
-    utils.setup_logging(log_name="batch_submit", log_file=args.logfile, log_level=args.loglevel)
+    log_name = None if args.defaultlogname else "batch_submit"
+    utils.setup_logging(log_name=log_name, log_file=args.logfile, log_level=args.loglevel)
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
