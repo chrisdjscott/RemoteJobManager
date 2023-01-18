@@ -3,7 +3,7 @@ export LOGIN_NODES=(mahuika01 mahuika02)
 export PRIMARY_NODE=login.mahuika.nesi.org.nz
 export ENDPOINT_NAME=default
 export LOG=${HOME}/.funcx-endpoint-persist-nesi.log
-export FUNCX_MODULE="funcx-endpoint/1.0.6-gimkl-2020a-Python-3.9.9"
+export FUNCX_MODULE="funcx-endpoint/1.0.7-gimkl-2020a-Python-3.9.9"
 export INIT_COMMAND="source /etc/profile; source ~/.funcx-endpoint-persist-nesi-functions.sh; module load ${FUNCX_MODULE}"
 export ENDPOINT_PIDFILE="${HOME}/.funcx/${ENDPOINT_NAME}/daemon.pid"
 

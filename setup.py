@@ -71,7 +71,7 @@ setup(
         "paramiko",
         "fair-research-login",
         "globus-sdk",
-        "funcx==1.0.6",
+        "funcx==1.0.7",
     ],
     extras_require={
         "dev": TEST_REQUIRES + LINT_REQUIRES + PACKAGE_REQUIRES + DOC_REQUIRES,
@@ -90,5 +90,6 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
 )
