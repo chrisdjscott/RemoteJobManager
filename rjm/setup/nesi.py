@@ -62,7 +62,7 @@ class NeSISetup:
         # funcx file locations
         funcx_dir = f"/home/{self._username}/.funcx"
         self._funcx_cred_file = f"{funcx_dir}/credentials/funcx_sdk_tokens.json"
-        self._funcx_default_config = f"{funcx_dir}/default/config.py"
+        self._funcx_config_file = f"{funcx_dir}/{FUNCX_ENDPOINT_NAME}/config.py"
 
         # functions file path
         self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
@@ -388,6 +388,34 @@ class NeSISetup:
             if status:
                 raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
 
+    def _configure_blocks(self):
+        """
+        Make sure blocks are configured correctly on the endpoint.
+
+        We want min_blocks=1
+
+        """
+        print("Configuring blocks on the endpoint, please wait...")
+
+        # check if min_blocks set to 0
+        cmd = f'grep "min_blocks=0" {self._funcx_config_file}'
+        status, _, _ = self.run_command(cmd)
+        if status == 0:
+            logger.info("Setting `min_blocks=1` on funcx endpoint to reduce number of log files")
+
+            # modify the file
+            cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {self._funcx_config_file}'
+            status, output, error = self.run_command(cmd)
+            if status:
+                raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {stderr}")
+
+            changed = True
+
+        else:
+            changed = False
+
+        return changed
+
     def setup_funcx(self, restart=True):
         """
         Sets up the funcX endpoint on NeSI.
@@ -420,12 +448,15 @@ class NeSISetup:
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("funcX endpoint configuration complete")
 
+        # make sure blocks are configured correctly on the endpoint
+        endpoint_changed = self._configure_blocks()
+
         # run the bash script that will ensure one endpoint is running on NeSI
-        if restart:
+        if restart or endpoint_changed:
             print("Restarting the funcx endpoint, please wait...")
         else:
             print("Ensuring the funcx endpoint is running, please wait...")
-        cmd = f"export ENDPOINT_RESTART={'1' if restart else '0'} && {self._script_path}"
+        cmd = f"export ENDPOINT_RESTART={'1' if restart or endpoint_changed else '0'} && {self._script_path}"
         logger.debug(f'Running funcx script: "{cmd}"')
         status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
         assert status == 0, f"Running funcx script failed: {stdout} {stderr}"
@@ -625,7 +656,7 @@ class NeSISetup:
 
         """
         # test if default endpoint config exists, if so, we assume it is configured
-        if self._remote_path_exists(self._funcx_default_config):
+        if self._remote_path_exists(self._funcx_config_file):
             logger.debug("Assuming funcx default endpoint is configured as config file exists")
             configured = True
         else:
