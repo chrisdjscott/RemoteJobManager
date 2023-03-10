@@ -60,12 +60,6 @@ class FuncxSlurmRunner(RunnerBase):
         # Slurm job id
         self._jobid = None
 
-    def __del__(self):
-        # clean up funcx executor
-        if self._funcx_executor is not None and self._external_runner is None:
-            self._log(logging.DEBUG, "Shutting down funcx executor")
-            self._funcx_executor.shutdown(wait=False)
-
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
         logger.log(level, self._label + message, *args, **kwargs)

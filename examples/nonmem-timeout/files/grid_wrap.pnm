@@ -1,0 +1,5 @@
+$GENERAL
+NODES=[nodes] PARSE_TYPE=2 PARSE_NUM=200 TIMEOUTI=600 TIMEOUT=1000 PARAPRINT=0 TRANSFER_TYPE=1
+
+$COMMANDS
+srun --export=ALL -n [nodes] ./nonmem_wrap.sh <<nmexec>> $* -awnf
