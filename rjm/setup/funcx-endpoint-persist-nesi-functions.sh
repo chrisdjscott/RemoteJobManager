@@ -35,7 +35,7 @@ check_daemon_process_owner () {
             # user doesn't own process or no process exists
             echo "    process is owned by another user: ${puser}" >> $LOG
             return 1
-        elif [ "${pcomm}" != "funcx-endpoint" ]; then
+        elif ! grep -qi funcx <<< "${pcomm}"; then
             # process is not running funcx-endpoint
             echo "    process is not running funcx-endpoint: ${pcomm}" >> $LOG
             return 1
@@ -139,11 +139,14 @@ stop_endpoints () {
 }
 
 start_endpoint () {
+    echo "  starting endpoint" >> $LOG
+
     # hostname of primary login node
     primary=$(ssh -oStrictHostKeyChecking=no ${PRIMARY_NODE} hostname)
+    echo "     starting endpoint on ${primary}" >> $LOG
 
     # start endpoint on primary node
-    ssh -oStrictHostKeyChecking=no ${PRIMARY_NODE} "${INIT_COMMAND}; funcx-endpoint start ${ENDPOINT_NAME}" >> $LOG 2>&1
+    ssh -oStrictHostKeyChecking=no ${primary} "${INIT_COMMAND}; funcx-endpoint start ${ENDPOINT_NAME}" >> $LOG 2>&1
     if [ $? -eq 0 ]; then
         echo "    started funcx '${ENDPOINT_NAME}' endpoint on ${primary}" >> $LOG
     else
