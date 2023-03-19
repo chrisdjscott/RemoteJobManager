@@ -20,11 +20,11 @@ def test_backup(tmp_path):
 
 
 @pytest.mark.parametrize("config_vals,expected_vals", [
-    ([None, 7, 1, 11], [utils.DEFAULT_RETRY_TRIES, utils.DEFAULT_RETRY_BACKOFF, utils.DEFAULT_RETRY_DELAY]),
-    ([False, 7, 1, 11], [utils.DEFAULT_RETRY_TRIES, utils.DEFAULT_RETRY_BACKOFF, utils.DEFAULT_RETRY_DELAY]),
-    ([True, 7, 1, 11], [7, 1, 11]),
-    ([True, 14, 1106, 131], [14, 1106, 131]),
-    ([False, 17, 13, 1189], [utils.DEFAULT_RETRY_TRIES, utils.DEFAULT_RETRY_BACKOFF, utils.DEFAULT_RETRY_DELAY]),
+    ([None, 7, 1, 11, 49], [utils.DEFAULT_RETRY_TRIES, utils.DEFAULT_RETRY_BACKOFF, utils.DEFAULT_RETRY_DELAY, utils.DEFAULT_RETRY_MAX_DELAY]),
+    ([False, 7, 1, 11, 49], [utils.DEFAULT_RETRY_TRIES, utils.DEFAULT_RETRY_BACKOFF, utils.DEFAULT_RETRY_DELAY, utils.DEFAULT_RETRY_MAX_DELAY]),
+    ([True, 7, 1, 11, 49], [7, 1, 11, 49]),
+    ([True, 14, 1106, 131, 200], [14, 1106, 131, 200]),
+    ([False, 17, 13, 1189, 3030], [utils.DEFAULT_RETRY_TRIES, utils.DEFAULT_RETRY_BACKOFF, utils.DEFAULT_RETRY_DELAY, utils.DEFAULT_RETRY_MAX_DELAY]),
 ])
 def test_get_retry_values_from_config(config_vals, expected_vals):
     # setup config object
@@ -33,12 +33,13 @@ def test_get_retry_values_from_config(config_vals, expected_vals):
         "tries": str(config_vals[1]),
         "backoff": str(config_vals[2]),
         "delay": str(config_vals[3]),
+        "max_delay": str(config_vals[4])
     }
     if config_vals[0] is not None:
         config["RETRY"]["override_defaults"] = "1" if config_vals[0] else "0"
 
     # run function
-    t, b, d = utils.get_retry_values_from_config(config)
+    t, b, d, m = utils.get_retry_values_from_config(config)
 
     # check return values
     assert t == expected_vals[0]

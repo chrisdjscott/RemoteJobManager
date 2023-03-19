@@ -25,7 +25,7 @@ class RunnerBase:
         else:
             self._config = config
 
-        self._retry_tries, self._retry_backoff, self._retry_delay = utils.get_retry_values_from_config(self._config)
+        self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(self._config)
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -80,7 +80,7 @@ class RunnerBase:
         """Run the given function with retries if the function fails"""
         return retry_call(self.run_function, fargs=(function,) + args, fkwargs=kwargs,
                           tries=self._retry_tries, backoff=self._retry_backoff,
-                          delay=self._retry_delay)
+                          delay=self._retry_delay, max_delay=self._retry_max_delay)
 
     def start(self):
         """Starts running the processing asynchronously"""

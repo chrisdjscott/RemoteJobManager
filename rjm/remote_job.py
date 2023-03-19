@@ -50,7 +50,7 @@ class RemoteJob:
         config = config_helper.load_config()
         self._uploads_file = config.get("FILES", "uploads_file")
         self._downloads_file = config.get("FILES", "downloads_file")
-        self._retry_tries, self._retry_backoff, self._retry_delay = utils.get_retry_values_from_config(config)
+        self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(config)
 
         # file transferer
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
@@ -351,7 +351,8 @@ class RemoteJob:
                                            fargs=(self._remote_full_path,),
                                            tries=self._retry_tries,
                                            backoff=self._retry_backoff,
-                                           delay=self._retry_delay)
+                                           delay=self._retry_delay,
+                                           max_delay=self._retry_max_delay)
             self._save_state()
 
     def run_wait(self, polling_interval=None, min_polling_override=False):
@@ -369,7 +370,7 @@ class RemoteJob:
             run_succeeded = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval,
                                                                    'min_polling_override': min_polling_override},
                                        tries=self._retry_tries, backoff=self._retry_backoff,
-                                       delay=self._retry_delay)
+                                       delay=self._retry_delay, max_delay=self._retry_max_delay)
             self.set_run_completed(success=run_succeeded)
             self._save_state()
 
