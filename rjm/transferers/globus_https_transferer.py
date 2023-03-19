@@ -47,6 +47,7 @@ class GlobusHttpsTransferer(TransfererBase):
         # Globus stuff
         self._https_authoriser = None
         self._https_auth_header = None
+        self._transfer_client = None
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -66,11 +67,12 @@ class GlobusHttpsTransferer(TransfererBase):
         if transfer is None:
             # creating Globus transfer client
             authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=[utils.TRANSFER_SCOPE, self._https_scope])
-            tc = globus_sdk.TransferClient(authorizer=authorisers[utils.TRANSFER_SCOPE])
+            self._transfer_client = globus_sdk.TransferClient(authorizer=authorisers[utils.TRANSFER_SCOPE])
+            self._log(logging.DEBUG, f"Created transfer client: {self._transfer_client}")
 
             # setting up HTTPS uploads/downloads
             # get the base URL for uploads and downloads
-            endpoint = tc.get_endpoint(self._remote_endpoint)
+            endpoint = self._transfer_client.get_endpoint(self._remote_endpoint)
             self._https_base_url = endpoint['https_server']
             self._log(logging.DEBUG, f"Remote endpoint HTTPS base URL: {self._https_base_url}")
             # HTTPS authoriser
@@ -80,6 +82,11 @@ class GlobusHttpsTransferer(TransfererBase):
             self._log(logging.DEBUG, "Initialising transferer from another")
             self._https_base_url = transfer.get_https_base_url()
             self._https_authoriser = transfer.get_https_authoriser()
+            self._transfer_client = transfer.get_transfer_client()
+
+    def get_transfer_client(self):
+        """Return the transfer client"""
+        return self._transfer_client
 
     def get_https_base_url(self):
         """Return the https base url"""
@@ -193,6 +200,9 @@ class GlobusHttpsTransferer(TransfererBase):
         :param retries: optional, retry downloads if they fail (default is True)
 
         """
+        # list directory, so we only try downloading files that exist
+        self.list_directory(self._remote_path)
+
         # make sure we have a current access token
         self._https_auth_header = self._https_authoriser.get_authorization_header()
 
@@ -298,3 +308,16 @@ class GlobusHttpsTransferer(TransfererBase):
         os.replace(local_file_tmp, local_file)
 
         self.log_transfer_time("Downloaded", local_file, download_time)
+
+    def list_directory(self, path: str):
+        """
+        Return a listing of the given directory.
+
+        :param path: Path to the directory
+
+        """
+        self._log(logging.DEBUG, f"Listing directory: {path}")
+
+        for entry in self._transfer_client.operation_ls(self._remote_endpoint, path=path):
+
+            self._log(logging.DEBUG, f"{entry['name']}, {entry['type']}")
