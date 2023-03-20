@@ -37,7 +37,7 @@ class GlobusHttpsTransferer(TransfererBase):
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
 
         # retry params
-        self._retry_tries, self._retry_backoff, self._retry_delay = utils.get_retry_values_from_config(self._config)
+        self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(self._config)
 
         # https uploads/downloads
         self._https_base_url = None
@@ -140,7 +140,8 @@ class GlobusHttpsTransferer(TransfererBase):
 
         """
         retry_call(self._upload_file, fargs=(filename,), tries=self._retry_tries,
-                   backoff=self._retry_backoff, delay=self._retry_delay)
+                   backoff=self._retry_backoff, delay=self._retry_delay,
+                   max_delay=self._retry_max_delay)
 
     def upload_files(self, filenames: list[str]):
         """
@@ -240,7 +241,7 @@ class GlobusHttpsTransferer(TransfererBase):
         """
         retry_call(self._download_file, fargs=(filename, checksum),
                    tries=self._retry_tries, backoff=self._retry_backoff,
-                   delay=self._retry_delay)
+                   delay=self._retry_delay, max_delay=self._retry_max_delay)
 
     def _calculate_checksum(self, filename):
         """

@@ -31,9 +31,10 @@ LOG_LEVEL_RJM = logging.INFO
 LOG_LEVEL_OTHER = logging.WARNING
 
 # defaults for retries
-DEFAULT_RETRY_TRIES = 12  # number of times to retry
+DEFAULT_RETRY_TRIES = 32  # number of times to retry
 DEFAULT_RETRY_BACKOFF = 2  # factor to increase delay by each time
 DEFAULT_RETRY_DELAY = 5  # initial delay
+DEFAULT_RETRY_MAX_DELAY = 30
 
 logger = logging.getLogger(__name__)
 
@@ -127,12 +128,14 @@ def get_retry_values_from_config(config):
         retry_tries = config.getint("RETRY", "tries", fallback=DEFAULT_RETRY_TRIES)
         retry_backoff = config.getint("RETRY", "backoff", fallback=DEFAULT_RETRY_BACKOFF)
         retry_delay = config.getint("RETRY", "delay", fallback=DEFAULT_RETRY_DELAY)
-        logger.debug(f"Using retry values from config: tries={retry_tries}, backoff={retry_backoff}, delay={retry_delay}")
+        retry_max_delay = config.getint("RETRY", "max_delay", fallback=DEFAULT_RETRY_MAX_DELAY)
+        logger.debug(f"Using retry values from config: tries={retry_tries}, backoff={retry_backoff}, delay={retry_delay}, max_delay={retry_max_delay}")
     else:
         retry_tries = DEFAULT_RETRY_TRIES
         retry_backoff = DEFAULT_RETRY_BACKOFF
         retry_delay = DEFAULT_RETRY_DELAY
-        logger.debug(f"Using default retry values: tries={retry_tries}, backoff={retry_backoff}, delay={retry_delay}")
+        retry_max_delay = DEFAULT_RETRY_MAX_DELAY
+        logger.debug(f"Using default retry values: tries={retry_tries}, backoff={retry_backoff}, delay={retry_delay}, max_delay={retry_max_delay}")
 
     # report how long we will wait for
     total = 0
@@ -140,6 +143,8 @@ def get_retry_values_from_config(config):
     for i in range(retry_tries):
         total += current
         current *= retry_backoff
+        if current > retry_max_delay:
+            current = retry_max_delay
     logger.debug(f"Will retry for a total of {total} seconds")
 
-    return retry_tries, retry_backoff, retry_delay
+    return retry_tries, retry_backoff, retry_delay, retry_max_delay
