@@ -104,3 +104,12 @@ class TransfererBase:
 
         """
         raise NotImplementedError
+
+    def list_directory(self, path: str):
+        """
+        Return a listing of the given directory.
+
+        :param path: Path to the directory
+
+        """
+        raise NotImplementedError
