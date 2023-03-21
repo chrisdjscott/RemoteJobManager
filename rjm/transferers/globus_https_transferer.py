@@ -201,7 +201,18 @@ class GlobusHttpsTransferer(TransfererBase):
 
         """
         # list directory, so we only try downloading files that exist
-        self.list_directory(self._remote_path)
+        remote_files = self.list_directory(self._remote_path)
+
+        # look for missing files
+        errors = 0
+        existing_files = []
+        for fn in filenames:
+            if fn in remote_files:
+                existing_files.append(fn)
+                self._log(logging.DEBUG, f"File to download: '{fn}': {remote_files[fn]}")
+            else:
+                errors += 1
+                self._log(logging.ERROR, f"File to download is missing: '{fn}'")
 
         # make sure we have a current access token
         self._https_auth_header = self._https_authoriser.get_authorization_header()
@@ -217,28 +228,21 @@ class GlobusHttpsTransferer(TransfererBase):
                     download_func,
                     fname,
                     checksums[fname],
-                ): fname for fname in filenames
+                ): fname for fname in existing_files
             }
 
             # wait for completion
-            errors = []
             for future in concurrent.futures.as_completed(future_to_fname):
                 fname = future_to_fname[future]
                 try:
                     future.result()
                 except Exception as exc:
-                    msg = f"Failed to download '{fname}': {exc}"
-                    self._log(logging.ERROR, msg)
-                    errors.append(msg)
+                    self._log(logging.ERROR, f"Failed to download '{fname}': {exc}")
+                    errors += 1
 
-        # handle errors
-        if len(errors):
-            msg = [f"Failed to download files in '{self._local_path}':"]
-            msg.append("")
-            for err in errors:
-                msg.append("  - " + err)
-            msg = os.linesep.join(msg)
-            raise RemoteJobTransfererError(msg)
+        # if there were any errors downloading files, raise an exception now
+        if errors > 0:
+            raise RemoteJobTransfererError(f"Failed to download files in '{self._local_path}':")
 
     def _download_file_with_retries(self, filename: str, checksum: str):
         """
@@ -316,8 +320,16 @@ class GlobusHttpsTransferer(TransfererBase):
         :param path: Path to the directory
 
         """
-        self._log(logging.DEBUG, f"Listing directory: {path}")
-
+        keep_attrs = [
+            "type",
+            "permissions",
+            "size",
+            "user",
+        ]
+        self._log(logging.DEBUG, f"Listing remote directory: {path}")
+        listing = {}
         for entry in self._transfer_client.operation_ls(self._remote_endpoint, path=path):
+            listing[entry["name"]] = {attr: entry[attr] for attr in keep_attrs}
+        self._log(logging.DEBUG, f"Contents: {listing}")
 
-            self._log(logging.DEBUG, f"{entry['name']}, {entry['type']}")
+        return listing

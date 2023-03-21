@@ -323,12 +323,13 @@ class RemoteJob:
             )
             no_checksum = [f for f in downloads_checksums if downloads_checksums[f] is None]
             if len(no_checksum):
-                self._log(logging.ERROR, f"Could not calculate checksums for the following files, their downloads will not be verified: {', '.join(no_checksum)}")
+                self._log(logging.ERROR,
+                          f"Could not calculate checksums for the following files, their downloads will not be verified: {', '.join(no_checksum)}")
 
             # do the download
             self._log(logging.INFO, "Downloading files...")
             download_time = time.perf_counter()
-            self._transfer.download_files(self._download_files, downloads_checksums, retries=self._run_succeeded)
+            self._transfer.download_files(self._download_files, downloads_checksums)
             download_time = time.perf_counter() - download_time
             self._log(logging.INFO, f"Downloaded {len(self._download_files)} files in {download_time:.1f} seconds")
             self._downloaded = True
