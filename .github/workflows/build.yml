@@ -46,28 +46,28 @@ jobs:
 
       # Build executables using PyInstaller
       - name: Build rjm_batch_submit
-        run: pyinstaller -F ../../rjm/cli/rjm_batch_submit.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_submit.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_batch_wait
-        run: pyinstaller -F ../../rjm/cli/rjm_batch_wait.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_wait.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_authenticate
-        run: pyinstaller -F ../../rjm/cli/rjm_authenticate.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_authenticate.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_config
-        run: pyinstaller -F ../../rjm/cli/rjm_config.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_config.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_restart
-        run: pyinstaller -F ../../rjm/cli/rjm_restart.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_restart.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_health_check
-        run: pyinstaller -F ../../rjm/cli/rjm_health_check.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_health_check.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_batch_cancel
-        run: pyinstaller -F ../../rjm/cli/rjm_batch_cancel.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_cancel.py
         working-directory:  ./extra/pyinstaller
       - name: Build rjm_batch_run
-        run: pyinstaller -F ../../rjm/cli/rjm_batch_run.py
+        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_run.py
         working-directory:  ./extra/pyinstaller
       - name: Dump license files
         run: |
