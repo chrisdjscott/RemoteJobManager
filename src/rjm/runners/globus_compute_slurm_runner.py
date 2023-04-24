@@ -3,16 +3,16 @@ import os
 import time
 import logging
 
-from funcx.sdk.client import FuncXClient
-from funcx.sdk.executor import FuncXExecutor
-from funcx.sdk.login_manager.manager import LoginManager
+from globus_compute_sdk import Client
+from globus_compute_sdk import Executor
+from globus_compute_sdk.sdk.login_manager.manager import LoginManager
 from retry.api import retry_call
 
 from rjm.runners.runner_base import RunnerBase
 from rjm.errors import RemoteJobRunnerError
 
 
-FUNCX_SCOPE = FuncXClient.FUNCX_SCOPE
+FUNCX_SCOPE = Client.FUNCX_SCOPE
 FUNCX_TIMEOUT = 120  # default timeout for waiting for funcx functions
 SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL', 'COMPLETING']
 SLURM_WARN_STATUS = ["NODE_FAIL"]
@@ -22,16 +22,16 @@ MIN_POLLING_INTERVAL = 60
 logger = logging.getLogger(__name__)
 
 
-class FuncxSlurmRunner(RunnerBase):
+class GlobusComputeSlurmRunner(RunnerBase):
     """
-    Runner that uses FuncX to submit a Slurm job on the remote machine and
+    Runner that uses Globus Compute to submit a Slurm job on the remote machine and
     poll until the job completes.
 
     The default FuncX endpoint running on the login node is sufficient.
 
     """
     def __init__(self, config=None):
-        super(FuncxSlurmRunner, self).__init__(config=config)
+        super(GlobusComputeSlurmRunner, self).__init__(config=config)
 
         self._setup_done = False
 
@@ -73,7 +73,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def save_state(self):
         """Append state to state_dict if required for restarting"""
-        state_dict = super(FuncxSlurmRunner, self).save_state()
+        state_dict = super(GlobusComputeSlurmRunner, self).save_state()
         if self._jobid is not None:
             state_dict["slurm_job_id"] = self._jobid
 
@@ -81,7 +81,7 @@ class FuncxSlurmRunner(RunnerBase):
 
     def load_state(self, state_dict):
         """Get saved state if required for restarting"""
-        super(FuncxSlurmRunner, self).load_state(state_dict)
+        super(GlobusComputeSlurmRunner, self).load_state(state_dict)
         if "slurm_job_id" in state_dict:
             self._jobid = state_dict["slurm_job_id"]
 
@@ -114,7 +114,7 @@ class FuncxSlurmRunner(RunnerBase):
         self._log(logging.DEBUG, "Creating funcX client")
 
         # setting up the FuncX client
-        funcx_client = FuncXClient(
+        funcx_client = Client(
             login_manager=self._login_manager,
         )
 
@@ -130,7 +130,7 @@ class FuncxSlurmRunner(RunnerBase):
         self._log(logging.DEBUG, f"Creating funcX executor for endpoint: {self._funcx_endpoint}")
 
         # create a funcx executor
-        funcx_executor = FuncXExecutor(funcx_client=self._funcx_client, endpoint_id=self._funcx_endpoint)
+        funcx_executor = Executor(funcx_client=self._funcx_client, endpoint_id=self._funcx_endpoint)
 
         return funcx_executor
 

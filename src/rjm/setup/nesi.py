@@ -23,7 +23,7 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "funcx-endpoint/1.0.11-gimkl-2022a-Python-3.10.5"
+FUNCX_MODULE = "globus-compute-endpoint/2.0.1-gimkl-2022a-Python-3.10.5"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
@@ -407,7 +407,7 @@ class NeSISetup:
             cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {self._funcx_config_file}'
             status, output, error = self.run_command(cmd)
             if status:
-                raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {stderr}")
+                raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {error}")
 
             changed = True
 
@@ -416,14 +416,14 @@ class NeSISetup:
 
         return changed
 
-    def setup_funcx(self, restart=True):
+    def setup_globus_compute(self, restart=True):
         """
-        Sets up the funcX endpoint on NeSI.
+        Sets up the Globus Compute endpoint on NeSI.
 
         If restart is True, then restart the endpoint if it is already running
 
         """
-        print("Setting up funcX, please wait...")
+        print("Setting up Globus Compute, please wait...")
 
         # check home directory permissions - there was a problem with the provisioner
         #  that resulted in some homes having group write permission which results in
@@ -441,7 +441,7 @@ class NeSISetup:
             logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
             print("Configuring funcX, please wait...")
 
-            command = f"module load {FUNCX_MODULE} && funcx-endpoint configure {FUNCX_ENDPOINT_NAME}"
+            command = f"module load {FUNCX_MODULE} && globus-compute-endpoint configure {FUNCX_ENDPOINT_NAME}"
             status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
             assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
 
@@ -679,7 +679,7 @@ class NeSISetup:
         funcx_running_nodes = []
         funcx_endpoint_id = None
         for node in FUNCX_NODES:
-            command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'"
+            command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint list'"
             status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
             assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
 
@@ -704,7 +704,7 @@ class NeSISetup:
                 print("Stopping funcX endpoint for restart, please wait...")
 
             for node in funcx_running_nodes:
-                command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'"
+                command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint stop {FUNCX_ENDPOINT_NAME}'"
                 status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
                 if status:
                     raise RuntimeError(f"Failed to stop funcX endpoint on '{node}':\n\n{stdout}\n\n{stderr}")

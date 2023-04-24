@@ -5,7 +5,7 @@ import concurrent.futures
 
 import pytest
 
-from rjm.runners import funcx_slurm_runner
+from rjm.runners import globus_compute_slurm_runner
 from rjm.errors import RemoteJobRunnerError
 
 
@@ -26,7 +26,7 @@ def configobj():
 @pytest.fixture
 def runner(mocker, configobj):
     mocker.patch('rjm.config.load_config', return_value=configobj)
-    runner = funcx_slurm_runner.FuncxSlurmRunner()
+    runner = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
 
     return runner
 
@@ -66,7 +66,7 @@ def test_make_remote_directory_list(runner, tmpdir):
 
 def test_start_fail(runner, mocker):
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         return_value=(1, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
@@ -76,7 +76,7 @@ def test_start_fail(runner, mocker):
 
 def test_start_succeed(runner, mocker):
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         return_value=(0, "Submitted batch job 1234567"),
     )
 
@@ -90,7 +90,7 @@ def test_start_succeed(runner, mocker):
 def test_wait_fail(runner, mocker):
     runner._jobid = '123456'
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         return_value=(None, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
@@ -102,7 +102,7 @@ def test_wait_completed_success(runner, mocker):
     mocked_sleep = mocker.patch('time.sleep')
     runner._jobid = '123456'
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         side_effect=[
             ({runner._jobid: "PENDING"}, "no msg"),
             ({runner._jobid: "RUNNING"}, "no msg"),
@@ -121,7 +121,7 @@ def test_wait_completed_failed(runner, mocker):
     mocked_sleep = mocker.patch('time.sleep')
     runner._jobid = '123456'
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         side_effect=[
             ({runner._jobid: "PENDING"}, "no msg"),
             ({runner._jobid: "RUNNING"}, "no msg"),
@@ -144,7 +144,7 @@ def test_calculate_checksums(runner, tmpdir):
     with open(os.path.join(tmpdir, test_file), "w") as fh:
         fh.write(text)
 
-    returncode, checksums = funcx_slurm_runner._calculate_checksums(
+    returncode, checksums = globus_compute_slurm_runner._calculate_checksums(
         [test_file, test_file_not_exist],
         str(tmpdir),
     )
@@ -166,7 +166,7 @@ def test_calculate_checksums(runner, tmpdir):
 #    runner._funcx_executor = DummyExecutor()
 #
 #    mocked = mocker.patch(
-#        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.reset_funcx_client',
+#        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.reset_funcx_client',
 #    )
 #
 #    with pytest.raises(concurrent.futures.TimeoutError):
@@ -192,7 +192,7 @@ def test_reset_funcx_client(configobj, mocker):
             return DummyFuture()
 
     mocked_create_client = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner._create_funcx_client',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner._create_funcx_client',
     )
 
     exec1 = MockedFuncXExecutor()
@@ -200,7 +200,7 @@ def test_reset_funcx_client(configobj, mocker):
     exec2 = MockedFuncXExecutor()
     exec2.id = 2
     mocked_create_executor = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner._create_funcx_executor',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner._create_funcx_executor',
         side_effect=[
             exec1,
             exec2,
@@ -209,7 +209,7 @@ def test_reset_funcx_client(configobj, mocker):
 
     # parent runner
     mocker.patch('rjm.config.load_config', return_value=configobj)
-    runner = funcx_slurm_runner.FuncxSlurmRunner()
+    runner = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
     runner._setup_done = True
     runner._use_offprocess_checker = True
     runner.reset_funcx_client()
@@ -219,7 +219,7 @@ def test_reset_funcx_client(configobj, mocker):
     assert runner._funcx_executor.id == 1
 
     # child runner 1
-    child1 = funcx_slurm_runner.FuncxSlurmRunner()
+    child1 = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
     child1._setup_done = True
     child1._external_runner = runner
     child1.reset_funcx_client()
@@ -229,7 +229,7 @@ def test_reset_funcx_client(configobj, mocker):
     assert child1._funcx_executor.id == 1
 
     # child runner 2
-    child2 = funcx_slurm_runner.FuncxSlurmRunner()
+    child2 = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
     child2._setup_done = True
     child2._external_runner = runner
     child2.reset_funcx_client()
@@ -267,7 +267,7 @@ def test_check_slurm_job_statuses_squeue(mocker):
         ],
     )
 
-    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+    status_dict, msg = globus_compute_slurm_runner._check_slurm_job_statuses(jobids)
 
     assert mocked.call_count == 1
     assert "01234" in status_dict
@@ -289,7 +289,7 @@ def test_check_slurm_job_statuses_squeue_sacct(mocker):
         ],
     )
 
-    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+    status_dict, msg = globus_compute_slurm_runner._check_slurm_job_statuses(jobids)
 
     assert mocked.call_count == 2
     assert "01234" in status_dict
@@ -311,7 +311,7 @@ def test_check_slurm_job_statuses_sacct(mocker):
         ],
     )
 
-    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+    status_dict, msg = globus_compute_slurm_runner._check_slurm_job_statuses(jobids)
 
     assert mocked.call_count == 2
     assert "01234" in status_dict
@@ -334,7 +334,7 @@ def test_check_slurm_job_statuses_failed(mocker):
         ],
     )
 
-    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+    status_dict, msg = globus_compute_slurm_runner._check_slurm_job_statuses(jobids)
 
     assert mocked.call_count == 2
     assert status_dict is None
@@ -355,7 +355,7 @@ def test_check_slurm_job_statuses_missing(mocker):
         ],
     )
 
-    status_dict, msg = funcx_slurm_runner._check_slurm_job_statuses(jobids)
+    status_dict, msg = globus_compute_slurm_runner._check_slurm_job_statuses(jobids)
 
     assert mocked.call_count == 2
     assert "56789" in status_dict

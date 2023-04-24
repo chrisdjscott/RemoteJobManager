@@ -72,6 +72,7 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
                 # same level for globus and funcx
                 logging.getLogger("globus").setLevel(level)
                 logging.getLogger("funcx").setLevel(level)
+                logging.getLogger("globus_compute_sdk").setLevel(level)
 
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,

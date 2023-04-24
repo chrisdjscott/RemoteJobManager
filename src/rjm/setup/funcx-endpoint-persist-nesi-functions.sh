@@ -3,19 +3,19 @@ export LOGIN_NODES=(mahuika01 mahuika02)
 export PRIMARY_NODE=login.mahuika.nesi.org.nz
 export ENDPOINT_NAME=default
 export LOG=${HOME}/.funcx-endpoint-persist-nesi.log
-export FUNCX_MODULE="funcx-endpoint/1.0.7-gimkl-2020a-Python-3.9.9"
+export FUNCX_MODULE="globus-compute-endpoint/2.0.1-gimkl-2022a-Python-3.10.5"
 export INIT_COMMAND="source /etc/profile; source ~/.funcx-endpoint-persist-nesi-functions.sh; module load ${FUNCX_MODULE}"
-export ENDPOINT_PIDFILE="${HOME}/.funcx/${ENDPOINT_NAME}/daemon.pid"
+export ENDPOINT_PIDFILE="${HOME}/.globus_compute/${ENDPOINT_NAME}/daemon.pid"
 
 cleanup_logs () {
-    local EP_LOG_DIR=~/.funcx/${ENDPOINT_NAME}/HighThroughputExecutor/worker_logs/
+    local EP_LOG_DIR=~/.globus_compute/${ENDPOINT_NAME}/HighThroughputExecutor/worker_logs/
 
     # delete old funcx endpoint logs
     mkdir -p ${EP_LOG_DIR}
     local nold=$(find ${EP_LOG_DIR} -type f -mtime +10 | wc -l)
     find ${EP_LOG_DIR} -type f -mtime +10 -delete
     find ${EP_LOG_DIR}/* -type d -empty -delete > /dev/null 2>&1
-    echo "  deleted ${nold} old funcx endpoint log files" >> $LOG
+    echo "  deleted ${nold} old globus-compute-endpoint log files" >> $LOG
 
     return 0
 }
@@ -35,9 +35,9 @@ check_daemon_process_owner () {
             # user doesn't own process or no process exists
             echo "    process is owned by another user: ${puser}" >> $LOG
             return 1
-        elif ! grep -qi funcx <<< "${pcomm}"; then
-            # process is not running funcx-endpoint
-            echo "    process is not running funcx-endpoint: ${pcomm}" >> $LOG
+        elif ! grep -qi "globus-compute\|funcx" <<< "${pcomm}"; then
+            # process is not running globus-compute-endpoint
+            echo "    process is not running globus-compute-endpoint: ${pcomm}" >> $LOG
             return 1
         fi
     fi
@@ -47,7 +47,7 @@ check_daemon_process_owner () {
 
 get_endpoint_id () {
     module load ${FUNCX_MODULE}
-    ENDPOINT_ID=$(funcx-endpoint list | grep default | awk -F '|' '{print $(NF-1)}')
+    ENDPOINT_ID=$(globus-compute-endpoint list | grep default | awk -F '|' '{print $(NF-1)}')
     export ENDPOINT_ID
 }
 
@@ -70,7 +70,7 @@ check_endpoint_running_local () {
     fi
 
     # run the endpoint command to check if it is running too
-    funcx-endpoint list | grep "${ENDPOINT_NAME}" | grep Running > /dev/null
+    globus-compute-endpoint list | grep "${ENDPOINT_NAME}" | grep Running > /dev/null
     if [ $? -eq 0 ]; then
         # running
         return 0
@@ -123,7 +123,7 @@ stop_endpoints () {
     echo "  stopping endpoints" >> $LOG
     for node in ${ENDPOINT_RUNNING_NODES[@]}; do
         echo "    stopping endpoint if running on ${node}" >> $LOG
-        ssh -oStrictHostKeyChecking=no ${node} "${INIT_COMMAND}; check_daemon_process_owner && funcx-endpoint stop ${ENDPOINT_NAME}" >> $LOG 2>&1
+        ssh -oStrictHostKeyChecking=no ${node} "${INIT_COMMAND}; check_daemon_process_owner && globus-compute-endpoint stop ${ENDPOINT_NAME}" >> $LOG 2>&1
     done
 
     # also delete endpoint pidfile for case where no endpoint was running but pidfile existed and another user owned the process
@@ -146,7 +146,7 @@ start_endpoint () {
     echo "     starting endpoint on ${primary}" >> $LOG
 
     # start endpoint on primary node
-    ssh -oStrictHostKeyChecking=no ${primary} "${INIT_COMMAND}; funcx-endpoint start ${ENDPOINT_NAME}" >> $LOG 2>&1
+    ssh -oStrictHostKeyChecking=no ${primary} "${INIT_COMMAND}; globus-compute-endpoint start ${ENDPOINT_NAME}" >> $LOG 2>&1
     if [ $? -eq 0 ]; then
         echo "    started funcx '${ENDPOINT_NAME}' endpoint on ${primary}" >> $LOG
     else
