@@ -83,6 +83,7 @@ jobs:
         working-directory: ./extra/pyinstaller
       - name: Display RJM version
         run: dist/rjm_batch_submit.exe --version
+        working-directory: ./extra/pyinstaller
 
       # archive the binaries
       - name: Archive binaries
