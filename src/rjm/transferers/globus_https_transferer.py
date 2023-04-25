@@ -321,16 +321,32 @@ class GlobusHttpsTransferer(TransfererBase):
         :param path: Path to the directory
 
         """
+        self._log(logging.DEBUG, f"Listing remote directory: {path}")
+
+        # list of attributes to show in the listing
         keep_attrs = [
             "type",
             "permissions",
             "size",
             "user",
         ]
-        self._log(logging.DEBUG, f"Listing remote directory: {path}")
+
+        # call globus function with retries
+        ls_result = retry_call(
+            self._transfer_client.operation_ls,
+            fargs=(self._remote_endpoint,),
+            fkwargs={'path': path},
+            tries=self._retry_tries,
+            backoff=self._retry_backoff,
+            delay=self._retry_delay,
+            max_delay=self._retry_max_delay,
+        )
+
+        # extract listing with desired attributes
         listing = {}
-        for entry in self._transfer_client.operation_ls(self._remote_endpoint, path=path):
+        for entry in ls_result:
             listing[entry["name"]] = {attr: entry[attr] for attr in keep_attrs}
+
         self._log(logging.DEBUG, f"Contents: {listing}")
 
         return listing
