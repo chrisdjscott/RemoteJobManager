@@ -10,6 +10,9 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - id: deployment
         name: Build documentation
         uses: sphinx-notes/pages@v3
@@ -17,7 +20,7 @@ jobs:
           documentation_path: ./docs
           pyproject_extras: dev
           python_version: "3.10"
-          checkout: true
+          checkout: false
           publish: false
       - name: Deploy documentation
         uses: peaceiris/actions-gh-pages@v3
