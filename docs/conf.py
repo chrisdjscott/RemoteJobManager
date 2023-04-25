@@ -12,6 +12,7 @@
 #
 import os
 import codecs
+import importlib.metadata
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -19,26 +20,15 @@ import codecs
 # -- Project information -----------------------------------------------------
 
 project = 'RemoteJobManager'
-copyright = '2022, The University of Auckland'
+copyright = '2023, The University of Auckland'
 author = 'Chris Scott'
 
-# functions to get the version
-def read(rel_path):
-    here = os.path.abspath(os.path.dirname(__file__))
-    with codecs.open(os.path.join(here, rel_path), 'r') as fp:
-        return fp.read()
-
-
-def get_version(rel_path):
-    for line in read(rel_path).splitlines():
-        if line.startswith('__version__'):
-            delim = '"' if '"' in line else "'"
-            return line.split(delim)[1]
-    else:
-        raise RuntimeError("Unable to find version string.")
-
 # The full version, including alpha/beta/rc tags
-release = get_version('../rjm/__init__.py')
+try:
+    release = importlib.metadata.version("RemoteJobManager")
+except importlib.metadata.PackageNotFoundError:
+    # package is not installed
+    release = "unknown"
 
 
 # -- General configuration ---------------------------------------------------

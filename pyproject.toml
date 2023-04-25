@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools >= 61.0.0", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RemoteJobManager"
+description = "Manage jobs running remotely on a cluster"
+authors = [
+    {name = "Chris Scott", email = "chris.scott@nesi.org.nz"},
+]
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT License"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pwinput",
+    "retry",
+    "requests",
+    "paramiko",
+    "fair-research-login",
+    "globus-sdk",
+    "funcx==1.0.11",
+]
+dynamic = ["version"]
+
+[project.scripts]
+rjm_batch_submit = "rjm.cli.rjm_batch_submit:batch_submit"
+rjm_batch_wait = "rjm.cli.rjm_batch_wait:batch_wait"
+rjm_batch_run = "rjm.cli.rjm_batch_run:batch_run"
+rjm_authenticate = "rjm.cli.rjm_authenticate:authenticate"
+rjm_health_check = "rjm.cli.rjm_health_check:health_check"
+rjm_batch_cancel = "rjm.cli.rjm_batch_cancel:batch_cancel"
+rjm_config = "rjm.cli.rjm_config:nesi_setup"
+rjm_restart = "rjm.cli.rjm_restart:nesi_setup"
+
+[project.entry-points.pyinstaller40]
+hook-dirs = "rjm.__pyinstaller:get_hook_dirs"
+tests = "rjm.__pyinstaller:get_PyInstaller_tests"
+
+[tool.setuptools_scm]
+write_to = "src/rjm/_version.py"
+fallback_version = "0.0.0unknown"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "responses",
+    "python-lsp-server",
+    "pyls-flake8",
+    "pyinstaller",
+    "pip-licenses",
+    "sphinx",
+    "sphinx-argparse",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"*" = ["*.sh"]

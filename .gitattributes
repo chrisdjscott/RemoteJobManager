@@ -8,5 +8,5 @@ examples/namd/apoal_*/* text eol=lf
 examples/longrunning/dummy*/* text eol=lf
 
 # bash scripts must have LF endings too
-rjm/setup/funcx-endpoint-persist-nesi.sh text eol=lf
-rjm/setup/funcx-endpoint-persist-nesi-functions.sh text eol=lf
+src/rjm/setup/funcx-endpoint-persist-nesi.sh text eol=lf
+src/rjm/setup/funcx-endpoint-persist-nesi-functions.sh text eol=lf
