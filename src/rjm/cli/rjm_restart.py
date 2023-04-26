@@ -81,7 +81,7 @@ def nesi_setup():
     nesi = NeSISetup(username, password, token, account)
 
     # restart funcx
-    nesi.setup_funcx(restart=True)
+    nesi.setup_globus_compute(restart=True)
 
 
 if __name__ == "__main__":
