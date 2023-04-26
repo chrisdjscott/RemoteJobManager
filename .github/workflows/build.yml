@@ -13,6 +13,8 @@ jobs:
         python-version: ['3.9', '3.10']
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -37,6 +39,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -114,6 +118,8 @@ jobs:
         python-version: ['3.9']
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -122,6 +128,10 @@ jobs:
       # Building the RJM python package
       - name: Build the package
         run: python -m pip install .[dev]
+
+      # display version
+      - name: Display RJM version
+        run: rjm_batch_wait --version
 
       # Secrets required for running real tests
       - run: mkdir -p ~/.rjm
