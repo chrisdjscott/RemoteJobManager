@@ -1,7 +1,6 @@
 
 import os
 import configparser
-import concurrent.futures
 
 import pytest
 
@@ -175,15 +174,15 @@ def test_calculate_checksums(runner, tmpdir):
 #    assert mocked.call_count == 1
 
 
-def test_reset_funcx_client(configobj, mocker):
-    class MockedFuncXClient:
+def test_reset_globus_compute_client(configobj, mocker):
+    class MockedClient:
         """dummy class"""
 
     class DummyFuture:
         def result(self, timeout=None):
             return "dummyresult"
 
-    class MockedFuncXExecutor:
+    class MockedExecutor:
         """dummy class"""
         def shutdown(self, *args, **kwargs):
             pass
@@ -192,15 +191,15 @@ def test_reset_funcx_client(configobj, mocker):
             return DummyFuture()
 
     mocked_create_client = mocker.patch(
-        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner._create_funcx_client',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner._create_globus_compute_client',
     )
 
-    exec1 = MockedFuncXExecutor()
+    exec1 = MockedExecutor()
     exec1.id = 1
-    exec2 = MockedFuncXExecutor()
+    exec2 = MockedExecutor()
     exec2.id = 2
     mocked_create_executor = mocker.patch(
-        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner._create_funcx_executor',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner._create_globus_compute_executor',
         side_effect=[
             exec1,
             exec2,
@@ -212,43 +211,43 @@ def test_reset_funcx_client(configobj, mocker):
     runner = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
     runner._setup_done = True
     runner._use_offprocess_checker = True
-    runner.reset_funcx_client()
+    runner.reset_globus_compute_client()
 
     assert mocked_create_executor.call_count == 1
     assert mocked_create_client.call_count == 1
-    assert runner._funcx_executor.id == 1
+    assert runner._executor.id == 1
 
     # child runner 1
     child1 = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
     child1._setup_done = True
     child1._external_runner = runner
-    child1.reset_funcx_client()
+    child1.reset_globus_compute_client()
 
     assert mocked_create_executor.call_count == 1
     assert mocked_create_client.call_count == 1
-    assert child1._funcx_executor.id == 1
+    assert child1._executor.id == 1
 
     # child runner 2
     child2 = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
     child2._setup_done = True
     child2._external_runner = runner
-    child2.reset_funcx_client()
+    child2.reset_globus_compute_client()
 
     assert mocked_create_executor.call_count == 1
     assert mocked_create_client.call_count == 1
-    assert child2._funcx_executor.id == 1
+    assert child2._executor.id == 1
 
     # reset on child 1 to test it propagates to child 2...
-    child1.reset_funcx_client(propagate=True)
+    child1.reset_globus_compute_client(propagate=True)
 
     assert mocked_create_executor.call_count == 2
     assert mocked_create_client.call_count == 2
-    assert runner._funcx_executor.id == 2
-    assert child1._funcx_executor.id == 2
+    assert runner._executor.id == 2
+    assert child1._executor.id == 2
 
     # child 2 should get the updated executor after it calls run_function...
     child2.run_function(None)
-    assert child2._funcx_executor.id == 2
+    assert child2._executor.id == 2
 
 
 class MockedSubprocessReturn:

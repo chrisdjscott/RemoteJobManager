@@ -12,8 +12,7 @@ from rjm.runners.runner_base import RunnerBase
 from rjm.errors import RemoteJobRunnerError
 
 
-FUNCX_SCOPE = Client.FUNCX_SCOPE
-FUNCX_TIMEOUT = 120  # default timeout for waiting for funcx functions
+GLOBUS_COMPUTE_TIMEOUT = 120  # default timeout for waiting for functions
 SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL', 'COMPLETING']
 SLURM_WARN_STATUS = ["NODE_FAIL"]
 SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
@@ -27,7 +26,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
     Runner that uses Globus Compute to submit a Slurm job on the remote machine and
     poll until the job completes.
 
-    The default FuncX endpoint running on the login node is sufficient.
+    The default Globus Compute endpoint running on the login node is sufficient.
 
     """
     def __init__(self, config=None):
@@ -35,21 +34,16 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         self._setup_done = False
 
-        # the FuncX endpoint on the remote machine
-        self._funcx_endpoint = self._config.get("FUNCX", "remote_endpoint")
+        # the Globus Compute endpoint on the remote machine
+        self._endpoint = self._config.get("FUNCX", "remote_endpoint")
 
-        # globus authorisers
-        self._search_authoriser = None
-        self._funcx_authoriser = None
-        self._openid_authoriser = None
-
-        # funcx login manager
+        # globus compute login manager
         self._login_manager = CustomLoginManager()
 
-        # funcx client and executor
+        # globus compute client and executor
         self._external_runner = None
-        self._funcx_client = None
-        self._funcx_executor = None
+        self._client = None
+        self._executor = None
 
         # the name of the Slurm script
         self._slurm_script = self._config.get("SLURM", "slurm_script")
@@ -65,7 +59,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
         logger.log(level, self._label + message, *args, **kwargs)
 
     def __repr__(self):
-        return f"FuncxSlurmRunner({self._funcx_endpoint})"
+        return f"GlobusComputeSlurmRunner({self._endpoint})"
 
     def get_jobid(self):
         """Return the job id"""
@@ -93,7 +87,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
         """Do any Globus auth setup here, if required"""
         self._setup_done = True
 
-        # prepare to create the funcx client
+        # prepare to create the globus compute client
         if runner is None:
             # setting up the login manager
             self._login_manager.set_cli(globus_cli)
@@ -103,80 +97,80 @@ class GlobusComputeSlurmRunner(RunnerBase):
             self._log(logging.DEBUG, "Initialising runner from another")
             self._external_runner = runner
 
-        # now create the funcx client
-        self.reset_funcx_client()
+        # now create the globus compute client
+        self.reset_globus_compute_client()
 
-    def _create_funcx_client(self):
-        """Return new Funcx client instance"""
+    def _create_globus_compute_client(self):
+        """Return new globus compute client instance"""
         if not self._setup_done:
-            raise RuntimeError("setup_globus_auth must be called before create_funcx_client")
+            raise RuntimeError("setup_globus_auth must be called before create_globus_compute_client")
 
-        self._log(logging.DEBUG, "Creating funcX client")
+        self._log(logging.DEBUG, "Creating Globus Compute client")
 
-        # setting up the FuncX client
-        funcx_client = Client(
+        # setting up the Globus Compute client
+        client = Client(
             login_manager=self._login_manager,
         )
 
-        return funcx_client
+        return client
 
-    def _create_funcx_executor(self):
-        """Return new funcx executor instance"""
-        if self._funcx_client is None:
-            raise RuntimeError("create_funcx_executor requires _funcx_client to be set first")
-        if self._funcx_endpoint is None:
-            raise RuntimeError("create_funcx_executor requires _funcx_endpoint to be set first")
+    def _create_globus_compute_executor(self):
+        """Return new globus compute executor instance"""
+        if self._client is None:
+            raise RuntimeError("create_globus_compute_executor requires _client to be set first")
+        if self._endpoint is None:
+            raise RuntimeError("create_globus_compute_executor requires _endpoint to be set first")
 
-        self._log(logging.DEBUG, f"Creating funcX executor for endpoint: {self._funcx_endpoint}")
+        self._log(logging.DEBUG, f"Creating Globus Compute executor for endpoint: {self._endpoint}")
 
-        # create a funcx executor
-        funcx_executor = Executor(funcx_client=self._funcx_client, endpoint_id=self._funcx_endpoint)
+        # create a Globus Compute executor
+        executor = Executor(funcx_client=self._client, endpoint_id=self._endpoint)
 
-        return funcx_executor
+        return executor
 
-    def reset_funcx_client(self, propagate=False):
-        """Force the runner to create a new funcX client"""
+    def reset_globus_compute_client(self, propagate=False):
+        """Force the runner to create a new Globus Compute client"""
         if not self._setup_done:
-            raise RuntimeError("setup_globus_auth must be called before reset_funcx_client")
+            raise RuntimeError("setup_globus_auth must be called before reset_globus_compute_client")
 
         if self._external_runner is None:
-            if self._funcx_executor is not None:
-                self._log(logging.DEBUG, f"Shutting down old funcX executor ({self._funcx_executor})")
-                self._funcx_executor.shutdown()
+            if self._executor is not None:
+                self._log(logging.DEBUG, f"Shutting down old Globus Compute executor ({self._executor})")
+                self._executor.shutdown()
 
-            # create a funcx client
-            self._funcx_client = self._create_funcx_client()
-            self._log(logging.DEBUG, f"Using new funcX client: {self._funcx_client}")
+            # create a client
+            self._client = self._create_globus_compute_client()
+            self._log(logging.DEBUG, f"Using new Globus Compute client: {self._client}")
 
-            # create a funcX executor
-            self._funcx_executor = self._create_funcx_executor()
-            self._log(logging.DEBUG, f"Using new funcX executor: {self._funcx_executor}")
+            # create a executor
+            self._executor = self._create_globus_compute_executor()
+            self._log(logging.DEBUG, f"Using new Globus Compute executor: {self._executor}")
 
         else:
             # if required, force the external runner to reset too
             if propagate:
-                self._log(logging.DEBUG, "Resetting funcX client on passed in runner")
-                self._external_runner.reset_funcx_client(propagate=True)
+                self._log(logging.DEBUG, "Resetting Globus Compute client on passed in runner")
+                self._external_runner.reset_globus_compute_client(propagate=True)
 
             # update references
-            self._funcx_client = self._external_runner.get_funcx_client()
-            self._funcx_executor = self._external_runner.get_funcx_executor()
+            self._client = self._external_runner.get_client()
+            self._executor = self._external_runner.get_executor()
 
-    def get_funcx_client(self):
-        """Returns the funcx client"""
+    def get_client(self):
+        """Returns the globus compute client"""
         if self._external_runner is not None:
-            client = self._external_runner.get_funcx_client()
+            client = self._external_runner.get_client()
         else:
-            client = self._funcx_client
+            client = self._client
 
         return client
 
-    def get_funcx_executor(self):
-        """Returns the funcx executor"""
+    def get_executor(self):
+        """Returns the globus compute executor"""
         if self._external_runner is not None:
-            executor = self._external_runner.get_funcx_executor()
+            executor = self._external_runner.get_executor()
         else:
-            executor = self._funcx_executor
+            executor = self._executor
 
         return executor
 
@@ -184,19 +178,19 @@ class GlobusComputeSlurmRunner(RunnerBase):
         """Run the given function and pass back the return value"""
         if self._external_runner is not None:
             # update reference to executor
-            self._funcx_executor = self._external_runner.get_funcx_executor()
+            self._executor = self._external_runner.get_executor()
 
-        if self._funcx_executor is None:
+        if self._executor is None:
             self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
             raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
 
         # start the function
-        self._log(logging.DEBUG, f"Submitting function to FuncX executor ({self._funcx_executor}): {function}")
-        future = self._funcx_executor.submit(function, *args, **kwargs)
+        self._log(logging.DEBUG, f"Submitting function to Globus Compute executor ({self._executor}): {function}")
+        future = self._executor.submit(function, *args, **kwargs)
 
         # wait for it to complete and get the result
-        self._log(logging.DEBUG, "Waiting for FuncX function to complete")
-        result = future.result(timeout=FUNCX_TIMEOUT)
+        self._log(logging.DEBUG, "Waiting for Globus Compute function to complete")
+        result = future.result(timeout=GLOBUS_COMPUTE_TIMEOUT)
 
         return result
 
@@ -447,8 +441,8 @@ class GlobusComputeSlurmRunner(RunnerBase):
         """
         Wrapper function that raises exception if returncode is nonzero
 
-        Required because raising exceptions in funcx functions breaks things
-        due to exception dependency on parsl
+        Required because raising exceptions in globus compute functions breaks things
+        due to exception dependency on parsl (may not still be the case)
 
         """
         job_status_dict, msg = self.run_function(_check_slurm_job_statuses, unfinished_jobids)
