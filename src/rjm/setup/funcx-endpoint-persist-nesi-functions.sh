@@ -161,3 +161,19 @@ restart_endpoint () {
     stop_endpoints
     start_endpoint
 }
+
+migrate_to_globus_compute () {
+    config_file="${HOME}/.globus_compute/${ENDPOINT_NAME}/config.py"
+
+    # config file should exist
+    if [ ! -f "${config_file}" ]; then
+        echo "Error: config file does not exist: \"${config_file}\"" >> $LOG
+        exit 1
+    fi
+
+    # do the migration, if needed
+    if grep -q "from funcx_endpoint" "${config_file}"; then
+        echo "  migrating to globus compute" >> $LOG
+        sed -i'.funcx-bkp' 's/from funcx_endpoint/from globus_compute_endpoint/g' "${config_file}"
+    fi
+}

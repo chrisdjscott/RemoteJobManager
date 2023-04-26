@@ -60,9 +60,8 @@ class NeSISetup:
         self._globus_path = None  # path to globus share
 
         # funcx file locations
-        funcx_dir = f"/home/{self._username}/.funcx"
-        self._funcx_cred_file = f"{funcx_dir}/credentials/funcx_sdk_tokens.json"
-        self._funcx_config_file = f"{funcx_dir}/{FUNCX_ENDPOINT_NAME}/config.py"
+        self._funcx_config_file = f"/home/{self._username}/.funcx/{FUNCX_ENDPOINT_NAME}/config.py"
+        self._globus_compute_config_file = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}/config.py"
 
         # functions file path
         self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
@@ -397,14 +396,19 @@ class NeSISetup:
         """
         print("Configuring blocks on the endpoint, please wait...")
 
+        if self._remote_path_exists(self._globus_compute_config_file):
+            config_file = self._globus_compute_config_file
+        else:
+            config_file = self._funcx_config_file
+
         # check if min_blocks set to 0
-        cmd = f'grep "min_blocks=0" {self._funcx_config_file}'
+        cmd = f'grep "min_blocks=0" {config_file}'
         status, _, _ = self.run_command(cmd)
         if status == 0:
             logger.info("Setting `min_blocks=1` on funcx endpoint to reduce number of log files")
 
             # modify the file
-            cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {self._funcx_config_file}'
+            cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {config_file}'
             status, output, error = self.run_command(cmd)
             if status:
                 raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {error}")
@@ -438,7 +442,7 @@ class NeSISetup:
 
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
-            logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
+            logger.info(f"Configuring Globus Compute '{FUNCX_ENDPOINT_NAME}' endpoint")
             print("Configuring funcX, please wait...")
 
             command = f"module load {FUNCX_MODULE} && globus-compute-endpoint configure {FUNCX_ENDPOINT_NAME}"
@@ -446,20 +450,20 @@ class NeSISetup:
             assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
 
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
-            logger.info("funcX endpoint configuration complete")
+            logger.info("Globus Compute endpoint configuration complete")
 
         # make sure blocks are configured correctly on the endpoint
         endpoint_changed = self._configure_blocks()
 
         # run the bash script that will ensure one endpoint is running on NeSI
         if restart or endpoint_changed:
-            print("Restarting the funcx endpoint, please wait...")
+            print("Restarting the Globus Compute endpoint, please wait...")
         else:
-            print("Ensuring the funcx endpoint is running, please wait...")
+            print("Ensuring the Globus Compute endpoint is running, please wait...")
         cmd = f"export ENDPOINT_RESTART={'1' if restart or endpoint_changed else '0'} && {self._script_path}"
-        logger.debug(f'Running funcx script: "{cmd}"')
+        logger.debug(f'Running Globus Compute script: "{cmd}"')
         status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
-        assert status == 0, f"Running funcx script failed: {stdout} {stderr}"
+        assert status == 0, f"Running Globus Compute script failed: {stdout} {stderr}"
 
         # get the endpoint id
         cmd = f"source {self._functions_path} && get_endpoint_id && echo ${{ENDPOINT_ID}}"
@@ -471,7 +475,7 @@ class NeSISetup:
 
         # report endpoint id for configuring rjm
         print("="*120)
-        print(f"funcX endpoint is running and has id: '{endpoint_id}'")
+        print(f"Globus Compute endpoint is running and has id: '{endpoint_id}'")
         print("="*120)
 
         # store endpoint id
@@ -479,8 +483,8 @@ class NeSISetup:
 
         # install scrontab if not already installed
         self._setup_funcx_scrontab()
-        logger.info("Installed scrontab entry to ensure funcx endpoint keeps running (run 'scrontab -l' on mahuika to view)")
-        print("A scrontab entry has been added to periodically check the status of the funcx endpoint and restart it if needed")
+        logger.info("Installed scrontab entry to ensure Globus Compute endpoint keeps running (run 'scrontab -l' on mahuika to view)")
+        print("A scrontab entry has been added to periodically check the status of the Globus Compute endpoint and restart it if needed")
         print("On mahuika, run 'scrontab -l' to view it")
         print("You may also notice two Slurm jobs have been created with names 'funcxcheck' and 'funcxrestart', please do not cancel them!")
         print("="*120)
@@ -656,8 +660,8 @@ class NeSISetup:
 
         """
         # test if default endpoint config exists, if so, we assume it is configured
-        if self._remote_path_exists(self._funcx_config_file):
-            logger.debug("Assuming funcx default endpoint is configured as config file exists")
+        if self._remote_path_exists(self._funcx_config_file) or self._remote_path_exists(self._globus_compute_config_file):
+            logger.debug("Assuming Globus Compute endpoint is configured as config file exists")
             configured = True
         else:
             logger.debug("funcX default endpoint config file does not exist")

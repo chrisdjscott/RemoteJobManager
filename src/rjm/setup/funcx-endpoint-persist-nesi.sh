@@ -12,6 +12,9 @@ cleanup_logs
 # check if there is a funcx endpoint already running somewhere
 check_endpoint_running_nodes
 
+# migrate to globus compute
+migrate_to_globus_compute
+
 # restart the endpoint if asked to or if there is not exactly one endpoint running already
 if [ -z ${ENDPOINT_RUNNING_COUNT+x} ]; then
     echo "Error: checking if endpoint running did not work!" >> $LOG
