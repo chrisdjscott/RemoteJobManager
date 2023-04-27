@@ -9,7 +9,7 @@ from datetime import datetime
 from rjm import utils
 from rjm.errors import RemoteJobBatchError
 from rjm.remote_job import RemoteJob
-from rjm.runners.funcx_slurm_runner import FuncxSlurmRunner
+from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
 from rjm.transferers.globus_https_transferer import GlobusHttpsTransferer
 
 
@@ -23,7 +23,7 @@ class RemoteJobBatch:
     """
     def __init__(self):
         self._remote_jobs = []
-        self._runner = FuncxSlurmRunner()
+        self._runner = GlobusComputeSlurmRunner()
         self._transfer = GlobusHttpsTransferer()
 
     def setup(self, remote_jobs_file: str, force: bool = False):

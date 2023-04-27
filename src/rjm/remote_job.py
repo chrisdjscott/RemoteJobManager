@@ -10,7 +10,7 @@ from retry.api import retry_call
 from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
-from rjm.runners.funcx_slurm_runner import FuncxSlurmRunner
+from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
 from rjm.errors import RemoteJobRunnerError
 
 
@@ -56,7 +56,7 @@ class RemoteJob:
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
-        self._runner = FuncxSlurmRunner(config=config)
+        self._runner = GlobusComputeSlurmRunner(config=config)
 
     def files_uploaded(self):
         """Return whether files have been uploaded"""

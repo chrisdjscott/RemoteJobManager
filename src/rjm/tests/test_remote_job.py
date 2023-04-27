@@ -49,7 +49,7 @@ def test_run_start_restarts_fail(rj, mocker):
     mocker.patch('time.sleep')
     rj._uploaded = True
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         return_value=(1, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
@@ -62,7 +62,7 @@ def test_run_start_restarts_succeed(rj, mocker):
     mocker.patch('time.sleep')
     rj._uploaded = True
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         side_effect=[
             (1, "mocking failure"),
             (2, "mocking failure"),
@@ -82,7 +82,7 @@ def test_run_wait_restarts_fail(rj, mocker):
     rj._run_started = True
     rj._runner._jobid = '1234567'
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         return_value=(None, "mocking failure")
     )
     with pytest.raises(RemoteJobRunnerError):
@@ -96,7 +96,7 @@ def test_run_wait_restarts_succeed(rj, mocker):
     rj._run_started = True
     rj._runner._jobid = '1234567'
     mocked = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.run_function',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         side_effect=[
             (None, "mocking failure"),
             ({rj._runner._jobid: "RUNNING"}, "no msg"),
@@ -127,7 +127,7 @@ def test_save_state(rj, tmpdir, mocker):
         return_value=transferer_state,
     )
     mocked_runner_save_state = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.save_state',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.save_state',
         return_value=runner_state,
     )
 
@@ -180,7 +180,7 @@ def test_load_state(rj, mocker, tmpdir, force):
         return_value=None,
     )
     mocked_runner_load_state = mocker.patch(
-        'rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.load_state',
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.load_state',
         return_value=None,
     )
 

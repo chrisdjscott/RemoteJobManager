@@ -6,7 +6,7 @@ import traceback
 from rjm import __version__
 from rjm import utils
 from rjm.remote_job_batch import RemoteJobBatch
-from rjm.runners.funcx_slurm_runner import MIN_POLLING_INTERVAL
+from rjm.runners.globus_compute_slurm_runner import MIN_POLLING_INTERVAL
 
 
 logger = logging.getLogger(__name__)

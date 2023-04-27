@@ -73,8 +73,8 @@ def test_write_stderr(mocker, rjb, tmp_path):
     localdirsfile = tmp_path / "localdirs.txt"
     localdirsfile.write_text(os.linesep.join([str(localdir1), str(localdir2), str(localdir3), str(localdir4)]) + os.linesep)
 
-    mocker.patch('rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.get_globus_scopes')
-    mocker.patch('rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.setup_globus_auth')
+    mocker.patch('rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.get_globus_scopes')
+    mocker.patch('rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.setup_globus_auth')
     mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.get_globus_scopes')
     mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.setup_globus_auth')
     mocker.patch('rjm.utils.handle_globus_auth')

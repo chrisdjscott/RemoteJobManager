@@ -23,13 +23,14 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "funcx-endpoint/1.0.11-gimkl-2022a-Python-3.10.5"
+FUNCX_MODULE = "globus-compute-endpoint/2.0.1-gimkl-2022a-Python-3.10.5"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
 GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"
 NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
 NESI_PERSIST_FUNCTIONS_PATH = "/home/{username}/.funcx-endpoint-persist-nesi-functions.sh"
+NESI_PERSIST_LOG_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.log"
 SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
 SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
 
@@ -60,13 +61,13 @@ class NeSISetup:
         self._globus_path = None  # path to globus share
 
         # funcx file locations
-        funcx_dir = f"/home/{self._username}/.funcx"
-        self._funcx_cred_file = f"{funcx_dir}/credentials/funcx_sdk_tokens.json"
-        self._funcx_config_file = f"{funcx_dir}/{FUNCX_ENDPOINT_NAME}/config.py"
+        self._funcx_config_file = f"/home/{self._username}/.funcx/{FUNCX_ENDPOINT_NAME}/config.py"
+        self._globus_compute_config_file = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}/config.py"
 
         # functions file path
         self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
         self._functions_path = NESI_PERSIST_FUNCTIONS_PATH.format(username=self._username)
+        self._persist_log_path = NESI_PERSIST_LOG_PATH.format(username=self._username)
 
         self._connect()
 
@@ -193,7 +194,7 @@ class NeSISetup:
             logger.debug(f"More to receive: {stdout.channel.recv_ready()}")
 
         # handling funcx authentication here...
-        if "https://auth.globus.org/v2/oauth2/authorize" in output:
+        if "https://auth.globus.org" in output:
             # need to do auth
             print("="*120)
             print("Follow these instructions to authenticate funcX on NeSI:")
@@ -397,17 +398,22 @@ class NeSISetup:
         """
         print("Configuring blocks on the endpoint, please wait...")
 
+        if self._remote_path_exists(self._globus_compute_config_file):
+            config_file = self._globus_compute_config_file
+        else:
+            config_file = self._funcx_config_file
+
         # check if min_blocks set to 0
-        cmd = f'grep "min_blocks=0" {self._funcx_config_file}'
+        cmd = f'grep "min_blocks=0" {config_file}'
         status, _, _ = self.run_command(cmd)
         if status == 0:
             logger.info("Setting `min_blocks=1` on funcx endpoint to reduce number of log files")
 
             # modify the file
-            cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {self._funcx_config_file}'
+            cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {config_file}'
             status, output, error = self.run_command(cmd)
             if status:
-                raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {stderr}")
+                raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {error}")
 
             changed = True
 
@@ -416,14 +422,14 @@ class NeSISetup:
 
         return changed
 
-    def setup_funcx(self, restart=True):
+    def setup_globus_compute(self, restart=True):
         """
-        Sets up the funcX endpoint on NeSI.
+        Sets up the Globus Compute endpoint on NeSI.
 
         If restart is True, then restart the endpoint if it is already running
 
         """
-        print("Setting up funcX, please wait...")
+        print("Setting up Globus Compute, please wait...")
 
         # check home directory permissions - there was a problem with the provisioner
         #  that resulted in some homes having group write permission which results in
@@ -438,40 +444,41 @@ class NeSISetup:
 
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
-            logger.info(f"Configuring funcX '{FUNCX_ENDPOINT_NAME}' endpoint")
+            logger.info(f"Configuring Globus Compute '{FUNCX_ENDPOINT_NAME}' endpoint")
             print("Configuring funcX, please wait...")
 
-            command = f"module load {FUNCX_MODULE} && funcx-endpoint configure {FUNCX_ENDPOINT_NAME}"
+            command = f"module load {FUNCX_MODULE} && globus-compute-endpoint configure {FUNCX_ENDPOINT_NAME}"
             status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
             assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
 
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
-            logger.info("funcX endpoint configuration complete")
+            logger.info("Globus Compute endpoint configuration complete")
 
         # make sure blocks are configured correctly on the endpoint
         endpoint_changed = self._configure_blocks()
 
         # run the bash script that will ensure one endpoint is running on NeSI
         if restart or endpoint_changed:
-            print("Restarting the funcx endpoint, please wait...")
+            print("Restarting the Globus Compute endpoint, please wait...")
         else:
-            print("Ensuring the funcx endpoint is running, please wait...")
+            print("Ensuring the Globus Compute endpoint is running, please wait...")
         cmd = f"export ENDPOINT_RESTART={'1' if restart or endpoint_changed else '0'} && {self._script_path}"
-        logger.debug(f'Running funcx script: "{cmd}"')
-        status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
-        assert status == 0, f"Running funcx script failed: {stdout} {stderr}"
+        logger.debug(f'Running Globus Compute script: "{cmd}"')
+        status, stdout, stderr = self.run_command(cmd)
+        assert status == 0, f"Running Globus Compute script failed: {stdout} {stderr}"
+        logger.debug(f"Stdout:\n{stdout}")
 
         # get the endpoint id
         cmd = f"source {self._functions_path} && get_endpoint_id && echo ${{ENDPOINT_ID}}"
         logger.debug(f"Getting endpoint id: '{cmd}'")
-        status, stdout, stderr = self._run_command_handle_funcx_authentication(cmd)
+        status, stdout, stderr = self.run_command(cmd)
         assert status == 0, f"Getting endpoint id failed: {stdout} {stderr}"
         endpoint_id = stdout.strip()
         logger.debug(f"Got endpoint id: '{endpoint_id}'")
 
         # report endpoint id for configuring rjm
         print("="*120)
-        print(f"funcX endpoint is running and has id: '{endpoint_id}'")
+        print(f"Globus Compute endpoint is running and has id: '{endpoint_id}'")
         print("="*120)
 
         # store endpoint id
@@ -479,8 +486,8 @@ class NeSISetup:
 
         # install scrontab if not already installed
         self._setup_funcx_scrontab()
-        logger.info("Installed scrontab entry to ensure funcx endpoint keeps running (run 'scrontab -l' on mahuika to view)")
-        print("A scrontab entry has been added to periodically check the status of the funcx endpoint and restart it if needed")
+        logger.info("Installed scrontab entry to ensure Globus Compute endpoint keeps running (run 'scrontab -l' on mahuika to view)")
+        print("A scrontab entry has been added to periodically check the status of the Globus Compute endpoint and restart it if needed")
         print("On mahuika, run 'scrontab -l' to view it")
         print("You may also notice two Slurm jobs have been created with names 'funcxcheck' and 'funcxrestart', please do not cancel them!")
         print("="*120)
@@ -607,13 +614,13 @@ class NeSISetup:
         scrontab_lines.append("#SCRON --job-name=funcxpersist")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
-        scrontab_lines.append(f"30 0-14,16-23 * * * {self._script_path}")  # times are in UTC
+        scrontab_lines.append(f"30 0-14,16-23 * * * {self._script_path} >> {self._persist_log_path} 2>&1")  # times are in UTC
         scrontab_lines.append("")
         scrontab_lines.append("#SCRON --time=05:00")
         scrontab_lines.append("#SCRON --job-name=funcxrestart")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
-        scrontab_lines.append(f"30 15 * * * env ENDPOINT_RESTART=1 {self._script_path}")  # times are in UTC
+        scrontab_lines.append(f"30 15 * * * env ENDPOINT_RESTART=1 {self._script_path} >> {self._persist_log_path} 2>&1")  # times are in UTC
         scrontab_lines.append(SCRON_SECTION_END)
         scrontab_lines.append("")  # end with a newline
 
@@ -656,8 +663,8 @@ class NeSISetup:
 
         """
         # test if default endpoint config exists, if so, we assume it is configured
-        if self._remote_path_exists(self._funcx_config_file):
-            logger.debug("Assuming funcx default endpoint is configured as config file exists")
+        if self._remote_path_exists(self._funcx_config_file) or self._remote_path_exists(self._globus_compute_config_file):
+            logger.debug("Assuming Globus Compute endpoint is configured as config file exists")
             configured = True
         else:
             logger.debug("funcX default endpoint config file does not exist")
@@ -679,7 +686,7 @@ class NeSISetup:
         funcx_running_nodes = []
         funcx_endpoint_id = None
         for node in FUNCX_NODES:
-            command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint list'"
+            command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint list'"
             status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
             assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
 
@@ -704,7 +711,7 @@ class NeSISetup:
                 print("Stopping funcX endpoint for restart, please wait...")
 
             for node in funcx_running_nodes:
-                command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && funcx-endpoint stop {FUNCX_ENDPOINT_NAME}'"
+                command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint stop {FUNCX_ENDPOINT_NAME}'"
                 status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
                 if status:
                     raise RuntimeError(f"Failed to stop funcX endpoint on '{node}':\n\n{stdout}\n\n{stderr}")

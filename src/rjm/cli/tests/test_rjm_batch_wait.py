@@ -46,8 +46,8 @@ def test_write_stderr_on_exception(mocker, tmp_path, configobj):
     localdirsfile = tmp_path / "localdirs.txt"
     localdirsfile.write_text(str(localdir1) + os.linesep)
 
-    mocker.patch('rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.get_globus_scopes')
-    mocker.patch('rjm.runners.funcx_slurm_runner.FuncxSlurmRunner.setup_globus_auth')
+    mocker.patch('rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.get_globus_scopes')
+    mocker.patch('rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.setup_globus_auth')
     mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.get_globus_scopes')
     mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.setup_globus_auth')
     mocker.patch('rjm.utils.handle_globus_auth')
