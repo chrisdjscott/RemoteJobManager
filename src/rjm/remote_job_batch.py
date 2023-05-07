@@ -15,6 +15,15 @@ from rjm.transferers.globus_https_transferer import GlobusHttpsTransferer
 
 logger = logging.getLogger(__name__)
 
+# create our own stream handler logger for workaround detailed below
+_console_logger = logging.getLogger("batch_wait")
+_console_logger.setLevel(logging.INFO)
+_console_handler = logging.StreamHandler()
+_console_handler.setFormatter(
+    logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"),
+)
+_console_logger.addHandler(_console_handler)
+
 
 class RemoteJobBatch:
     """
@@ -239,6 +248,12 @@ class RemoteJobBatch:
                     except Exception as exc:
                         errors.append(repr(exc))
                         logger.error(repr(exc))
+                    else:
+                        # print to console that the job has finished
+                        # this is a workaround because some users reported that log files were
+                        # not being created until the entire program had finished, so they had
+                        # no idea what the progress of the simulation wass
+                        _console_logger.info(f'Job has finished for local directory: "{rj.get_local_dir()}"')
 
         # handle errors
         logger.debug(f"{len(errors)} errors to report")
