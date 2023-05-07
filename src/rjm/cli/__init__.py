@@ -1,9 +1,16 @@
+"""
+Command line interface to rjm
 
+"""
 import os
 import logging
 
 
 def read_local_dirs_file(dirsfile):
+    """
+    Read a list of local directories from the given file
+
+    """
     logger = logging.getLogger(__name__)
 
     with open(dirsfile) as fh:

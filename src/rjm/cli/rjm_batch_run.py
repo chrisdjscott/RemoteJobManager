@@ -1,4 +1,13 @@
+"""
+Script to upload input files, run jobs and download output files.
 
+A file containing a list of local directories is passed as an argument. Each
+directory should contain an *rjm_uploads.txt* file, with the list of files to be
+uploaded, a *run.sl* Slurm script, which will be submitted to Slurm on the
+remote machine, and an *rjm_downloads.txt* file, with the list of files to be
+downloaded on completion of the Slurm job.
+
+"""
 import argparse
 import logging
 import traceback

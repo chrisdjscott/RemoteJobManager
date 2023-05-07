@@ -1,4 +1,13 @@
+"""
+This script runs simple checks on the connectivity with the remote machine.
 
+It will test that:
+
+- a directory can be created on the remote machine
+- a file can be uploaded to the remote machine
+- a command can be executed on the remote machine
+
+"""
 import os
 import argparse
 from datetime import datetime
