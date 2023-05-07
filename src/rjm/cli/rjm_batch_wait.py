@@ -1,4 +1,12 @@
+"""
+Script to wait for completion of a batch of jobs and download the output files.
 
+A file containing a list of local directories is passed as an argument. Each
+directory should contain an *rjm_uploads.txt* file, with the list of files to be
+uploaded, and a *run.sl* Slurm script, which will be submitted to Slurm on the
+remote machine.
+
+"""
 import logging
 import argparse
 import traceback

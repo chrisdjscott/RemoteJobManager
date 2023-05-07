@@ -10,6 +10,7 @@ rjm_config
 ----------
 
 .. automodule:: rjm.cli.rjm_config
+   :noindex:
 
 .. argparse::
    :module: rjm.cli.rjm_config
@@ -21,6 +22,7 @@ rjm_restart
 -----------
 
 .. automodule:: rjm.cli.rjm_restart
+   :noindex:
 
 .. argparse::
    :module: rjm.cli.rjm_restart

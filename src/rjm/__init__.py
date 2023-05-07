@@ -1,3 +1,8 @@
+"""
+The Remote Job Manager python package
+
+"""
+
 from importlib.metadata import version, PackageNotFoundError
 
 try:

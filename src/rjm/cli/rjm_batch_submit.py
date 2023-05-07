@@ -1,4 +1,12 @@
+"""
+Script to upload and submit jobs for a batch of local directories.
 
+A file containing a list of local directories is passed as an argument. Each
+directory should previously have been passed to `rjm_batch_submit` and should
+contain an *rjm_downloads.txt* file, with the list of files to be downloaded
+on completion of the Slurm job.
+
+"""
 import argparse
 import logging
 
