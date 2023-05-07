@@ -1,5 +1,6 @@
 
 import argparse
+import logging
 
 from rjm import __version__
 from rjm import utils
@@ -40,6 +41,10 @@ def batch_cancel():
     # setup
     utils.setup_logging(log_name="batch_cancel", log_file=args.logfile, log_level=args.loglevel)
     local_dirs = read_local_dirs_file(args.localjobdirfile)
+
+    # report version
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running rjm_batch_cancel v{__version__}")
 
     # loop over local directories
     for local_dir in local_dirs:

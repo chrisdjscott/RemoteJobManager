@@ -1,6 +1,7 @@
 
 import os
 import argparse
+import logging
 
 from rjm import utils
 from rjm import __version__
@@ -33,6 +34,10 @@ def authenticate():
 
     # setup logging
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel)
+
+    # report version
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running rjm_authenticate v{__version__}")
 
     # check if the token file already exists
     initial_run = not os.path.isfile(utils.TOKEN_FILE_LOCATION)

@@ -44,6 +44,10 @@ def batch_run():
     # setup logging
     utils.setup_logging(log_name="batch_run", log_file=args.logfile, log_level=args.loglevel)
 
+    # report version
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running rjm_batch_run v{__version__}")
+
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
     rjb.setup(args.localjobdirfile, force=args.force)

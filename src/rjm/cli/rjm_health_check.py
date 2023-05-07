@@ -52,7 +52,7 @@ def health_check():
     # setup logging
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
 
-    print("Running RJM health check...")
+    print(f"Running RJM health check v{__version__}...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # create remote job object

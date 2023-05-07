@@ -48,6 +48,10 @@ def batch_wait(args=None):
     log_name = None if args.defaultlogname else "batch_wait"
     utils.setup_logging(log_name=log_name, log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
 
+    # report version
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running rjm_batch_wait v{__version__}")
+
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
     rjb.setup(args.localjobdirfile)

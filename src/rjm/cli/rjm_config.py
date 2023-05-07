@@ -61,6 +61,10 @@ def nesi_setup():
     # setup logging
     utils.setup_logging(log_name="rjm_config", log_file=args.logfile, log_level=args.loglevel)
 
+    # report version
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running rjm_config v{__version__}")
+
     print("="*120)
     print("This is an interactive script to setup RJM for accessing NeSI")
     print("You will be required to enter information along the way, including NeSI credentials and to")

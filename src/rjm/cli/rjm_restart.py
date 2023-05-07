@@ -8,7 +8,6 @@ will need to use a web browser to carry out the Globus authentication as require
 """
 import os
 import sys
-import copy
 import argparse
 import logging
 import getpass
@@ -19,7 +18,6 @@ from rjm import utils
 from rjm import config as config_helper
 from rjm import __version__
 from rjm.setup.nesi import NeSISetup
-from rjm.auth import do_authentication
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +51,10 @@ def nesi_setup():
 
     # setup logging
     utils.setup_logging(log_name="rjm_restart", log_file=args.logfile, log_level=args.loglevel)
+
+    # report version
+    logger = logging.getLogger(__name__)
+    logger.info(f"Running rjm_restart v{__version__}")
 
     print("="*120)
     print("This is an interactive script to restart funcX on NeSI for use with RJM")
