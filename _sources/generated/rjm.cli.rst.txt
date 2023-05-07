@@ -1,0 +1,45 @@
+rjm.cli
+=======
+
+.. automodule:: rjm.cli
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      read_local_dirs_file
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+
+.. rubric:: Modules
+
+.. autosummary::
+   :toctree:
+   :recursive:
+
+   rjm.cli.rjm_authenticate
+   rjm.cli.rjm_batch_cancel
+   rjm.cli.rjm_batch_run
+   rjm.cli.rjm_batch_submit
+   rjm.cli.rjm_batch_wait
+   rjm.cli.rjm_config
+   rjm.cli.rjm_health_check
+   rjm.cli.rjm_restart
+   rjm.cli.tests
+

@@ -1,0 +1,30 @@
+rjm.cli.rjm\_authenticate
+=========================
+
+.. automodule:: rjm.cli.rjm_authenticate
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      authenticate
+      make_parser
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

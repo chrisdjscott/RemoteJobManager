@@ -1,0 +1,30 @@
+rjm.cli.tests.test\_rjm\_batch\_wait
+====================================
+
+.. automodule:: rjm.cli.tests.test_rjm_batch_wait
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      configobj
+      test_write_stderr_on_exception
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

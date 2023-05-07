@@ -1,0 +1,30 @@
+rjm.cli.rjm\_batch\_cancel
+==========================
+
+.. automodule:: rjm.cli.rjm_batch_cancel
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      batch_cancel
+      make_parser
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

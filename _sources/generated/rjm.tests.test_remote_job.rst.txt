@@ -1,0 +1,37 @@
+rjm.tests.test\_remote\_job
+===========================
+
+.. automodule:: rjm.tests.test_remote_job
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      configobj
+      rj
+      test_load_state
+      test_run_start_restarts_fail
+      test_run_start_restarts_succeed
+      test_run_wait_restarts_fail
+      test_run_wait_restarts_succeed
+      test_save_state
+      test_save_state_no_state_file
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

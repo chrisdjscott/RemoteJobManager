@@ -1,0 +1,29 @@
+rjm.transferers.transferer\_base
+================================
+
+.. automodule:: rjm.transferers.transferer_base
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      TransfererBase
+   
+   
+
+   
+   
+   
+
+
+

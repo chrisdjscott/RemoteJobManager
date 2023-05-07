@@ -1,0 +1,34 @@
+rjm.transferers.tests.test\_transferer\_base
+============================================
+
+.. automodule:: rjm.transferers.tests.test_transferer_base
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      test_get_remote_directory
+      test_load_state
+      test_save_state_no_remote_path
+      test_save_state_remote_path
+      test_set_local_path
+      transferer
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

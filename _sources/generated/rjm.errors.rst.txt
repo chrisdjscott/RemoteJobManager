@@ -1,0 +1,32 @@
+rjm.errors
+==========
+
+.. automodule:: rjm.errors
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+   
+      RemoteJobBatchError
+      RemoteJobConfigError
+      RemoteJobRunnerError
+      RemoteJobTransfererError
+   
+   
+
+
+

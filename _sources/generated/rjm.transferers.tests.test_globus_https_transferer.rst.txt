@@ -1,0 +1,41 @@
+rjm.transferers.tests.test\_globus\_https\_transferer
+=====================================================
+
+.. automodule:: rjm.transferers.tests.test_globus_https_transferer
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      configobj
+      test_calculate_checksum
+      test_upload_files
+      test_upload_files_retries_fail
+      test_url_for_file
+      tf
+      uploads
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      AuthoriserMock
+   
+   
+
+   
+   
+   
+
+
+

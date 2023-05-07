@@ -1,0 +1,30 @@
+rjm.cli.rjm\_batch\_wait
+========================
+
+.. automodule:: rjm.cli.rjm_batch_wait
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      batch_wait
+      make_parser
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -21,6 +21,7 @@ before using the tool.
    getting_started_nesi
    command_line_interface
    troubleshooting_on_nesi
+   api
 
 
 

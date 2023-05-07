@@ -1,0 +1,31 @@
+rjm.tests.test\_config
+======================
+
+.. automodule:: rjm.tests.test_config
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      config_file
+      test_load_config
+      test_load_config_exception
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,51 @@
+rjm.runners.tests.test\_globus\_compute\_slurm\_runner
+======================================================
+
+.. automodule:: rjm.runners.tests.test_globus_compute_slurm_runner
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      configobj
+      mocked_run_function
+      runner
+      test_calculate_checksums
+      test_check_slurm_job_statuses_failed
+      test_check_slurm_job_statuses_missing
+      test_check_slurm_job_statuses_sacct
+      test_check_slurm_job_statuses_squeue
+      test_check_slurm_job_statuses_squeue_sacct
+      test_make_remote_directory_list
+      test_make_remote_directory_single
+      test_reset_globus_compute_client
+      test_start_fail
+      test_start_succeed
+      test_wait_completed_failed
+      test_wait_completed_success
+      test_wait_fail
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      MockedSubprocessReturn
+   
+   
+
+   
+   
+   
+
+
+

@@ -1,0 +1,29 @@
+rjm.setup.nesi
+==============
+
+.. automodule:: rjm.setup.nesi
+
+   
+   
+   
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      NeSISetup
+   
+   
+
+   
+   
+   
+
+
+

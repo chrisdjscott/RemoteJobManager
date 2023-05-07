@@ -1,0 +1,33 @@
+rjm.tests.test\_remote\_job\_batch
+==================================
+
+.. automodule:: rjm.tests.test_remote_job_batch
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      configobj
+      rjb
+      test_categorise_jobs
+      test_make_directories
+      test_write_stderr
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

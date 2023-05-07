@@ -1,0 +1,31 @@
+rjm.config
+==========
+
+.. automodule:: rjm.config
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      do_configuration
+      load_config
+      load_or_make_config
+   
+   
+
+   
+   
+   
+
+   
+   
+   
+
+
+

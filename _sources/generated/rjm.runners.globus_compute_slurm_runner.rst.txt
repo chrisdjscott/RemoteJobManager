@@ -1,0 +1,37 @@
+rjm.runners.globus\_compute\_slurm\_runner
+==========================================
+
+.. automodule:: rjm.runners.globus_compute_slurm_runner
+
+   
+   
+   
+
+   
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      cancel_slurm_job
+      submit_slurm_job
+   
+   
+
+   
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      CustomLoginManager
+      GlobusComputeSlurmRunner
+   
+   
+
+   
+   
+   
+
+
+
