@@ -110,6 +110,22 @@ jobs:
         with:
           files: extra/pyinstaller/dist/RemoteJobManager-*.zip
 
+  realtestpyinstaller:
+    needs: pyinstaller
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        name: Download artifact archive
+        with:
+          name: RemoteJobManager-${{ runner.os }}
+
+      - run: ls -lR
+
+      - name: Extract artifact archive
+        run: 7z x RemoteJobManager-*.zip
+
+      - run: ls -lR
+
   realtest:
     runs-on: ${{ matrix.os }}
     strategy:
