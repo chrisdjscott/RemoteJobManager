@@ -119,12 +119,13 @@ jobs:
         with:
           name: RemoteJobManager-${{ runner.os }}
 
-      - run: ls -lR
+      - run: ls
 
       - name: Extract artifact archive
         run: 7z x RemoteJobManager-*.zip
 
-      - run: ls -lR
+      - run: ls
+      - run: ls RemoteJobManager*
 
   realtest:
     runs-on: ${{ matrix.os }}
