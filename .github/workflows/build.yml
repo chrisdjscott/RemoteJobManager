@@ -125,7 +125,53 @@ jobs:
         run: 7z x RemoteJobManager-*.zip
 
       - run: ls
-      - run: ls RemoteJobManager*
+
+      # display version
+      - name: Display RJM version
+        run: ./rjm_batch_wait --version
+
+      # Secrets required for running real tests
+      - run: mkdir -p ~/.rjm
+      - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini
+        shell: bash
+        env:
+          RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+        if: env.RJM_CONFIG != null
+      - run: printf "${RJM_TOKENS}" > ~/.rjm/rjm_tokens.json
+        shell: bash
+        env:
+          RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+        if: env.RJM_TOKENS != null
+      - name: "Check if RJM secrets are set"
+        id: rjm_config_files
+        shell: bash
+        run: |
+          if [[ -r ~/.rjm/rjm_tokens.json ]] && [[ -r ~/.rjm/rjm_config.ini ]]; then
+            echo 'files_exist=true' >> $GITHUB_OUTPUT
+          else
+            echo 'files_exist=false' >> $GITHUB_OUTPUT
+          fi
+
+      # If the secrets were set, run some real tests
+      - name: Run the health check script
+        run: ./rjm_health_check -ll debug --retries --logextra
+        if: steps.rjm_config_files.outputs.files_exist == 'true'
+        timeout-minutes: 10
+      - name: Run batch_submit for nonmem example
+        run: ./rjm_batch_submit -f localdirs.txt -ll debug -n --logextra
+        working-directory: ./examples/nonmem
+        if: steps.rjm_config_files.outputs.files_exist == 'true'
+        timeout-minutes: 10
+      - name: Run batch_wait for nonmem example
+        run: ./rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o -n --logextra
+        working-directory: ./examples/nonmem
+        if: steps.rjm_config_files.outputs.files_exist == 'true'
+        timeout-minutes: 10
+
+      # Cleanup rjm config directory
+      - run: rm ~/.rjm/*
+        if: steps.rjm_config_files.outputs.files_exist == 'true'
+
 
   realtest:
     runs-on: ${{ matrix.os }}
