@@ -82,7 +82,7 @@ jobs:
         working-directory: ./extra/pyinstaller
 
       # test the pyinstaller built health check runs
-      - name: Run pyinstaller built health check
+      - name: Display pyinstaller built health check help
         run: dist/rjm_health_check.exe --help
         working-directory: ./extra/pyinstaller
       - name: Display RJM version
@@ -107,6 +107,7 @@ jobs:
     needs: pyinstaller
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v3
       - uses: actions/download-artifact@v3
         name: Download artifact archive
         with:
