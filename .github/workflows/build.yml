@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9', '3.10']
+        python-version: ['3.10', '3.11']
     steps:
       - uses: actions/checkout@v3
         with:
@@ -152,12 +152,12 @@ jobs:
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10
       - name: Run batch_submit for nonmem example
-        run: ./rjm_batch_submit -f localdirs.txt -ll debug -n --logextra
+        run: ../../rjm_batch_submit -f localdirs.txt -ll debug -n --logextra
         working-directory: ./examples/nonmem
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10
       - name: Run batch_wait for nonmem example
-        run: ./rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o -n --logextra
+        run: ../../rjm_batch_wait -f localdirs.txt -ll debug -z 15 -o -n --logextra
         working-directory: ./examples/nonmem
         if: steps.rjm_config_files.outputs.files_exist == 'true'
         timeout-minutes: 10
@@ -191,7 +191,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9']
+        python-version: ['3.10']
     steps:
       - uses: actions/checkout@v3
         with:
