@@ -93,7 +93,6 @@ def health_check():
         # use runner to check the directory and file exists (tests funcx)
         print()
         print("Using runner to check directory and file exist...")
-        print(">>", remote_dir, test_file_name, args.keep)
         run_function = r.run_function_with_retries if args.retries else r.run_function
         result = run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
         if result is None:
