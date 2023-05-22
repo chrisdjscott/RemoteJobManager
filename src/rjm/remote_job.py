@@ -335,10 +335,6 @@ class RemoteJob:
             self._downloaded = True
             self._save_state()
 
-            # if the run failed, raise an exception now
-            if not self._run_succeeded:
-                raise RemoteJobRunnerError("Running the job failed")
-
     def run_start(self):
         """Start running the processing"""
         if self._run_started:

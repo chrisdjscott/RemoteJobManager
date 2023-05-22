@@ -243,7 +243,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # if there were any errors downloading files, raise an exception now
         if errors > 0:
-            raise RemoteJobTransfererError(f"Failed to download files in '{self._local_path}':")
+            raise RemoteJobTransfererError(f"Failed to download files in '{self._local_path}'")
 
     def _download_file_with_retries(self, filename: str, checksum: str):
         """

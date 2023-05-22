@@ -5,6 +5,7 @@ import time
 import logging
 import concurrent.futures
 from datetime import datetime
+from collections import defaultdict
 
 from rjm import utils
 from rjm.errors import RemoteJobBatchError
@@ -191,13 +192,15 @@ class RemoteJobBatch:
         unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs = self._categorise_jobs()
 
         # add errors for unuploaded and unstarted
-        errors = []
+        errors = defaultdict(list)
         for rj in unuploaded_jobs:
-            errors.append(f"Cannot wait for {rj} that hasn't uploaded files")
+            msg = "Cannot wait for RemoteJob that hasn't uploaded files"
+            errors[repr(rj)].append(msg)
+            logger.error(f"{rj}: {msg}")
         for rj in unstarted_jobs:
-            errors.append(f"Cannot wait for {rj} that hasn't started running")
-        for err in errors:
-            logger.error(err)
+            msg = "Cannot wait for RemoteJob that hasn't started running"
+            errors[repr(rj)].append(msg)
+            logger.error(f"{rj}: {msg}")
 
         logger.info(f"{len(undownloaded_jobs)} jobs to be downloaded")
         logger.info(f"{len(unfinished_jobs)} jobs to wait for and download")
@@ -230,8 +233,9 @@ class RemoteJobBatch:
 
                 # handle unsuccessful jobs
                 for rj in failed_jobs:
-                    logger.info(f"{rj} run has finished unsuccessfully")
+                    logger.error(f"{rj} run has finished unsuccessfully")
                     rj.set_run_completed(success=False)
+                    errors[repr(rj)].append("Run has finished unsuccessfully")
                     future_to_rj[downloader.submit(rj.download_files)] = rj
 
                 # wait before checking for finished jobs again
@@ -246,17 +250,26 @@ class RemoteJobBatch:
                     try:
                         future.result()
                     except Exception as exc:
-                        errors.append(repr(exc))
-                        logger.error(repr(exc))
+                        # something failed during the download
+                        errors[repr(rj)].append(str(exc))
+
+                    # print to console that the job has finished
+                    # this is a workaround because some users reported that log files were
+                    # not being created until the entire program had finished, so they had
+                    # no idea what the progress of the simulation wass
+
+                    if repr(rj) in errors:
+                        # summarise any error messages that were stored for this job if it failed
+                        msg = f'Job finished with {len(errors[repr(rj)])} error(s) for local dir "{rj.get_local_dir()}": ' + "; ".join(errors[repr(rj)])
+                        logger.error(msg)
+                        _console_logger.error(msg)
+
                     else:
-                        # print to console that the job has finished
-                        # this is a workaround because some users reported that log files were
-                        # not being created until the entire program had finished, so they had
-                        # no idea what the progress of the simulation wass
+                        # otherwise finished successfully
                         _console_logger.info(f'Job has finished for local directory: "{rj.get_local_dir()}"')
 
         # handle errors
-        logger.debug(f"{len(errors)} errors to report")
+        logger.debug(f"wait_and_download: {len(errors)} jobs reported errors")
         if len(errors):
             raise RemoteJobBatchError(errors)
 
