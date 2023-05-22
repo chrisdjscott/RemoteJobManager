@@ -7,6 +7,7 @@ uploaded, and a *run.sl* Slurm script, which will be submitted to Slurm on the
 remote machine.
 
 """
+import sys
 import logging
 import argparse
 import traceback
@@ -70,7 +71,8 @@ def batch_wait(args=None):
     except BaseException as exc:
         # writing an stderr.txt file into the directory of unfinished jobs, for wfn
         rjb.write_stderr_for_unfinshed_jobs(traceback.format_exc())
-        raise exc
+        logger.error("Exiting due to errors (check logs for details)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
