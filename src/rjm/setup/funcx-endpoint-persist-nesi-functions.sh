@@ -2,12 +2,12 @@
 export LOGIN_NODES=(mahuika01 mahuika02)
 export PRIMARY_NODE=login.mahuika.nesi.org.nz
 export ENDPOINT_NAME=default
-export FUNCX_MODULE="globus-compute-endpoint/2.0.1-gimkl-2022a-Python-3.10.5"
+export FUNCX_MODULE="globus-compute-endpoint/2.3.2-gimkl-2022a-Python-3.10.5"
 export INIT_COMMAND="source /etc/profile; source ~/.funcx-endpoint-persist-nesi-functions.sh; module load ${FUNCX_MODULE}"
 export ENDPOINT_PIDFILE="${HOME}/.globus_compute/${ENDPOINT_NAME}/daemon.pid"
 
 cleanup_logs () {
-    local EP_LOG_DIR=~/.globus_compute/${ENDPOINT_NAME}/HighThroughputExecutor/worker_logs/
+    local EP_LOG_DIR=~/.globus_compute/${ENDPOINT_NAME}/HighThroughputEngine/worker_logs/
 
     # delete old funcx endpoint logs
     mkdir -p ${EP_LOG_DIR}
@@ -46,7 +46,7 @@ check_daemon_process_owner () {
 
 get_endpoint_id () {
     module load ${FUNCX_MODULE}
-    ENDPOINT_ID=$(globus-compute-endpoint list | grep default | awk -F '|' '{print $2}')
+    ENDPOINT_ID=$(globus-compute-endpoint list | grep ${ENDPOINT_NAME} | awk -F '|' '{print $2}')
     export ENDPOINT_ID
 }
 

@@ -11,6 +11,7 @@ import importlib.resources
 import paramiko
 from globus_sdk import GCSClient
 from globus_sdk.services.gcs.data import GuestCollectionDocument
+from globus_compute_sdk.sdk.login_manager import LoginManager as GlobusComputeLoginManager
 
 from rjm import utils
 
@@ -23,7 +24,7 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "globus-compute-endpoint/2.0.1-gimkl-2022a-Python-3.10.5"
+FUNCX_MODULE = "globus-compute-endpoint/2.3.2-gimkl-2022a-Python-3.10.5"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
@@ -31,8 +32,18 @@ GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"
 NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
 NESI_PERSIST_FUNCTIONS_PATH = "/home/{username}/.funcx-endpoint-persist-nesi-functions.sh"
 NESI_PERSIST_LOG_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.log"
+NESI_STORAGE_DB_PATH = "/home/{username}/.globus_compute/storage.db"
 SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
 SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
+ENDPOINT_CONFIG = """display_name: null
+engine:
+  provider:
+    init_blocks: 1
+    max_blocks: 1
+    min_blocks: 1
+    type: LocalProvider
+  type: HighThroughputEngine
+"""
 
 
 class NeSISetup:
@@ -62,12 +73,15 @@ class NeSISetup:
 
         # funcx file locations
         self._funcx_config_file = f"/home/{self._username}/.funcx/{FUNCX_ENDPOINT_NAME}/config.py"
+        self._globus_compute_endpoint_dir = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}"
         self._globus_compute_config_file = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}/config.py"
+        self._globus_compute_config_file_new = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}/config.yaml"
 
         # functions file path
         self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
         self._functions_path = NESI_PERSIST_FUNCTIONS_PATH.format(username=self._username)
         self._persist_log_path = NESI_PERSIST_LOG_PATH.format(username=self._username)
+        self._storage_db_path = NESI_STORAGE_DB_PATH.format(username=self._username)
 
         self._connect()
 
@@ -122,7 +136,7 @@ class NeSISetup:
         self._sftp = self._client.open_sftp()
 
         # test run command
-        status, stdout, stderr = self.run_command("echo $HOSTNAME")
+        status, stdout, stderr = self.run_command("echo $HOSTNAME", profile=False)
         logger.info(f"Successfully opened connection to '{stdout}'")
 
     def __del__(self):
@@ -157,71 +171,7 @@ class NeSISetup:
 
         return return_val
 
-    def _run_command_handle_funcx_authentication(self, command):
-        """
-        Execute funcx command on NeSI
-
-        Try to detect if funcx requests authentication before executing the command
-
-        If so, request the code from the user and then continue
-
-        Ensure /etc/profile is sourced prior to running the command.
-
-        """
-        full_command = f"source /etc/profile && {command}"
-        logger.debug(f"Running command: '{full_command}'")
-        stdin, stdout, stderr = self._client.exec_command(full_command)
-
-        # wait until stdout channel has data ready
-        while not stdout.channel.recv_ready():
-            # check if the process exited without any output
-            if stdout.channel.exit_status_ready():
-                logger.debug("Breaking wait loop due to exit status ready")
-                break
-            else:
-                time.sleep(5)
-                logger.debug("Waiting for remote process")
-
-        # set a timeout on the channel
-        stdout.channel.settimeout(30)
-
-        # receive any output
-        logger.debug(f"Receiving stdout: {stdout.channel.recv_ready()}")
-        output = ""
-        while stdout.channel.recv_ready():
-            output += stdout.channel.recv(1024).decode('utf-8')
-            logger.debug(f"Received stdout:\n{output}\nEnd of received stdout")
-            logger.debug(f"More to receive: {stdout.channel.recv_ready()}")
-
-        # handling funcx authentication here...
-        if "https://auth.globus.org" in output:
-            # need to do auth
-            print("="*120)
-            print("Follow these instructions to authenticate funcX on NeSI:")
-            print(output.strip())
-            auth_code = input().strip()
-
-            # send auth code
-            logger.debug("Sending auth code to remote")
-            stdin.write(auth_code)
-            stdin.flush()
-            stdin.channel.shutdown_write()  # send EOF
-
-            print("="*120)
-            print("Continuing with funcX setup, please wait...")
-
-        # wait for process to complete
-        logger.debug("Reading remaining stdout")
-        output = (output + stdout.read().decode('utf-8')).strip()
-        logger.debug("Reading stderr")
-        error = stderr.read().decode('utf-8').strip()
-        logger.debug("Waiting for process to finish")
-        status = stdout.channel.recv_exit_status()
-        logger.debug("Returning")
-
-        return status, output, error
-
-    def run_command(self, command, input_text=None):
+    def run_command(self, command, input_text=None, profile=True):
         """
         Execute command on NeSI and return stdout and stderr.
 
@@ -229,8 +179,13 @@ class NeSISetup:
 
         If input_text is specified, write that to stdin
 
+        If profile is specified, source /etc/profile before running the command
+
         """
-        full_command = f"source /etc/profile && {command}"
+        if profile:
+            full_command = f"source /etc/profile && {command}"
+        else:
+            full_command = command
         logger.debug(f"Running command: '{full_command}'")
         stdin, stdout, stderr = self._client.exec_command(full_command)
 
@@ -385,44 +340,11 @@ class NeSISetup:
             # remove group write from home directory
             cmd = f"chmod g-w /home/{self._username}"
             print(f'Fixing home directory permissions: "{cmd}"')
-            status, output, stderr = self.run_command(cmd)
+            status, output, stderr = self.run_command(cmd, profile=False)
             if status:
                 raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
 
-    def _configure_blocks(self):
-        """
-        Make sure blocks are configured correctly on the endpoint.
-
-        We want min_blocks=1
-
-        """
-        print("Configuring blocks on the endpoint, please wait...")
-
-        if self._remote_path_exists(self._globus_compute_config_file):
-            config_file = self._globus_compute_config_file
-        else:
-            config_file = self._funcx_config_file
-
-        # check if min_blocks set to 0
-        cmd = f'grep "min_blocks=0" {config_file}'
-        status, _, _ = self.run_command(cmd)
-        if status == 0:
-            logger.info("Setting `min_blocks=1` on funcx endpoint to reduce number of log files")
-
-            # modify the file
-            cmd = f'sed -i "s/min_blocks=0/min_blocks=1/" {config_file}'
-            status, output, error = self.run_command(cmd)
-            if status:
-                raise RuntimeError(f"Failed to set min_blocks on endpoint: {output} ;; {error}")
-
-            changed = True
-
-        else:
-            changed = False
-
-        return changed
-
-    def setup_globus_compute(self, restart=True):
+    def setup_globus_compute(self, restart=True, reauthenticate=False):
         """
         Sets up the Globus Compute endpoint on NeSI.
 
@@ -445,24 +367,36 @@ class NeSISetup:
         # configure funcx endpoint
         if not self.is_funcx_endpoint_configured():
             logger.info(f"Configuring Globus Compute '{FUNCX_ENDPOINT_NAME}' endpoint")
-            print("Configuring funcX, please wait...")
+            print("Configuring Globus Compute, please wait...")
 
-            command = f"module load {FUNCX_MODULE} && globus-compute-endpoint configure {FUNCX_ENDPOINT_NAME}"
-            status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
-            assert status == 0, f"Configuring endpoint failed: {stdout} {stderr}"
+            # make sure the config directory exists
+            logger.debug(f"Making sure endpoint config dir exists: {self._globus_compute_endpoint_dir}")
+            self._remote_dir_create(self._globus_compute_endpoint_dir)
+
+            # if it exists, delete the old config file
+            logger.debug("Deleting old config if it exists")
+            status, output, error = self.run_command(f"rm -f {self._globus_compute_config_file}", profile=False)
+            if status:
+                raise RuntimeError("Failed to delete old config if it exists")
+
+            # write the new config file
+            logger.debug(f"Writing endpoint config file to: {self._globus_compute_config_file_new}")
+            with self._sftp.file(self._globus_compute_config_file_new, 'w') as fh:
+                fh.write(ENDPOINT_CONFIG)
 
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("Globus Compute endpoint configuration complete")
 
-        # make sure blocks are configured correctly on the endpoint
-        endpoint_changed = self._configure_blocks()
+        # reauthenticate
+        if reauthenticate or not self.is_globus_compute_endpoint_authenticated():
+            self._globus_compute_endpoint_authentication()
 
         # run the bash script that will ensure one endpoint is running on NeSI
-        if restart or endpoint_changed:
+        if restart:
             print("Restarting the Globus Compute endpoint, please wait...")
         else:
             print("Ensuring the Globus Compute endpoint is running, please wait...")
-        cmd = f"export ENDPOINT_RESTART={'1' if restart or endpoint_changed else '0'} && {self._script_path}"
+        cmd = f"export ENDPOINT_RESTART={'1' if restart else '0'} && {self._script_path}"
         logger.debug(f'Running Globus Compute script: "{cmd}"')
         status, stdout, stderr = self.run_command(cmd)
         assert status == 0, f"Running Globus Compute script failed: {stdout} {stderr}"
@@ -491,6 +425,41 @@ class NeSISetup:
         print("On mahuika, run 'scrontab -l' to view it")
         print("You may also notice two Slurm jobs have been created with names 'funcxcheck' and 'funcxrestart', please do not cancel them!")
         print("="*120)
+
+    def _globus_compute_endpoint_authentication(self):
+        """
+        Set up authentication for the Globus Compute endpoint
+
+        Use the LoginManager from GlobusComputeSDK to create a 'storage.db' file
+        locally, which we then copy to the remote machine. Work in a temp dir locally.
+
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # set environment variable so that globus compute writes tokens to tmp dir
+            logger.debug(f"Setting GLOBUS_COMPUTE_USER_DIR={tmpdir}")
+            os.environ["GLOBUS_COMPUTE_USER_DIR"] = tmpdir
+
+            try:
+                print("Authenticating Globus Compute Endpoint, please follow the instructions...")
+
+                # run the login flow
+                login_manager = GlobusComputeLoginManager()
+                login_manager.run_login_flow()
+
+                # check the file was created
+                auth_file = os.path.join(tmpdir, "storage.db")
+                if not os.path.exists(auth_file):
+                    print(f"ERROR NO FILE: {auth_file}")
+                    time.sleep(300)
+                    raise RuntimeError("Globus compute authentication failed, not 'storage.db' file found")
+
+                # copy the file onto NeSI
+                logger.debug(f"Uploading new credentials file to NeSI: {self._storage_db_path}")
+                self._upload_file(auth_file, self._storage_db_path, text=False)
+
+            finally:
+                # revert environment
+                del os.environ["GLOBUS_COMPUTE_USER_DIR"]
 
     def _retrieve_current_scrontab(self):
         """
@@ -551,7 +520,7 @@ class NeSISetup:
         status, stdout, stderr = self.run_command("scrontab -", input_text=scrontab_text)
         assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
 
-    def _upload_file(self, local_path, remote_path, executable=False):
+    def _upload_file(self, local_path, remote_path, executable=False, text=True):
         """
         Upload the given file, optionally making it executable
 
@@ -561,12 +530,13 @@ class NeSISetup:
 
         if executable:
             # make sure the script is executable
-            status, stdout, stderr = self.run_command(f"chmod +x {remote_path}")
+            status, stdout, stderr = self.run_command(f"chmod +x {remote_path}", profile=False)
             assert status == 0, f"Failed to make file executable: {stdout} {stderr}"
 
-        # make sure it has unix line endings
-        status, stdout, stderr = self.run_command(f"dos2unix {remote_path}")
-        assert status == 0, f"Failed to convert convert file to unix format: {stdout} {stderr}"
+        if text:
+            # make sure it has unix line endings (if it is a text file)
+            status, stdout, stderr = self.run_command(f"dos2unix {remote_path}", profile=False)
+            assert status == 0, f"Failed to convert convert file to unix format: {stdout} {stderr}"
 
     def _upload_funcx_scripts(self):
         """
@@ -630,14 +600,14 @@ class NeSISetup:
 
     def _remote_dir_create(self, path):
         """Create directory at the given path"""
-        status, stdout, stderr = self.run_command(f'mkdir -p "{path}"')
+        status, stdout, stderr = self.run_command(f'mkdir -p "{path}"', profile=False)
         assert status == 0, f"Creating '{path}' failed: {stdout} {stderr}"
         if not self._remote_path_exists(path):
             raise RuntimeError(f"Creating '{path}' failed: ({stdout}) ({stderr})")
 
     def _remote_path_writeable(self, path):
         """Return True if the path is writeable, otherwise False"""
-        status, _, _ = self.run_command(f'test -w "{path}"')
+        status, _, _ = self.run_command(f'test -w "{path}"', profile=False)
 
         return not status
 
@@ -657,64 +627,34 @@ class NeSISetup:
         # or run status and see if we can tell from that
         # first test if funcx
 
+    def is_globus_compute_endpoint_authenticated(self):
+        """
+        Check whether the globus compute endpoint is authenticated
+
+        """
+        command = f"module load {FUNCX_MODULE} && globus-compute-endpoint whoami"
+        status, output, error = self.run_command(command)
+        # failure should look like: "Error: Unable to retrieve user information. Please log in again."
+        if status or "Error" in output or "Unable to retrieve user information" in output:
+            logger.debug("Globus compute endpoint is not authenticated")
+            authenticated = False
+        else:
+            logger.debug(f"Globus compute endpoint is authenticated:\n{output}")
+            authenticated = True
+
+        return authenticated
+
     def is_funcx_endpoint_configured(self):
         """
         Check whether the funcx default endpoint is configured already
 
         """
         # test if default endpoint config exists, if so, we assume it is configured
-        if self._remote_path_exists(self._funcx_config_file) or self._remote_path_exists(self._globus_compute_config_file):
+        if self._remote_path_exists(self._globus_compute_config_file_new):
             logger.debug("Assuming Globus Compute endpoint is configured as config file exists")
             configured = True
         else:
-            logger.debug("funcX default endpoint config file does not exist")
+            logger.debug(f"Globus Compute config file does not exist: {self._globus_compute_config_file_new}")
             configured = False
 
         return configured
-
-    def is_funcx_endpoint_running(self, stop=False):
-        """
-        Check whether the funcx default endpoint is running already
-
-        If stop is True, then stop the endpoint if it is running
-
-        """
-        print("Checking if a funcX endpoint is running, please wait...")
-
-        # test whether funcx endpoint is actually running
-        # loop over nodes where funcx could be running
-        funcx_running_nodes = []
-        funcx_endpoint_id = None
-        for node in FUNCX_NODES:
-            command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint list'"
-            status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
-            assert status == 0, f"listing endpoints on '{node}' failed: {stdout} {stderr}"
-
-            for line in stdout.splitlines():
-                if FUNCX_ENDPOINT_NAME in line:
-                    funcx_endpoint_id = line.split('|')[3].strip()
-                    if "Running" in line:
-                        funcx_running_nodes.append(node)
-                        break
-
-        # report which nodes the endpoint is running on
-        if len(funcx_running_nodes) > 0:
-            logger.debug(f"funcX '{FUNCX_ENDPOINT_NAME}' endpoint (id: {funcx_endpoint_id}) is running on: {funcx_running_nodes}")
-        else:
-            logger.debug("funcX endpoint is not running")
-
-        # stop the endpoint if multiple are running or we're specfically asked to
-        if len(funcx_running_nodes) > 1 or stop:
-            if len(funcx_running_nodes) > 1:
-                logger.warning(f'funcX endpoint running on multiple nodes -> attempting to stop them all: {funcx_running_nodes}')
-            else:
-                print("Stopping funcX endpoint for restart, please wait...")
-
-            for node in funcx_running_nodes:
-                command = f"ssh -oStrictHostKeyChecking=no {node} 'source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint stop {FUNCX_ENDPOINT_NAME}'"
-                status, stdout, stderr = self._run_command_handle_funcx_authentication(command)
-                if status:
-                    raise RuntimeError(f"Failed to stop funcX endpoint on '{node}':\n\n{stdout}\n\n{stderr}")
-            funcx_running_nodes = []
-
-        return len(funcx_running_nodes) != 0, funcx_endpoint_id
