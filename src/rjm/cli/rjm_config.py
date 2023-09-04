@@ -36,6 +36,7 @@ def make_parser():
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-r', '--reauth', action="store_true", help="Force reauthentication of globus-compute-endpoint")
+    parser.add_argument('-w', '--where-config', action="store_true", help="Print location of the config file and exit")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
@@ -49,6 +50,11 @@ def nesi_setup():
     # command line args
     parser = make_parser()
     args = parser.parse_args()
+
+    if args.where_config:
+        # print location of config file and exit
+        print(f"RJM config file location: {config_helper.CONFIG_FILE_LOCATION}")
+        sys.exit(0)
 
     # check if config already exists and ask for confirmation before proceeding
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
