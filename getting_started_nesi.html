@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Getting started on NeSI &#8212; RemoteJobManager 0.12.1.dev11+gaf3aede documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <title>Getting started on NeSI &#8212; RemoteJobManager 0.12.2.dev4+gb22f945 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=7461b0c6"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Command line interface" href="command_line_interface.html" />
@@ -32,7 +32,7 @@
           <div class="body" role="main">
             
   <section id="getting-started-on-nesi">
-<h1>Getting started on NeSI<a class="headerlink" href="#getting-started-on-nesi" title="Permalink to this heading">¶</a></h1>
+<h1>Getting started on NeSI<a class="headerlink" href="#getting-started-on-nesi" title="Link to this heading">¶</a></h1>
 <nav class="contents local" id="contents">
 <ul class="simple">
 <li><p><a class="reference internal" href="#install-rjm" id="id1">Install RJM</a></p></li>
@@ -51,7 +51,7 @@
 </ul>
 </nav>
 <section id="install-rjm">
-<h2>Install RJM<a class="headerlink" href="#install-rjm" title="Permalink to this heading">¶</a></h2>
+<h2>Install RJM<a class="headerlink" href="#install-rjm" title="Link to this heading">¶</a></h2>
 <p>On Windows you could download the executables from the latest release
 on the <a class="reference external" href="https://github.com/chrisdjscott/RemoteJobManager/releases">GitHub repository</a>.</p>
 <p>Otherwise, install the <em>rjm</em> python package, for example using a virtual
@@ -63,7 +63,7 @@ python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </sp
 </div>
 </section>
 <section id="prerequisites-for-running-the-setup-script">
-<h2>Prerequisites for running the setup script<a class="headerlink" href="#prerequisites-for-running-the-setup-script" title="Permalink to this heading">¶</a></h2>
+<h2>Prerequisites for running the setup script<a class="headerlink" href="#prerequisites-for-running-the-setup-script" title="Link to this heading">¶</a></h2>
 <p>In order to proceed with the setup you will need the following:</p>
 <ul class="simple">
 <li><p>NeSI credentials (username, first and second factor passwords)</p></li>
@@ -81,7 +81,7 @@ authenticate in and in other cases you may need to copy a link to a browser
 manually and authenticate there. Please follow the instructions that show up
 when running the setup script.</p>
 <section id="linking-globus-and-nesi-accounts">
-<h3>Linking Globus and NeSI accounts<a class="headerlink" href="#linking-globus-and-nesi-accounts" title="Permalink to this heading">¶</a></h3>
+<h3>Linking Globus and NeSI accounts<a class="headerlink" href="#linking-globus-and-nesi-accounts" title="Link to this heading">¶</a></h3>
 <p>You may be asked for a linked identity with the <em>NeSI Wellington OIDC Server</em>.
 If you already have a linked identity it should appear in the list like
 <em>&lt;username&gt;&#64;wlg-dtn-oidc.nesi.org.nz</em> (where <em>&lt;username&gt;</em> is your NeSI username).
@@ -90,7 +90,7 @@ Wellington OIDC Server</em>.</p>
 </section>
 </section>
 <section id="run-the-nesi-setup-script-once-per-machine">
-<h2>Run the NeSI setup script (once per machine)<a class="headerlink" href="#run-the-nesi-setup-script-once-per-machine" title="Permalink to this heading">¶</a></h2>
+<h2>Run the NeSI setup script (once per machine)<a class="headerlink" href="#run-the-nesi-setup-script-once-per-machine" title="Link to this heading">¶</a></h2>
 <p>Running the NeSI setup script with no arguments (<code class="code docutils literal notranslate"><span class="pre">rjm_config</span></code>) will
 do the following:</p>
 <ul class="simple">
@@ -116,9 +116,9 @@ Auckland.</p>
 <p><strong>Note:</strong> you only need to run this script once per machine.</p>
 </section>
 <section id="run-a-simple-test">
-<h2>Run a simple test<a class="headerlink" href="#run-a-simple-test" title="Permalink to this heading">¶</a></h2>
+<h2>Run a simple test<a class="headerlink" href="#run-a-simple-test" title="Link to this heading">¶</a></h2>
 <section id="health-check-script">
-<h3>Health check script<a class="headerlink" href="#health-check-script" title="Permalink to this heading">¶</a></h3>
+<h3>Health check script<a class="headerlink" href="#health-check-script" title="Link to this heading">¶</a></h3>
 <p>The health check script tests that basic functionality is working by uploading
 a file to NeSI and executing a simple command.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rjm_health_check
@@ -127,7 +127,7 @@ a file to NeSI and executing a simple command.</p>
 <p>If should exit successfully with no errors if things are working.</p>
 </section>
 <section id="example-simulation">
-<h3>Example simulation<a class="headerlink" href="#example-simulation" title="Permalink to this heading">¶</a></h3>
+<h3>Example simulation<a class="headerlink" href="#example-simulation" title="Link to this heading">¶</a></h3>
 <p>Clone the repository and run the example simulation using the steps below:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/chrisdjscott/RemoteJobManager.git
 <span class="nb">cd</span><span class="w"> </span>RemoteJobManager/examples/nonmem
@@ -206,7 +206,7 @@ option to <code class="code docutils literal notranslate"><span class="pre">rjm_
       &copy;2023, The University of Auckland.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.0.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 7.2.5</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.13</a>
       
       |
