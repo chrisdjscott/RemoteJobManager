@@ -7,7 +7,7 @@ echo ""
 echo "Running $0 at $(date)"
 
 # migrate to globus compute
-migrate_to_globus_compute
+#migrate_to_globus_compute
 
 # delete old funcx endpoint logs
 cleanup_logs

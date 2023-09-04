@@ -6,6 +6,7 @@ import logging
 from globus_compute_sdk import Client
 from globus_compute_sdk import Executor
 from globus_compute_sdk.sdk.login_manager.manager import LoginManager
+from globus_compute_sdk.serialize import CombinedCode
 from retry.api import retry_call
 
 from rjm.runners.runner_base import RunnerBase
@@ -110,6 +111,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
         # setting up the Globus Compute client
         client = Client(
             login_manager=self._login_manager,
+            code_serialization_strategy=CombinedCode(),
         )
 
         return client

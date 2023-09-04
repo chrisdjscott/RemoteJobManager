@@ -25,7 +25,7 @@ dependencies = [
     "paramiko",
     "fair-research-login",
     "globus-sdk",
-    "globus-compute-sdk==2.0.1",
+    "globus-compute-sdk==2.3.2",
 ]
 dynamic = ["version"]
 
