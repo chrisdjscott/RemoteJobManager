@@ -509,8 +509,8 @@ def submit_slurm_job(submit_script, submit_dir=None):
             return 1, f"submit_script does not exist: '{submit_script_path}'"
 
         # submit the Slurm job and return the job id
-        p = subprocess.run(['sbatch', submit_script], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                           universal_newlines=True, check=False, cwd=submit_dir)
+        p = subprocess.run(f'module purge > /dev/null 2>&1 && sbatch "{submit_script}"', shell=True, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, universal_newlines=True, check=False, cwd=submit_dir)
 
         return p.returncode, p.stdout.strip()
 
