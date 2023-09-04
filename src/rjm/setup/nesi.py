@@ -136,7 +136,7 @@ class NeSISetup:
         self._sftp = self._client.open_sftp()
 
         # test run command
-        status, stdout, stderr = self.run_command("echo $HOSTNAME")
+        status, stdout, stderr = self.run_command("echo $HOSTNAME", profile=False)
         logger.info(f"Successfully opened connection to '{stdout}'")
 
     def __del__(self):
@@ -171,7 +171,7 @@ class NeSISetup:
 
         return return_val
 
-    def run_command(self, command, input_text=None):
+    def run_command(self, command, input_text=None, profile=True):
         """
         Execute command on NeSI and return stdout and stderr.
 
@@ -179,8 +179,13 @@ class NeSISetup:
 
         If input_text is specified, write that to stdin
 
+        If profile is specified, source /etc/profile before running the command
+
         """
-        full_command = f"source /etc/profile && {command}"
+        if profile:
+            full_command = f"source /etc/profile && {command}"
+        else:
+            full_command = command
         logger.debug(f"Running command: '{full_command}'")
         stdin, stdout, stderr = self._client.exec_command(full_command)
 
@@ -335,7 +340,7 @@ class NeSISetup:
             # remove group write from home directory
             cmd = f"chmod g-w /home/{self._username}"
             print(f'Fixing home directory permissions: "{cmd}"')
-            status, output, stderr = self.run_command(cmd)
+            status, output, stderr = self.run_command(cmd, profile=False)
             if status:
                 raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
 
@@ -370,17 +375,14 @@ class NeSISetup:
 
             # if it exists, delete the old config file
             logger.debug("Deleting old config if it exists")
-            status, output, error = self.run_command(f"rm -f {self._globus_compute_config_file}")
+            status, output, error = self.run_command(f"rm -f {self._globus_compute_config_file}", profile=False)
             if status:
                 raise RuntimeError("Failed to delete old config if it exists")
 
-            # upload the new config file
-            logger.debug(f"Uploading config file to: {self._globus_compute_config_file_new}")
-            with tempfile.TemporaryDirectory() as tmpdir:
-                config_file_local = os.path.join(tmpdir, "config.yaml")
-                with open(config_file_local, "w") as fh:
-                    fh.write(ENDPOINT_CONFIG)
-                self._upload_file(config_file_local, self._globus_compute_config_file_new)
+            # write the new config file
+            logger.debug(f"Writing endpoint config file to: {self._globus_compute_config_file_new}")
+            with self._sftp.file(self._globus_compute_config_file_new, 'w') as fh:
+                fh.write(ENDPOINT_CONFIG)
 
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("Globus Compute endpoint configuration complete")
@@ -528,12 +530,12 @@ class NeSISetup:
 
         if executable:
             # make sure the script is executable
-            status, stdout, stderr = self.run_command(f"chmod +x {remote_path}")
+            status, stdout, stderr = self.run_command(f"chmod +x {remote_path}", profile=False)
             assert status == 0, f"Failed to make file executable: {stdout} {stderr}"
 
         if text:
             # make sure it has unix line endings (if it is a text file)
-            status, stdout, stderr = self.run_command(f"dos2unix {remote_path}")
+            status, stdout, stderr = self.run_command(f"dos2unix {remote_path}", profile=False)
             assert status == 0, f"Failed to convert convert file to unix format: {stdout} {stderr}"
 
     def _upload_funcx_scripts(self):
@@ -598,14 +600,14 @@ class NeSISetup:
 
     def _remote_dir_create(self, path):
         """Create directory at the given path"""
-        status, stdout, stderr = self.run_command(f'mkdir -p "{path}"')
+        status, stdout, stderr = self.run_command(f'mkdir -p "{path}"', profile=False)
         assert status == 0, f"Creating '{path}' failed: {stdout} {stderr}"
         if not self._remote_path_exists(path):
             raise RuntimeError(f"Creating '{path}' failed: ({stdout}) ({stderr})")
 
     def _remote_path_writeable(self, path):
         """Return True if the path is writeable, otherwise False"""
-        status, _, _ = self.run_command(f'test -w "{path}"')
+        status, _, _ = self.run_command(f'test -w "{path}"', profile=False)
 
         return not status
 
@@ -630,7 +632,7 @@ class NeSISetup:
         Check whether the globus compute endpoint is authenticated
 
         """
-        command = f"source /etc/profile && module load {FUNCX_MODULE} && globus-compute-endpoint whoami"
+        command = f"module load {FUNCX_MODULE} && globus-compute-endpoint whoami"
         status, output, error = self.run_command(command)
         # failure should look like: "Error: Unable to retrieve user information. Please log in again."
         if status or "Error" in output or "Unable to retrieve user information" in output:
