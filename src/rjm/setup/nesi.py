@@ -374,13 +374,10 @@ class NeSISetup:
             if status:
                 raise RuntimeError("Failed to delete old config if it exists")
 
-            # upload the new config file
-            logger.debug(f"Uploading config file to: {self._globus_compute_config_file_new}")
-            with tempfile.TemporaryDirectory() as tmpdir:
-                config_file_local = os.path.join(tmpdir, "config.yaml")
-                with open(config_file_local, "w") as fh:
-                    fh.write(ENDPOINT_CONFIG)
-                self._upload_file(config_file_local, self._globus_compute_config_file_new)
+            # write the new config file
+            logger.debug(f"Writing endpoint config file to: {self._globus_compute_config_file_new}")
+            with self._sftp.file(self._globus_compute_config_file_new, 'w') as fh:
+                fh.write(ENDPOINT_CONFIG)
 
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("Globus Compute endpoint configuration complete")
