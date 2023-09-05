@@ -434,7 +434,7 @@ class NeSISetup:
         locally, which we then copy to the remote machine. Work in a temp dir locally.
 
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
             # set environment variable so that globus compute writes tokens to tmp dir
             logger.debug(f"Setting GLOBUS_COMPUTE_USER_DIR={tmpdir}")
             os.environ["GLOBUS_COMPUTE_USER_DIR"] = tmpdir
@@ -632,11 +632,13 @@ class NeSISetup:
         Check whether the globus compute endpoint is authenticated
 
         """
+        print("Checking if Globus Compute endpoint is authenticated, please wait...")
+
         command = f"module load {FUNCX_MODULE} && globus-compute-endpoint whoami"
         status, output, error = self.run_command(command)
         # failure should look like: "Error: Unable to retrieve user information. Please log in again."
         if status or "Error" in output or "Unable to retrieve user information" in output:
-            logger.debug("Globus compute endpoint is not authenticated")
+            logger.debug(f"Globus compute endpoint is not authenticated, output follows:\n{output}\n{stderr}\n")
             authenticated = False
         else:
             logger.debug(f"Globus compute endpoint is authenticated:\n{output}")
