@@ -638,7 +638,7 @@ class NeSISetup:
         status, output, error = self.run_command(command)
         # failure should look like: "Error: Unable to retrieve user information. Please log in again."
         if status or "Error" in output or "Unable to retrieve user information" in output:
-            logger.debug(f"Globus compute endpoint is not authenticated, output follows:\n{output}\n{stderr}\n")
+            logger.debug(f"Globus compute endpoint is not authenticated, output follows:\n{output}\n{error}\n")
             authenticated = False
         else:
             logger.debug(f"Globus compute endpoint is authenticated:\n{output}")
