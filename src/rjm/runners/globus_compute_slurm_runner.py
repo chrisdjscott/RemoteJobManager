@@ -371,6 +371,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
             tries=self._retry_tries,
             backoff=self._retry_backoff,
             delay=self._retry_delay,
+            max_delay=self._retry_max_delay,
         )
 
         # loop over job statuses
@@ -420,6 +421,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
             tries=self._retry_tries,
             backoff=self._retry_backoff,
             delay=self._retry_delay,
+            max_delay=self._retry_max_delay,
         )
         self._log(logging.DEBUG, f"Calculated checksums for {len([c for c in checksums if c is not None])} of {len(files)} files")
 
