@@ -12,11 +12,11 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.10', '3.11']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -38,11 +38,11 @@ jobs:
   pyinstaller:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -98,7 +98,7 @@ jobs:
           filename: RemoteJobManager-${{ runner.os }}.zip
 
       # upload archive as an artifact of the build
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: RemoteJobManager-${{ runner.os }}
           path: extra/pyinstaller/dist/RemoteJobManager-*.zip
@@ -107,8 +107,8 @@ jobs:
     needs: pyinstaller
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         name: Download artifact archive
         with:
           name: RemoteJobManager-${{ runner.os }}
@@ -174,14 +174,14 @@ jobs:
       - test
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         name: Download artifact archive
         with:
           name: RemoteJobManager-${{ runner.os }}
 
       # only if it's a tag, add the archive to the release
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: RemoteJobManager-*.zip
@@ -193,11 +193,11 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.10']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
