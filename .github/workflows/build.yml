@@ -126,16 +126,33 @@ jobs:
 
       # Secrets required for running real tests
       - run: mkdir -p ~/.rjm
-      - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini
+
+      - run: printf "${RJM_CONFIG}" > ${RJM_CONFIG_FILE_TEMP}
         shell: bash
         env:
           RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+          RJM_CONFIG_FILE_TEMP: ${{ runner.temp }}/rjm_config.ini
         if: env.RJM_CONFIG != null
-      - run: printf "${RJM_TOKENS}" > ~/.rjm/rjm_tokens.json
+      - run: ln -sf ${RJM_CONFIG_FILE_TEMP} ~/.rjm/rjm_config.ini
+        shell: bash
+        env:
+          RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+          RJM_CONFIG_FILE_TEMP: ${{ runner.temp }}/rjm_config.ini
+        if: env.RJM_CONFIG != null
+
+      - run: printf "${RJM_TOKENS}" > ${RJM_TOKENS_FILE_TEMP}
         shell: bash
         env:
           RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+          RJM_TOKENS_FILE_TEMP: ${{ runner.temp }}/rjm_tokens.json
         if: env.RJM_TOKENS != null
+      - run: ln -sf ${RJM_TOKENS_FILE_TEMP} ~/.rjm/rjm_tokens.json
+        shell: bash
+        env:
+          RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+          RJM_TOKENS_FILE_TEMP: ${{ runner.temp }}/rjm_tokens.json
+        if: env.RJM_TOKENS != null
+
       - name: "Check if RJM secrets are set"
         id: rjm_config_files
         shell: bash
@@ -211,16 +228,33 @@ jobs:
 
       # Secrets required for running real tests
       - run: mkdir -p ~/.rjm
-      - run: printf "${RJM_CONFIG}" > ~/.rjm/rjm_config.ini
+
+      - run: printf "${RJM_CONFIG}" > ${RJM_CONFIG_FILE_TEMP}
         shell: bash
         env:
           RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+          RJM_CONFIG_FILE_TEMP: ${{ runner.temp }}/rjm_config.ini
         if: env.RJM_CONFIG != null
-      - run: printf "${RJM_TOKENS}" > ~/.rjm/rjm_tokens.json
+      - run: ln -sf ${RJM_CONFIG_FILE_TEMP} ~/.rjm/rjm_config.ini
+        shell: bash
+        env:
+          RJM_CONFIG: ${{ secrets.RJM_CONFIG }}
+          RJM_CONFIG_FILE_TEMP: ${{ runner.temp }}/rjm_config.ini
+        if: env.RJM_CONFIG != null
+
+      - run: printf "${RJM_TOKENS}" > ${RJM_TOKENS_FILE_TEMP}
         shell: bash
         env:
           RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+          RJM_TOKENS_FILE_TEMP: ${{ runner.temp }}/rjm_tokens.json
         if: env.RJM_TOKENS != null
+      - run: ln -sf ${RJM_TOKENS_FILE_TEMP} ~/.rjm/rjm_tokens.json
+        shell: bash
+        env:
+          RJM_TOKENS: ${{ secrets.RJM_TOKENS }}
+          RJM_TOKENS_FILE_TEMP: ${{ runner.temp }}/rjm_tokens.json
+        if: env.RJM_TOKENS != null
+
       - name: "Check if RJM secrets are set"
         id: rjm_config_files
         shell: bash
