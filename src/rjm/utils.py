@@ -28,7 +28,7 @@ HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
 
 # default logging levels
 LOG_LEVEL_RJM = logging.INFO
-LOG_LEVEL_OTHER = logging.WARNING
+LOG_LEVEL_OTHER = logging.ERROR
 
 # defaults for retries
 DEFAULT_RETRY_TRIES = -1  # number of times to retry (-1 means no limit)
