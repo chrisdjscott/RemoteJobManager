@@ -24,7 +24,7 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "globus-compute-endpoint/2.3.2-gimkl-2022a-Python-3.10.5"
+FUNCX_MODULE = "globus-compute-endpoint/2.19.0-gimkl-2022a-Python-3.10.5"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
