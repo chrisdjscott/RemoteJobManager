@@ -37,6 +37,7 @@ DEFAULT_RETRY_DELAY = 5  # initial delay
 DEFAULT_RETRY_MAX_DELAY = 900
 
 logger = logging.getLogger(__name__)
+logging.captureWarnings(True)
 
 
 def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False):
