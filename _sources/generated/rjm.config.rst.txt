@@ -4,11 +4,6 @@ rjm.config
 .. automodule:: rjm.config
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -17,15 +12,3 @@ rjm.config
       load_config
       load_or_make_config
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

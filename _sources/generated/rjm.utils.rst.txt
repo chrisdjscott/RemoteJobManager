@@ -4,11 +4,6 @@ rjm.utils
 .. automodule:: rjm.utils
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -19,15 +14,3 @@ rjm.utils
       pretty_size_from_bytes
       setup_logging
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

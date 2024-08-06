@@ -4,26 +4,9 @@ rjm.auth
 .. automodule:: rjm.auth
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
    
       do_authentication
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

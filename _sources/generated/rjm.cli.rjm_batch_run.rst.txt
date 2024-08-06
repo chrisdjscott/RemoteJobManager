@@ -4,11 +4,6 @@ rjm.cli.rjm\_batch\_run
 .. automodule:: rjm.cli.rjm_batch_run
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,15 +11,3 @@ rjm.cli.rjm\_batch\_run
       batch_run
       make_parser
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

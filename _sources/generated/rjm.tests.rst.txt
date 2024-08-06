@@ -4,31 +4,13 @@ rjm.tests
 .. automodule:: rjm.tests
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   rjm.tests.test_config
-   rjm.tests.test_remote_job
-   rjm.tests.test_remote_job_batch
-   rjm.tests.test_utils
-
+   test_config
+   test_remote_job
+   test_remote_job_batch
+   test_utils

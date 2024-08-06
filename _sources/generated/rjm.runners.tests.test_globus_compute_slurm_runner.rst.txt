@@ -4,11 +4,6 @@ rjm.runners.tests.test\_globus\_compute\_slurm\_runner
 .. automodule:: rjm.runners.tests.test_globus_compute_slurm_runner
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -31,21 +26,9 @@ rjm.runners.tests.test\_globus\_compute\_slurm\_runner
       test_wait_completed_success
       test_wait_fail
    
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
    
       MockedSubprocessReturn
    
-   
-
-   
-   
-   
-
-
-

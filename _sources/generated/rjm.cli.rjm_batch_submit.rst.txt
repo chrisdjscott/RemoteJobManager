@@ -4,11 +4,6 @@ rjm.cli.rjm\_batch\_submit
 .. automodule:: rjm.cli.rjm_batch_submit
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,15 +11,3 @@ rjm.cli.rjm\_batch\_submit
       batch_submit
       make_parser
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

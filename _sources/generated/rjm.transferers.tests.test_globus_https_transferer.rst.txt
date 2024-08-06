@@ -4,11 +4,6 @@ rjm.transferers.tests.test\_globus\_https\_transferer
 .. automodule:: rjm.transferers.tests.test_globus_https_transferer
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -21,21 +16,9 @@ rjm.transferers.tests.test\_globus\_https\_transferer
       tf
       uploads
    
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
    
       AuthoriserMock
    
-   
-
-   
-   
-   
-
-
-

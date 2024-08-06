@@ -4,11 +4,6 @@ rjm.cli.rjm\_restart
 .. automodule:: rjm.cli.rjm_restart
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,15 +11,3 @@ rjm.cli.rjm\_restart
       make_parser
       nesi_setup
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

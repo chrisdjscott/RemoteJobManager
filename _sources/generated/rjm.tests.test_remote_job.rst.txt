@@ -4,11 +4,6 @@ rjm.tests.test\_remote\_job
 .. automodule:: rjm.tests.test_remote_job
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -23,15 +18,3 @@ rjm.tests.test\_remote\_job
       test_save_state
       test_save_state_no_state_file
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

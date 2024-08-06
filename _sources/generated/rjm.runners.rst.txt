@@ -4,30 +4,12 @@ rjm.runners
 .. automodule:: rjm.runners
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   rjm.runners.globus_compute_slurm_runner
-   rjm.runners.runner_base
-   rjm.runners.tests
-
+   globus_compute_slurm_runner
+   runner_base
+   tests

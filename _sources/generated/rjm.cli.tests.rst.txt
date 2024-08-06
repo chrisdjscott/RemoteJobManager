@@ -4,28 +4,10 @@ rjm.cli.tests
 .. automodule:: rjm.cli.tests
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   rjm.cli.tests.test_rjm_batch_wait
-
+   test_rjm_batch_wait

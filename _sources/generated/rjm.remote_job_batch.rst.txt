@@ -4,26 +4,9 @@ rjm.remote\_job\_batch
 .. automodule:: rjm.remote_job_batch
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
    
       RemoteJobBatch
    
-   
-
-   
-   
-   
-
-
-

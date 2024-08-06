@@ -4,11 +4,6 @@ rjm.runners.runner\_base
 .. automodule:: rjm.runners.runner_base
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,21 +11,9 @@ rjm.runners.runner\_base
       check_dir_exists
       path_join
    
-   
-
-   
-   
    .. rubric:: Classes
 
    .. autosummary::
    
       RunnerBase
    
-   
-
-   
-   
-   
-
-
-

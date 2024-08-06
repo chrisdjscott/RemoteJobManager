@@ -4,11 +4,6 @@ rjm.cli.rjm\_config
 .. automodule:: rjm.cli.rjm_config
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,15 +11,3 @@ rjm.cli.rjm\_config
       make_parser
       nesi_setup
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

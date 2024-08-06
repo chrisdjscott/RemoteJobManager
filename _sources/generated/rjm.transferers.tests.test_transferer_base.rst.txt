@@ -4,11 +4,6 @@ rjm.transferers.tests.test\_transferer\_base
 .. automodule:: rjm.transferers.tests.test_transferer_base
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -20,15 +15,3 @@ rjm.transferers.tests.test\_transferer\_base
       test_set_local_path
       transferer
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

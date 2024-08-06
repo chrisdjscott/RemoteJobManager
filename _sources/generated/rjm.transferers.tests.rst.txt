@@ -4,29 +4,11 @@ rjm.transferers.tests
 .. automodule:: rjm.transferers.tests
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   rjm.transferers.tests.test_globus_https_transferer
-   rjm.transferers.tests.test_transferer_base
-
+   test_globus_https_transferer
+   test_transferer_base

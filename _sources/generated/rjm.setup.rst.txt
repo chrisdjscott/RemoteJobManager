@@ -4,28 +4,10 @@ rjm.setup
 .. automodule:: rjm.setup
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
 
-   rjm.setup.nesi
-
+   nesi

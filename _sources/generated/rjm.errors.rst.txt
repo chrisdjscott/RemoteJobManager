@@ -4,19 +4,6 @@ rjm.errors
 .. automodule:: rjm.errors
 
    
-   
-   
-
-   
-   
-   
-
-   
-   
-   
-
-   
-   
    .. rubric:: Exceptions
 
    .. autosummary::
@@ -26,7 +13,3 @@ rjm.errors
       RemoteJobRunnerError
       RemoteJobTransfererError
    
-   
-
-
-

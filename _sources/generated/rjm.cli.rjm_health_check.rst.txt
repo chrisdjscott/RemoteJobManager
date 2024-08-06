@@ -4,11 +4,6 @@ rjm.cli.rjm\_health\_check
 .. automodule:: rjm.cli.rjm_health_check
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,15 +11,3 @@ rjm.cli.rjm\_health\_check
       health_check
       make_parser
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-

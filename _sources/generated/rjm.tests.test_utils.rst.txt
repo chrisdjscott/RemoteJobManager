@@ -4,11 +4,6 @@ rjm.tests.test\_utils
 .. automodule:: rjm.tests.test_utils
 
    
-   
-   
-
-   
-   
    .. rubric:: Functions
 
    .. autosummary::
@@ -16,15 +11,3 @@ rjm.tests.test\_utils
       test_backup
       test_get_retry_values_from_config
    
-   
-
-   
-   
-   
-
-   
-   
-   
-
-
-
