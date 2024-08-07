@@ -202,6 +202,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         """
         # list directory, so we only try downloading files that exist
+        self._log(logging.DEBUG, f"Listing remote directory: {self._remote_path}")
         remote_files = self.list_directory(self._remote_path)
 
         # look for missing files
@@ -216,12 +217,14 @@ class GlobusHttpsTransferer(TransfererBase):
                 self._log(logging.ERROR, f"File to download is missing: '{fn}'")
 
         # make sure we have a current access token
+        self._log(logging.DEBUG, "Getting authorisation header")
         self._https_auth_header = self._https_authoriser.get_authorization_header()
 
         # function to download files
         download_func = self._download_file_with_retries if retries else self._download_file
 
         # start a pool of threads to do the downloading
+        self._log(logging.DEBUG, "Using ThreadPoolExecutor to download files")
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             # start the downloads and mark each future with its filename
             future_to_fname = {
@@ -244,6 +247,8 @@ class GlobusHttpsTransferer(TransfererBase):
         # if there were any errors downloading files, raise an exception now
         if errors > 0:
             raise RemoteJobTransfererError(f"Failed to download files in '{self._local_path}'")
+
+        self._log(logging.DEBUG, "Finished downloading files")
 
     def _download_file_with_retries(self, filename: str, checksum: str):
         """

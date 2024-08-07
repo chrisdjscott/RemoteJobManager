@@ -240,6 +240,7 @@ class RemoteJobBatch:
 
                 # wait before checking for finished jobs again
                 if len(unfinished_jobs):
+                    logger.debug(f"Waiting for {polling_interval} seconds before checking unfinished jobs: {unfinished_jobs}")
                     time.sleep(polling_interval)
 
             # wait for downloads to complete
@@ -256,7 +257,7 @@ class RemoteJobBatch:
                     # print to console that the job has finished
                     # this is a workaround because some users reported that log files were
                     # not being created until the entire program had finished, so they had
-                    # no idea what the progress of the simulation wass
+                    # no idea what the progress of the simulation was
 
                     if repr(rj) in errors:
                         # summarise any error messages that were stored for this job if it failed
