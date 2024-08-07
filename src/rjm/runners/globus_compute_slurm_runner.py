@@ -415,6 +415,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         """
         # remote function call with retries
+        self._log(logging.DEBUG, f"Calculating checksums for {len(files)} files")
         checksums = retry_call(
             self._get_checksums_wrapper,
             fargs=(files, working_directory),
