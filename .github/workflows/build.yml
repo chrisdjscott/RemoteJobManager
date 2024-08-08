@@ -54,29 +54,29 @@ jobs:
 
       # Build executables using PyInstaller
       - name: Build rjm_batch_submit
-        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_submit.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_batch_submit.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_batch_wait
-        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_wait.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_batch_wait.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_authenticate
-        run: pyinstaller -F ../../src/rjm/cli/rjm_authenticate.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_authenticate.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_config
-        run: pyinstaller -F ../../src/rjm/cli/rjm_config.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_config.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_restart
-        run: pyinstaller -F ../../src/rjm/cli/rjm_restart.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_restart.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_health_check
-        run: pyinstaller -F ../../src/rjm/cli/rjm_health_check.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_health_check.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_batch_cancel
-        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_cancel.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_batch_cancel.py
+        working-directory: ./extra/pyinstaller
       - name: Build rjm_batch_run
-        run: pyinstaller -F ../../src/rjm/cli/rjm_batch_run.py
-        working-directory:  ./extra/pyinstaller
+        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_batch_run.py
+        working-directory: ./extra/pyinstaller
       - name: Dump license files
         run: |
           pip-licenses -f plain-vertical -l --output-file dist/bundled_licenses.txt
@@ -89,6 +89,9 @@ jobs:
         working-directory: ./extra/pyinstaller
       - name: Display RJM version
         run: dist/rjm_batch_submit.exe --version
+        working-directory: ./extra/pyinstaller
+      - name: Check pyinstaller build rjm_restart help
+        run: dist/rjm_restart.exe --help
         working-directory: ./extra/pyinstaller
 
       # archive the binaries
