@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 # create our own stream handler logger for workaround detailed below
 _console_logger = logging.getLogger("batch_wait")
-_console_logger.setLevel(logging.INFO)
+_console_logger.setLevel(logging.DEBUG)
 _console_handler = logging.StreamHandler()
 _console_handler.setFormatter(
     logging.Formatter("%(asctime)s|%(name)s|%(levelname)s|%(message)s"),
@@ -220,20 +220,24 @@ class RemoteJobBatch:
             while len(unfinished_jobs):
                 # get the finished status
                 logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
+                _console_logger.debug(f"Checking statuses of {len(unfinished_jobs)} jobs")
                 successful_jobs, failed_jobs, unfinished_jobs = self._runner.check_finished_jobs(unfinished_jobs)
                 count_succeeded += len(successful_jobs)
                 count_failed += len(failed_jobs)
                 logger.info(f"{count_succeeded} succeeded; {count_failed} failed; {len(unfinished_jobs)} unfinished")
+                _console_logger.debug(f"{count_succeeded} succeeded; {count_failed} failed; {len(unfinished_jobs)} unfinished")
 
                 # handle successful jobs
                 for rj in successful_jobs:
                     logger.info(f"{rj} run has finished successfully")
+                    _console_logger.debug(f"{rj} run has finished successfully -> downloading files")
                     rj.set_run_completed()
                     future_to_rj[downloader.submit(rj.download_files)] = rj
 
                 # handle unsuccessful jobs
                 for rj in failed_jobs:
                     logger.error(f"{rj} run has finished unsuccessfully")
+                    _console_logger.debug(f"{rj} run has finished unsuccessfully -> downloading files")
                     rj.set_run_completed(success=False)
                     errors[repr(rj)].append("Run has finished unsuccessfully")
                     future_to_rj[downloader.submit(rj.download_files)] = rj
@@ -241,6 +245,7 @@ class RemoteJobBatch:
                 # wait before checking for finished jobs again
                 if len(unfinished_jobs):
                     logger.debug(f"Waiting for {polling_interval} seconds before checking unfinished jobs: {unfinished_jobs}")
+                    _console_logger.debug(f"Waiting for {polling_interval} seconds before checking unfinished jobs: {unfinished_jobs}")
                     time.sleep(polling_interval)
 
             # wait for downloads to complete
@@ -248,6 +253,7 @@ class RemoteJobBatch:
                 for future in concurrent.futures.as_completed(future_to_rj):
                     rj = future_to_rj[future]
                     logger.debug(f"Received download result for {rj}")
+                    _console_logger.debug(f"Received download result for {rj}")
                     try:
                         future.result()
                     except Exception as exc:
