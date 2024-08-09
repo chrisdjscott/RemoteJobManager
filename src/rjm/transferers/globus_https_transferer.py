@@ -222,6 +222,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # function to download files
         download_func = self._download_file_with_retries if retries else self._download_file
+        self._log(logging.DEBUG, f"Download function is: {download_func}")
 
         # start a pool of threads to do the downloading
         self._log(logging.DEBUG, "Using ThreadPoolExecutor to download files")
@@ -282,6 +283,8 @@ class GlobusHttpsTransferer(TransfererBase):
         :param checksum: the expected checksum of the file
 
         """
+        self._log(logging.DEBUG, f"Starting download of: {filename}")
+
         # file to download and URL
         download_url = self._url_for_file(filename)
 
@@ -300,6 +303,7 @@ class GlobusHttpsTransferer(TransfererBase):
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
             r.raise_for_status()
+            self._log(logging.DEBUG, "Writing file to disk...")
             with open(local_file_tmp, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                     if chunk:
@@ -308,6 +312,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         # check the checksum of the downloaded file
         if checksum is not None:
+            self._log(logging.DEBUG, "Verifying checksum...")
             checksum_local = self._calculate_checksum(local_file_tmp)
             if checksum != checksum_local:
                 msg = f"Checksum of downloaded {local_file_tmp} doesn't match ({checksum_local} vs {checksum})"
