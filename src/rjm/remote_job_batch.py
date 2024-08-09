@@ -207,7 +207,7 @@ class RemoteJobBatch:
 
         # executor for processing downloads
         future_to_rj = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as downloader:  # separate thread for downloading
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as downloader:  # separate thread for downloading
             # first download jobs that have finished but not downloaded already
             for rj in undownloaded_jobs:
                 future_to_rj[downloader.submit(rj.download_files)] = rj
@@ -258,6 +258,7 @@ class RemoteJobBatch:
                         future.result()
                     except Exception as exc:
                         # something failed during the download
+                        logger.debug(f"Exception during download for {rj}: {exc}")
                         errors[repr(rj)].append(str(exc))
 
                     # print to console that the job has finished
