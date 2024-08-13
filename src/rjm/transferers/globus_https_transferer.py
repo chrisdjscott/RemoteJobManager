@@ -237,13 +237,18 @@ class GlobusHttpsTransferer(TransfererBase):
             }
 
             # wait for completion
+            self._log(logging.DEBUG, f"Waiting for {len(future_to_fname)} files to be downloaded")
+            num_to_download = len(future_to_fname)
+            count = 0
             for future in concurrent.futures.as_completed(future_to_fname):
                 fname = future_to_fname[future]
                 try:
                     future.result()
+                    self._log(logging.DEBUG, f"Received download success from thread for {fname} ({count+1} of {num_to_download})")
                 except Exception as exc:
                     self._log(logging.ERROR, f"Failed to download '{fname}': {exc}")
                     errors += 1
+                count += 1
 
         # if there were any errors downloading files, raise an exception now
         if errors > 0:
@@ -302,6 +307,7 @@ class GlobusHttpsTransferer(TransfererBase):
         # download with temporary local file name
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
+            self._log(logging.DEBUG, f"Requests response for {filename}: {r.status_code}, {r.reason}")
             r.raise_for_status()
             self._log(logging.DEBUG, "Writing file to disk...")
             with open(local_file_tmp, 'wb') as f:

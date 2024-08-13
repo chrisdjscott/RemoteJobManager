@@ -250,9 +250,12 @@ class RemoteJobBatch:
 
             # wait for downloads to complete
             if len(future_to_rj):
+                logger.debug(f"Waiting for {len(future_to_rj)} download results from threads")
+                num_results_expected = len(future_to_rj)
+                num_results_received = 0
                 for future in concurrent.futures.as_completed(future_to_rj):
                     rj = future_to_rj[future]
-                    logger.debug(f"Received download result for {rj}")
+                    logger.debug(f"Received download result for {rj} ({num_results_received+1} of {num_results_expected})")
                     _console_logger.debug(f"Received download result for {rj}")
                     try:
                         future.result()
@@ -260,6 +263,7 @@ class RemoteJobBatch:
                         # something failed during the download
                         logger.debug(f"Exception during download for {rj}: {exc}")
                         errors[repr(rj)].append(str(exc))
+                    num_results_received += 1
 
                     # print to console that the job has finished
                     # this is a workaround because some users reported that log files were
