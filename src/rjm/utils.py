@@ -28,6 +28,7 @@ HTTPS_SCOPE = "https://auth.globus.org/scopes/{endpoint_id}/https"
 
 # default logging levels
 LOG_LEVEL_RJM = logging.INFO
+LOG_LEVEL_RETRY = logging.WARNING
 LOG_LEVEL_OTHER = logging.ERROR
 
 # defaults for retries
@@ -52,6 +53,8 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
         format=f'%(asctime)s|{log_name}|%(levelname)s|%(message)s',
     )
     logging.getLogger("rjm").setLevel(LOG_LEVEL_RJM)
+    # we also want retries to be logged, which are done at level WARNING
+    logging.getLogger("retry").setLevel(LOG_LEVEL_RETRY)
 
     # check if specific levels are set in log file
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
