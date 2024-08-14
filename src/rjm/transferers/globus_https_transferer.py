@@ -297,7 +297,8 @@ class GlobusHttpsTransferer(TransfererBase):
         local_file = os.path.join(self._local_path, filename)
 
         # download to a temporary file first
-        local_file_tmp = local_file + "-rjm-downloading"
+        local_file_tmp = os.path.join(self._local_path, "rjm-downloading-" + filename)
+        self._log(logging.DEBUG, f"Downloading {filename} to temporary file first: {local_file_tmp}")
 
         # authorisation
         headers = {
@@ -305,16 +306,22 @@ class GlobusHttpsTransferer(TransfererBase):
         }
 
         # download with temporary local file name
+        self._log(logging.DEBUG, f"Listing directory before download: {os.listdir(self._local_path)}")
         start_time = time.perf_counter()
         with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
             self._log(logging.DEBUG, f"Requests response for {filename}: {r.status_code}, {r.reason}")
             r.raise_for_status()
-            self._log(logging.DEBUG, "Writing file to disk...")
+            self._log(logging.DEBUG, f"Preparing to write {local_file_tmp} to disk...")
+            self._log(logging.DEBUG, f"Temp file {local_file_tmp} exists already? {os.path.exists(local_file_tmp)}")
             with open(local_file_tmp, 'wb') as f:
+                self._log(logging.DEBUG, f"Opened {local_file_tmp} for writing...")
                 for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
                     if chunk:
+                        self._log(logging.DEBUG, "Writing chunk of file...")
                         f.write(chunk)
         download_time = time.perf_counter() - start_time
+        self._log(logging.DEBUG, f"Finished writing {local_file_tmp} (file exists? {os.path.exists(local_file_tmp)})")
+        self._log(logging.DEBUG, f"Listing directory after download to temporary file: {os.listdir(self._local_path)}")
 
         # check the checksum of the downloaded file
         if checksum is not None:
@@ -326,7 +333,9 @@ class GlobusHttpsTransferer(TransfererBase):
                 raise RemoteJobTransfererError(msg)
 
         # now rename the temporary file to the actual file
+        self._log(logging.DEBUG, f"Renaming {local_file_tmp} to {local_file}")
         os.replace(local_file_tmp, local_file)
+        self._log(logging.DEBUG, f"Listing directory after renaming temporary file: {os.listdir(self._local_path)}")
 
         self.log_transfer_time("Downloaded", local_file, download_time)
 
