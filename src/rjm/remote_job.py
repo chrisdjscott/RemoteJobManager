@@ -150,6 +150,7 @@ class RemoteJob:
         self._job_name = os.path.basename(local_dir)
         self._log(logging.DEBUG, f"Creating RemoteJob for local directory: {self._job_name}")
         self._log(logging.DEBUG, f"Full local path is set to: {self._local_path}")
+        self._log(logging.DEBUG, f"Number of characters in path: {len(self._local_path)}")
 
         # setting up transferer and runner
         self._runner.set_label(self._label)

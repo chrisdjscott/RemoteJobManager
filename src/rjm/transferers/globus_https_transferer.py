@@ -300,7 +300,7 @@ class GlobusHttpsTransferer(TransfererBase):
         self._log(logging.DEBUG, f"Destination directory exists: {os.path.isdir(self._local_path)}")
 
         # change to destination directory
-        self._log(logging.DEBUG, "Changing to destination directory")
+        self._log(logging.DEBUG, f"Changing to destination directory ({len(self._local_path)} characters in path)")
         owd = os.getcwd()
         os.chdir(self._local_path)
         try:
@@ -308,16 +308,15 @@ class GlobusHttpsTransferer(TransfererBase):
             download_url = self._url_for_file(filename)
 
             # path to local file
-#            local_file = os.path.join(self._local_path, filename)
             local_file = filename
 
             # download to a temporary file first
             if temp_dir is None:
-#                local_file_tmp = os.path.join(self._local_path, "rjm-downloading-" + filename)
                 local_file_tmp = "rjm-downloading-" + filename
             else:
                 local_file_tmp = os.path.join(temp_dir, filename)
             self._log(logging.DEBUG, f"Downloading {filename} to temporary file first: {local_file_tmp}")
+            self._log(logging.DEBUG, f"Number of characters in temp file: {len(local_file_tmp)}")
 
             # authorisation
             headers = {
@@ -325,7 +324,6 @@ class GlobusHttpsTransferer(TransfererBase):
             }
 
             # download with temporary local file name
-#            self._log(logging.DEBUG, f"Listing directory before download: {os.listdir(self._local_path)}")
             start_time = time.perf_counter()
             with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
                 self._log(logging.DEBUG, f"Requests response for {filename}: {r.status_code}, {r.reason}")
@@ -340,7 +338,6 @@ class GlobusHttpsTransferer(TransfererBase):
                             f.write(chunk)
             download_time = time.perf_counter() - start_time
             self._log(logging.DEBUG, f"Finished writing {local_file_tmp} (file exists? {os.path.exists(local_file_tmp)})")
-#            self._log(logging.DEBUG, f"Listing directory after download to temporary file: {os.listdir(self._local_path)}")
 
             # check the checksum of the downloaded file
             if checksum is not None:
@@ -352,7 +349,7 @@ class GlobusHttpsTransferer(TransfererBase):
                     raise RemoteJobTransfererError(msg)
 
             # now rename the temporary file to the actual file
-            self._log(logging.DEBUG, f"Renaming {local_file_tmp} to {local_file}")
+            self._log(logging.DEBUG, f"Renaming {local_file_tmp} to {local_file} ({len(local_file)} characters in path)")
             shutil.copy(local_file_tmp, local_file)
             self._log(logging.DEBUG, f"Listing directory after renaming temporary file: {os.listdir()}")
 
