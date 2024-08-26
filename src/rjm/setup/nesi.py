@@ -24,7 +24,7 @@ FUNCX_NODES = [
     "mahuika01",
     "mahuika02",
 ]
-FUNCX_MODULE = "globus-compute-endpoint/2.24.0-gimkl-2022a-Python-3.10.5"
+FUNCX_MODULE = "globus-compute-endpoint/2.27.1-foss-2023a-Python-3.11.6"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
@@ -37,12 +37,14 @@ SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
 SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
 ENDPOINT_CONFIG = """display_name: null
 engine:
+  type: GlobusComputeEngine
+  max_retries_on_system_failure: 2
+  max_workers_per_node: 8
   provider:
+    type: LocalProvider
     init_blocks: 1
     max_blocks: 1
     min_blocks: 1
-    type: LocalProvider
-  type: HighThroughputEngine
 """
 
 
@@ -387,6 +389,8 @@ class NeSISetup:
             assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
             logger.info("Globus Compute endpoint configuration complete")
 
+            restart = True
+
         # reauthenticate
         if reauthenticate or not self.is_globus_compute_endpoint_authenticated():
             self._globus_compute_endpoint_authentication()
@@ -646,6 +650,17 @@ class NeSISetup:
 
         return authenticated
 
+    def string_in_remote_file(self, file_path, string_match):
+        """Return `True` if `string_match` exists in remote file `file_path`"""
+        command = f'grep "{string_match}" "{file_path}"'
+        status, output, error = self.run_command(command, profile=False)
+        if status:
+            match = False
+        else:
+            match = True
+
+        return match
+
     def is_funcx_endpoint_configured(self):
         """
         Check whether the funcx default endpoint is configured already
@@ -653,8 +668,13 @@ class NeSISetup:
         """
         # test if default endpoint config exists, if so, we assume it is configured
         if self._remote_path_exists(self._globus_compute_config_file_new):
-            logger.debug("Assuming Globus Compute endpoint is configured as config file exists")
-            configured = True
+            # test if the config refers to the deprecated HighThroughputEngine
+            if self.string_in_remote_file(self._globus_compute_config_file_new, "HighThroughputEngine"):
+                logger.debug("Globus Compute endpoint configuration is out of date (refers to HighThroughputEngine)")
+                configured = False
+            else:
+                logger.debug("Assuming Globus Compute endpoint is configured as config file exists")
+                configured = True
         else:
             logger.debug(f"Globus Compute config file does not exist: {self._globus_compute_config_file_new}")
             configured = False

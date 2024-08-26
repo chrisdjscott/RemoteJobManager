@@ -2,7 +2,7 @@
 export LOGIN_NODES=(mahuika01 mahuika02)
 export PRIMARY_NODE=login.mahuika.nesi.org.nz
 export ENDPOINT_NAME=default
-export FUNCX_MODULE="globus-compute-endpoint/2.24.0-gimkl-2022a-Python-3.10.5"
+export FUNCX_MODULE="globus-compute-endpoint/2.27.1-foss-2023a-Python-3.11.6"
 export INIT_COMMAND="source /etc/profile; source ~/.funcx-endpoint-persist-nesi-functions.sh; module load ${FUNCX_MODULE}"
 export ENDPOINT_PIDFILE="${HOME}/.globus_compute/${ENDPOINT_NAME}/daemon.pid"
 
