@@ -1,3 +1,4 @@
+---
 name: Build and test
 
 on:
@@ -12,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.10', '3.11']
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,7 +37,7 @@ jobs:
       # Run unit tests
       - name: Run tests
         run: pytest
-      
+
   pyinstaller:
     runs-on: windows-latest
     steps:
@@ -46,7 +47,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       # Building the RJM python package
       - name: Build the package
@@ -213,7 +214,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.10']
+        python-version: ['3.11']
     steps:
       - uses: actions/checkout@v4
         with:
