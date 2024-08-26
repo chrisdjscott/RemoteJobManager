@@ -133,8 +133,8 @@ def test_save_state(rj, tmpdir, mocker):
 
     rj._save_state()
 
-    assert mocked_transfer_save_state.called_once()
-    assert mocked_runner_save_state.called_once()
+    mocked_transfer_save_state.assert_called_once()
+    mocked_runner_save_state.assert_called_once()
     assert os.path.exists(rj._state_file)
 
     with open(rj._state_file) as fh:
