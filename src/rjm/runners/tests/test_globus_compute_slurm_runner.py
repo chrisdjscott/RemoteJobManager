@@ -81,7 +81,7 @@ def test_start_succeed(runner, mocker):
 
     started = runner.start("some/path")
 
-    assert mocked.called_once()
+    mocked.assert_called_once()
     assert started is True
     assert runner._jobid == '1234567'
 
