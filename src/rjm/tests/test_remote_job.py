@@ -196,8 +196,8 @@ def test_load_state(rj, mocker, tmpdir, force):
         assert rj._downloaded is False
         assert rj._cancelled is False
     else:
-        assert mocked_transfer_load_state.called_once_with(state_dict["transfer"])
-        assert mocked_runner_load_state.called_once_with(state_dict["runner"])
+        mocked_transfer_load_state.assert_called_once_with(state_dict["transfer"])
+        mocked_runner_load_state.assert_called_once_with(state_dict["runner"])
         assert rj._uploaded == state_dict["uploaded"]
         assert rj._run_started == state_dict["run_started"]
         assert rj._run_succeeded == state_dict["run_succeeded"]
