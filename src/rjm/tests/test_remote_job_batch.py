@@ -126,9 +126,9 @@ def test_make_directories(rjb, mocker):
 
     rjb.make_directories()
 
-    assert mocked_make_dirs.called_once_with("/my/remote/path", ["mylocaldir", "pathdir"])
-    assert mocked_set1.called_once_with("/my/remote/path/mylocaldir-timestamp", "mylocaldir-timestamp")
-    assert mocked_set2.called_once_with("/my/remote/path/anotherlocaldir", "anotherlocaldir")
+    mocked_make_dirs.assert_called_once_with("/my/remote/path", ["mylocaldir-timestamp", "pathdir-timestamp"])
+    mocked_set1.assert_called_once_with("/my/remote/path/mylocaldir-timestamp", "mylocaldir-timestamp")
+    mocked_set2.assert_called_once_with("/my/remote/path/anotherlocaldir", "anotherlocaldir")
 
 
 def test_categorise_jobs(rjb):
