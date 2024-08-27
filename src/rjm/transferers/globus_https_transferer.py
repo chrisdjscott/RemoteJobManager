@@ -298,6 +298,10 @@ class GlobusHttpsTransferer(TransfererBase):
         self._log(logging.DEBUG, f"Starting download of: {filename}")
         self._log(logging.DEBUG, f"Destination directory is: {self._local_path}")
         self._log(logging.DEBUG, f"Destination directory exists: {os.path.isdir(self._local_path)}")
+        parent_dir = os.path.dirname(os.path.abspath(self._local_path))
+        self._log(logging.DEBUG, f"Destination directory parent: {parent_dir} (exists={os.path.isdir(parent_dir)})")
+        if os.path.isdir(parent_dir):
+            self._log(logging.DEBUG, f"Parent dir listing: {os.listdir(parent_dir)}")
 
         # change to destination directory
         self._log(logging.DEBUG, f"Changing to destination directory ({len(self._local_path)} characters in path)")
