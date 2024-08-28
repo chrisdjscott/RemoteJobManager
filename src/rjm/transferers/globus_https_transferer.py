@@ -5,8 +5,7 @@ import time
 import concurrent.futures
 import urllib.parse
 import hashlib
-import tempfile
-import shutil
+import platform
 
 import globus_sdk
 import requests
@@ -17,8 +16,9 @@ from rjm import utils
 from rjm.errors import RemoteJobTransfererError
 
 
-DOWNLOAD_CHUNK_SIZE = 8192
-FILE_CHUNK_SIZE = 8192
+DOWNLOAD_CHUNK_SIZE = 8000000
+DOWNLOAD_SUFFIX = '.rjm'
+FILE_CHUNK_SIZE = 8000000
 REQUESTS_TIMEOUT = 30
 
 logger = logging.getLogger(__name__)
@@ -219,42 +219,48 @@ class GlobusHttpsTransferer(TransfererBase):
                 self._log(logging.ERROR, f"File to download is missing: '{fn}'")
 
         # make sure we have a current access token
-        self._log(logging.DEBUG, "Getting authorisation header")
         self._https_auth_header = self._https_authoriser.get_authorization_header()
 
         # function to download files
         download_func = self._download_file_with_retries if retries else self._download_file
         self._log(logging.DEBUG, f"Download function is: {download_func}")
 
-        # create a temporary directory for downloading files to first
-        with tempfile.TemporaryDirectory(prefix='rjm-downloading-', ignore_cleanup_errors=True) as temp_dir:
-            self._log(logging.DEBUG, f"Temporary download directory: {temp_dir}")
-            # start a pool of threads to do the downloading
-            self._log(logging.DEBUG, "Using ThreadPoolExecutor to download files")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                # start the downloads and mark each future with its filename
-                future_to_fname = {
-                    executor.submit(
-                        download_func,
-                        fname,
-                        checksums[fname],
-                        temp_dir=temp_dir,
-                    ): fname for fname in existing_files
-                }
+        # start a pool of threads to do the downloading
+        self._log(logging.DEBUG, "Using ThreadPoolExecutor to download files")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            # start the downloads and mark each future with its filename
+            future_to_fname = {
+                executor.submit(
+                    download_func,
+                    fname,
+                    checksums[fname],
+                ): fname for fname in existing_files
+            }
 
-                # wait for completion
-                self._log(logging.DEBUG, f"Waiting for {len(future_to_fname)} files to be downloaded")
-                num_to_download = len(future_to_fname)
-                count = 0
-                for future in concurrent.futures.as_completed(future_to_fname):
-                    fname = future_to_fname[future]
-                    try:
-                        future.result()
-                        self._log(logging.DEBUG, f"Received download success from thread for {fname} ({count+1} of {num_to_download})")
-                    except Exception as exc:
-                        self._log(logging.ERROR, f"Failed to download '{fname}': {exc}")
-                        errors += 1
-                    count += 1
+            # wait for completion
+            self._log(logging.DEBUG, f"Waiting for {len(future_to_fname)} files to be downloaded")
+            num_to_download = len(future_to_fname)
+            downloaded_tmp_files = []
+            count = 0
+            for future in concurrent.futures.as_completed(future_to_fname):
+                fname = future_to_fname[future]
+                try:
+                    downloaded_tmp_files.append(future.result())
+                    self._log(logging.DEBUG, f"Received download success from thread for {fname} ({count+1} of {num_to_download})")
+                except Exception as exc:
+                    self._log(logging.ERROR, f"Failed to download '{fname}': {exc}")
+                    errors += 1
+                count += 1
+
+        # at this point we have downloaded to temporary files, now we need to rename them to the actual files
+        self._log(logging.DEBUG, f"Renaming {len(downloaded_tmp_files)} downloaded temporary files")
+        start_time = time.perf_counter()
+        for tmp_file in downloaded_tmp_files:
+            save_file = tmp_file.removesuffix(DOWNLOAD_SUFFIX)
+            self._log(logging.DEBUG, f'Renaming "{tmp_file}" -> "{save_file}"')
+            os.replace(tmp_file, save_file)
+        rename_time = time.perf_counter() - start_time
+        self._log(logging.DEBUG, f"Finished renaming files in {rename_time:.1f} s")
 
         # if there were any errors downloading files, raise an exception now
         if errors > 0:
@@ -262,7 +268,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         self._log(logging.DEBUG, "Finished downloading files")
 
-    def _download_file_with_retries(self, filename: str, checksum: str, temp_dir: str = None):
+    def _download_file_with_retries(self, filename: str, checksum: str):
         """
         Download file, retrying if the download fails
 
@@ -270,10 +276,9 @@ class GlobusHttpsTransferer(TransfererBase):
         :param checksum: the expected checksum of the file
 
         """
-        retry_call(self._download_file, fargs=(filename, checksum),
-                   fkwargs={'temp_dir': temp_dir},
-                   tries=self._retry_tries, backoff=self._retry_backoff,
-                   delay=self._retry_delay, max_delay=self._retry_max_delay)
+        return retry_call(self._download_file, fargs=(filename, checksum),
+                          tries=self._retry_tries, backoff=self._retry_backoff,
+                          delay=self._retry_delay, max_delay=self._retry_max_delay)
 
     def _calculate_checksum(self, filename):
         """
@@ -287,7 +292,7 @@ class GlobusHttpsTransferer(TransfererBase):
 
         return checksum.hexdigest()
 
-    def _download_file(self, filename: str, checksum: str, temp_dir: str = None):
+    def _download_file(self, filename: str, checksum: str):
         """
         Download a file from remote.
 
@@ -296,71 +301,50 @@ class GlobusHttpsTransferer(TransfererBase):
 
         """
         self._log(logging.DEBUG, f"Starting download of: {filename}")
-        self._log(logging.DEBUG, f"Destination directory is: {self._local_path}")
-        self._log(logging.DEBUG, f"Destination directory exists: {os.path.isdir(self._local_path)}")
-        parent_dir = os.path.dirname(os.path.abspath(self._local_path))
-        self._log(logging.DEBUG, f"Destination directory parent: {parent_dir} (exists={os.path.isdir(parent_dir)})")
-        if os.path.isdir(parent_dir):
-            self._log(logging.DEBUG, f"Parent dir listing: {os.listdir(parent_dir)}")
 
-        # change to destination directory
-        self._log(logging.DEBUG, f"Changing to destination directory ({len(self._local_path)} characters in path)")
-        owd = os.getcwd()
-        os.chdir(self._local_path)
-        try:
-            # file to download and URL
-            download_url = self._url_for_file(filename)
+        # check destination directory exists
+        if not os.path.exists(self._local_path):
+            self._log(logging.WARNING, f"Download directory does not exist - creating it ({self._local_path})")
+            os.makedirs(self._local_path, exist_ok=True)
 
-            # path to local file
-            local_file = filename
+        # file to download and URL
+        download_url = self._url_for_file(filename)
 
-            # download to a temporary file first
-            if temp_dir is None:
-                local_file_tmp = "rjm-downloading-" + filename
-            else:
-                local_file_tmp = os.path.join(temp_dir, filename)
-            self._log(logging.DEBUG, f"Downloading {filename} to temporary file first: {local_file_tmp}")
-            self._log(logging.DEBUG, f"Number of characters in temp file: {len(local_file_tmp)}")
+        # download to a temporary file first
+        local_file_tmp = os.path.join(self._local_path, filename + DOWNLOAD_SUFFIX)
+        self._log(logging.DEBUG, f"Downloading {filename} to temporary file first: {local_file_tmp}")
+        if len(local_file_tmp) > 255 and platform.system() == "Windows":
+            self._log(logging.WARNING, f"Temporary filename is long ({len(local_file_tmp)} characters), may cause problems on Windows")
 
-            # authorisation
-            headers = {
-                "Authorization": self._https_auth_header,
-            }
+        # authorisation
+        headers = {
+            "Authorization": self._https_auth_header,
+        }
 
-            # download with temporary local file name
-            start_time = time.perf_counter()
-            with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
-                self._log(logging.DEBUG, f"Requests response for {filename}: {r.status_code}, {r.reason}")
-                r.raise_for_status()
-                self._log(logging.DEBUG, f"Preparing to write {local_file_tmp} to disk...")
-                self._log(logging.DEBUG, f"Temp file {local_file_tmp} exists already? {os.path.exists(local_file_tmp)}")
-                with open(local_file_tmp, 'wb') as f:
-                    self._log(logging.DEBUG, f"Opened {local_file_tmp} for writing...")
-                    for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
-                        if chunk:
-                            self._log(logging.DEBUG, "Writing chunk of file...")
-                            f.write(chunk)
-            download_time = time.perf_counter() - start_time
-            self._log(logging.DEBUG, f"Finished writing {local_file_tmp} (file exists? {os.path.exists(local_file_tmp)})")
+        # download with temporary local file name
+        start_time = time.perf_counter()
+        with requests.get(download_url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT) as r:
+            self._log(logging.DEBUG, f"Requests response for {filename}: {r.status_code}, {r.reason}")
+            r.raise_for_status()
+            with open(local_file_tmp, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                    if chunk:
+                        f.write(chunk)
+        download_time = time.perf_counter() - start_time
+        self._log(logging.DEBUG, f"Finished writing {local_file_tmp} (file exists? {os.path.exists(local_file_tmp)})")
 
-            # check the checksum of the downloaded file
-            if checksum is not None:
-                self._log(logging.DEBUG, "Verifying checksum...")
-                checksum_local = self._calculate_checksum(local_file_tmp)
-                if checksum != checksum_local:
-                    msg = f"Checksum of downloaded {local_file_tmp} doesn't match ({checksum_local} vs {checksum})"
-                    self._log(logging.ERROR, msg)
-                    raise RemoteJobTransfererError(msg)
+        # check the checksum of the downloaded file
+        if checksum is not None:
+            self._log(logging.DEBUG, f"Verifying checksum of \"{local_file_tmp}\"...")
+            checksum_local = self._calculate_checksum(local_file_tmp)
+            if checksum != checksum_local:
+                msg = f"Checksum of downloaded \"{local_file_tmp}\" doesn't match ({checksum_local} vs {checksum})"
+                self._log(logging.ERROR, msg)
+                raise RemoteJobTransfererError(msg)
 
-            # now rename the temporary file to the actual file
-            self._log(logging.DEBUG, f"Renaming {local_file_tmp} to {local_file} ({len(local_file)} characters in path)")
-            shutil.copy(local_file_tmp, local_file)
-            self._log(logging.DEBUG, f"Listing directory after renaming temporary file: {os.listdir()}")
+        self.log_transfer_time("Downloaded", local_file_tmp, download_time)
 
-            self.log_transfer_time("Downloaded", local_file, download_time)
-
-        finally:
-            os.chdir(owd)
+        return local_file_tmp
 
     def list_directory(self, path: str):
         """
