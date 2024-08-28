@@ -79,7 +79,8 @@ class TransfererBase:
         """Report the time taken to upload/download a file"""
         file_size = os.path.getsize(local_file)
         file_size, file_size_units = utils.pretty_size_from_bytes(file_size)
-        self._log(log_level, f"{text} {local_file}: {file_size:.1f} {file_size_units} in {elapsed_time:.1f} s ({file_size / elapsed_time:.1f} {file_size_units}/s)")
+        self._log(log_level, f"{text} {local_file}: {file_size:.1f} {file_size_units} in {elapsed_time:.1f} s "
+                             f"({file_size / elapsed_time:.1f} {file_size_units}/s)")
 
     def upload_files(self, filenames: List[str]):
         """
