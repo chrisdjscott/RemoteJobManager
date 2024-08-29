@@ -16,5 +16,10 @@ rjm.tests.test\_remote\_job
       test_run_wait_restarts_fail
       test_run_wait_restarts_succeed
       test_save_state
+      test_save_state_no_job_dir
       test_save_state_no_state_file
+      test_write_stderr_already_there
+      test_write_stderr_needed
+      test_write_stderr_no_job_dir
+      test_write_stderr_not_needed
    
