@@ -112,6 +112,7 @@ def test_run_wait_restarts_succeed(rj, mocker):
 
 
 def test_save_state(rj, tmpdir, mocker):
+    rj._local_path = tmpdir
     rj._state_file = tmpdir / "test_state.json"
     rj._uploaded = True
     rj._run_started = False

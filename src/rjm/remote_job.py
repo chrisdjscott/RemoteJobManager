@@ -265,34 +265,34 @@ class RemoteJob:
 
         """
         if self._state_file is not None:
-            self._log(logging.DEBUG, f"Saving state to: \"{self._state_file}\"")
-            # check that the directory the state file is supposed to go in exists
-            if not os.path.isdir(os.path.dirname(self._state_file)):
-                self._log(logging.WARNING, "Job directory does not exist -> creating it so we can write the state file")
-                os.makedirs(os.path.dirname(self._state_file), exist_ok=True)
+            # if the job directory does not exist, we skip writing the state file
+            # assume the calling process has cleaned it up on purpose
+            if not os.path.isdir(self._local_path):
+                self._log(logging.WARNING, "Cannot write state file as job directory no longer exists")
 
-            state_dict = {
-                "remote_directory": self._remote_full_path,
-                "remote_basename": self._remote_basename,
-                "uploaded": self._uploaded,
-                "run_started": self._run_started,
-                "run_succeeded": self._run_succeeded,
-                "run_failed": self._run_failed,
-                "downloaded": self._downloaded,
-                "cancelled": self._cancelled,
-            }
+            else:
+                state_dict = {
+                    "remote_directory": self._remote_full_path,
+                    "remote_basename": self._remote_basename,
+                    "uploaded": self._uploaded,
+                    "run_started": self._run_started,
+                    "run_succeeded": self._run_succeeded,
+                    "run_failed": self._run_failed,
+                    "downloaded": self._downloaded,
+                    "cancelled": self._cancelled,
+                }
 
-            transfer_state = self._transfer.save_state()
-            if len(transfer_state):
-                state_dict["transfer"] = transfer_state
+                transfer_state = self._transfer.save_state()
+                if len(transfer_state):
+                    state_dict["transfer"] = transfer_state
 
-            runner_state = self._runner.save_state()
-            if len(runner_state):
-                state_dict["runner"] = runner_state
+                runner_state = self._runner.save_state()
+                if len(runner_state):
+                    state_dict["runner"] = runner_state
 
-            self._log(logging.DEBUG, f"Saving state: {state_dict}")
-            with open(self._state_file, 'w') as fh:
-                json.dump(state_dict, fh, indent=4)
+                self._log(logging.DEBUG, f"Saving state ({self._state_file}): {state_dict}")
+                with open(self._state_file, 'w') as fh:
+                    json.dump(state_dict, fh, indent=4)
 
     def upload_files(self):
         """Upload files to remote"""
@@ -430,21 +430,31 @@ class RemoteJob:
 
         :param msg: The message to be written to the stderr.txt file
 
-        If the job has completed (i.e. downloaded files), don't do anything
-
-        If stderr.txt already exists, don't do anything
+        - If the job has completed (i.e. downloaded files), don't do anything
+        - If stderr.txt already exists, don't do anything
+        - If the job directory no longer exists, don't do anything
 
         Note: this functionality exists only to help WFN (wings for nonmem) to
               detect when RJM has exited with an error
 
         """
         if self.files_downloaded():
-            self._log(logging.DEBUG, "Skipping writing stderr on error since files have been downloaded already")
+            self._log(logging.DEBUG, "No need to write stderr file as the job has finished successfully")
+
         else:
             stderr_file = os.path.join(self._local_path, "stderr.txt")
+
+            # we only write the stderr file here if it doesn't already exist
             if not os.path.exists(stderr_file):
-                self._log(logging.DEBUG, f"Writing stderr file: {stderr_file}")
-                with open(stderr_file, "w") as fh:
-                    fh.write(msg)
+                # if the job directory has been deleted, then we don't write the file either
+                # assume the calling proccess (WFN) has cleaned it up already
+                if not os.path.isdir(self._local_path):
+                    self._log(logging.WARNING, "Skipping writing stderr file as the job directory no longer exists")
+
+                else:
+                    self._log(logging.DEBUG, f"Writing stderr file: {stderr_file}")
+                    with open(stderr_file, "w") as fh:
+                        fh.write(msg)
+
             else:
-                self._log(logging.DEBUG, "Skipping writing stderr file on error since it already exists")
+                self._log(logging.DEBUG, "Skipping writing stderr file as it already exists")
