@@ -238,6 +238,8 @@ class RemoteJob:
         Load the saved state, if any.
 
         """
+        self._log(logging.DEBUG, f"Loading state from: \"{self._state_file}\" (exists={os.path.exists(self._state_file)})")
+
         if self._state_file is not None and os.path.exists(self._state_file) and not force:
             with open(self._state_file) as fh:
                 state_dict = json.load(fh)
@@ -263,6 +265,12 @@ class RemoteJob:
 
         """
         if self._state_file is not None:
+            self._log(logging.DEBUG, f"Saving state to: \"{self._state_file}\"")
+            # check that the directory the state file is supposed to go in exists
+            if not os.path.isdir(os.path.dirname(self._state_file)):
+                self._log(logging.WARNING, "Job directory does not exist -> creating it so we can write the state file")
+                os.makedirs(os.path.dirname(self._state_file), exist_ok=True)
+
             state_dict = {
                 "remote_directory": self._remote_full_path,
                 "remote_basename": self._remote_basename,
