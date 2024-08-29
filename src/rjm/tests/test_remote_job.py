@@ -150,6 +150,34 @@ def test_save_state(rj, tmpdir, mocker):
     assert state_dict["transfer"] == transferer_state
 
 
+def test_save_state_no_job_dir(rj, tmpdir, mocker):
+    rj._local_path = tmpdir / "doesnotexist"
+    rj._state_file = tmpdir / "doesnotexist" / "test_state.json"
+    rj._uploaded = True
+    rj._run_started = False
+    rj._run_succeeded = True
+    rj._run_failed = False
+    rj._downloaded = True
+    rj._cancelled = False
+    runner_state = {"jobid": "12345"}
+    transferer_state = {"something": "else"}
+
+    mocked_transfer_save_state = mocker.patch(
+        'rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.save_state',
+        return_value=transferer_state,
+    )
+    mocked_runner_save_state = mocker.patch(
+        'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.save_state',
+        return_value=runner_state,
+    )
+
+    rj._save_state()
+
+    assert mocked_transfer_save_state.call_count == 0
+    assert mocked_runner_save_state.call_count == 0
+    assert not os.path.exists(rj._state_file)
+
+
 def test_save_state_no_state_file(rj):
     rj._state_file = None
     rj._save_state()
@@ -205,3 +233,56 @@ def test_load_state(rj, mocker, tmpdir, force):
         assert rj._run_failed == state_dict["run_failed"]
         assert rj._downloaded == state_dict["downloaded"]
         assert rj._cancelled == state_dict["cancelled"]
+
+
+def test_write_stderr_not_needed(rj, tmpdir):
+    rj._downloaded = True
+    rj._local_path = tmpdir
+
+    rj.write_stderr_if_not_finished("Hello, World!")
+
+    # stderr.txt file should not be generated in this case
+    assert not os.path.exists(tmpdir / "stderr.txt")
+
+
+def test_write_stderr_needed(rj, tmpdir):
+    msg = "Hello, World!"
+    rj._downloaded = False
+    rj._local_path = tmpdir
+    stderr_file = tmpdir.join("stderr.txt")
+
+    rj.write_stderr_if_not_finished(msg)
+
+    # stderr.txt file should be generated in this case
+    assert stderr_file.exists()
+    assert stderr_file.read() == msg
+
+
+def test_write_stderr_already_there(rj, tmpdir):
+    msg = "Hello, World!"
+    rj._downloaded = False
+    rj._local_path = tmpdir
+    stderr_file = tmpdir.join("stderr.txt")
+    with stderr_file.open(mode="w") as f:
+        f.write("content of stderr")
+
+    rj.write_stderr_if_not_finished(msg)
+
+    # stderr.txt file should have original contents (shouldn't be overwritten)
+    assert stderr_file.exists()
+    assert stderr_file.read() == "content of stderr"
+
+
+def test_write_stderr_no_job_dir(rj, tmpdir):
+    msg = "Hello, World!"
+    rj._downloaded = False
+    rj._local_path = tmpdir / "myjob"
+    stderr_file = tmpdir.join("stderr.txt")
+
+    assert not rj._local_path.exists()
+
+    rj.write_stderr_if_not_finished(msg)
+
+    # stderr.txt file should not exist and neither should job directory
+    assert not stderr_file.exists()
+    assert not rj._local_path.exists()
