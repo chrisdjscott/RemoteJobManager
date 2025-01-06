@@ -126,7 +126,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
         self._log(logging.DEBUG, f"Creating Globus Compute executor for endpoint: {self._endpoint}")
 
         # create a Globus Compute executor
-        executor = Executor(funcx_client=self._client, endpoint_id=self._endpoint)
+        executor = Executor(client=self._client, endpoint_id=self._endpoint)
 
         return executor
 
