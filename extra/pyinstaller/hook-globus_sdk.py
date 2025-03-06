@@ -4,4 +4,5 @@ datas = collect_data_files('globus_sdk')
 
 hiddenimports = [
     'globus_sdk.services.transfer',
+    'globus_sdk.services.compute',
 ]
