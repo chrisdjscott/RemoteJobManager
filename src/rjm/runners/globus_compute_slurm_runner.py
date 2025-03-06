@@ -131,7 +131,13 @@ class GlobusComputeSlurmRunner(RunnerBase):
         return executor
 
     def reset_globus_compute_client(self, propagate=False):
-        """Force the runner to create a new Globus Compute client"""
+        """
+        Force the runner to create a new Globus Compute client.
+
+        If propagate is True and an external runner is being used, then call
+        reset on the external runner too.
+
+        """
         if not self._setup_done:
             raise RuntimeError("setup_globus_auth must be called before reset_globus_compute_client")
 
@@ -186,9 +192,30 @@ class GlobusComputeSlurmRunner(RunnerBase):
             self._log(logging.ERROR, "Make sure you setup_globus_auth before trying to run something")
             raise RuntimeError("Make sure you setup_globus_auth before trying to run something")
 
+        # see if we can detect in advance that the executor has been shutdown
+        # somehow and start a new one before running the function
+        # note: this is likely to break with upstream changes
+        if hasattr(self._executor, "_stopped"):
+            if self._executor._stopped:
+                self._log(logging.WARNING, "Globus Compute Executor detected as stopped - attempting to start a new one before running the function")
+                self.reset_globus_compute_client(propagate=True)
+
         # start the function
         self._log(logging.DEBUG, f"Submitting function to Globus Compute executor ({self._executor}): {function}")
-        future = self._executor.submit(function, *args, **kwargs)
+        try:
+            future = self._executor.submit(function, *args, **kwargs)
+        except RuntimeError as exc:
+            # we are trying to catch the case where the executor has been shutdown somehow
+            # in which we case we want to start a new executor and then reraise the error
+            # so that retries can retry the function, if it is being used...
+            self._log(logging.WARNING, f"Failed to submit function to executor: {str(exc)}")
+            if "is shutdown" in str(exc):
+                self._log(logging.WARNING, "Function submission failed due to executor being shutdown - attempting to start a new executor")
+                self.reset_globus_compute_client(propagate=True)
+
+            # always reraise at this point (run_function may be wrapped in a retry, let that
+            # handle the retry in case we get into a loop of failures for some reason)
+            raise exc
 
         # wait for it to complete and get the result
         self._log(logging.DEBUG, "Waiting for Globus Compute function to complete")
