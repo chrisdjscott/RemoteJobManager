@@ -455,7 +455,7 @@ class NeSISetup:
                 if not os.path.exists(auth_file):
                     print(f"ERROR NO FILE: {auth_file}")
                     time.sleep(300)
-                    raise RuntimeError("Globus compute authentication failed, not 'storage.db' file found")
+                    raise RuntimeError("Globus compute authentication failed, no 'storage.db' file found")
 
                 # copy the file onto NeSI
                 logger.debug(f"Uploading new credentials file to NeSI: {self._storage_db_path}")
