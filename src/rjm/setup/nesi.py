@@ -18,13 +18,13 @@ from rjm import utils
 
 logger = logging.getLogger(__name__)
 
-GATEWAY = "lander.nesi.org.nz"
-LOGIN_NODE = "login.mahuika.nesi.org.nz"
+GATEWAY = "lander.hpc.nesi.org.nz"
+LOGIN_NODE = "login.hpc.nesi.org.nz"
 FUNCX_NODES = [
-    "mahuika01",
-    "mahuika02",
+    "login01",
+    "login02",
 ]
-FUNCX_MODULE = "globus-compute-endpoint/3.4.0-foss-2023a-Python-3.11.6"
+FUNCX_MODULE = "globus-compute-endpoint/3.7.0-foss-2023a-Python-3.11.6"
 FUNCX_ENDPOINT_NAME = "default"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
