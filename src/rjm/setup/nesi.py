@@ -58,10 +58,8 @@ class NeSISetup:
     - install scrontab entry to persist default endpoint (TODO: also, restart if newer version of endpoint?)
 
     """
-    def __init__(self, username, password, token, account):
+    def __init__(self, username, account):
         self._username = username
-        self._password = password
-        self._token = token
         self._account = account
         self._num_handler_requests = 0
         self._client = None
@@ -132,7 +130,7 @@ class NeSISetup:
         logger.debug("Connecting to login node through tunnel")
         self._client = paramiko.SSHClient()
         self._client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
-        self._client.connect(GATEWAY, username=self._username, sock=self._proxy, password=self._password)
+        self._client.connect(GATEWAY, username=self._username, sock=self._proxy)
 
         # create an sftp client too
         self._sftp = self._client.open_sftp()
@@ -151,25 +149,22 @@ class NeSISetup:
             self._lander_client.close()
 
     def _auth_handler(self, title, instructions, prompt_list):
-        """auth handler that returns first and second factors for NeSI"""
+        """auth handler that authenticates with NeSI"""
         self._num_handler_requests += 1
-        logger.debug(f"auth_handler called with: {prompt_list}")
+        logger.debug(f"Entering auth_handler (count = {self._num_handler_requests})")
+        logger.debug(f"auth_handler called with:")
+        logger.debug(f"  title: {title}")
+        logger.debug(f"  instructions: {instructions}")
+        logger.debug(f"  prompt_list: {prompt_list}")
 
-        if self._num_handler_requests == 1:
-            return_val = [self._password]  # first prompt asks for password
-            logger.debug("returning first factor")
+        # fall back to interactive
+        if len(title.strip()):
+            print(title.strip())
+        if len(instructions.strip()):
+            print(instructions.strip())
+        return_val = [echo and input(prompt) or getpass.getpass(os.linesep + prompt) for (prompt, echo) in prompt_list]
 
-        elif self._num_handler_requests == 2:
-            return_val = [self._token]  # second asks for token
-            logger.debug("returning second factor")
-
-        else:
-            # fall back to interactive
-            if len(title.strip()):
-                print(title.strip())
-            if len(instructions.strip()):
-                print(instructions.strip())
-            return_val = [echo and input(prompt) or getpass.getpass(prompt) for (prompt, echo) in prompt_list]
+        logger.debug(f'Returning from auth handler: {return_val}')
 
         return return_val
 

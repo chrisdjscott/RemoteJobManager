@@ -73,8 +73,8 @@ def nesi_setup():
     logger.info(f"Running rjm_config v{__version__}")
 
     print("="*120)
-    print("This is an interactive script to setup RJM for accessing NeSI")
-    print("You will be required to enter information along the way, including NeSI credentials and to")
+    print("This is an interactive script to configure RJM for accessing NeSI")
+    print("You will be required to enter information along the way, including opening a link to enter your NeSI credentials and to")
     print("authenticate with Globus in a browser when asked to do so")
     print("="*120)
     print("At times a browser window will be automatically opened and you will be asked to authenticate")
@@ -83,20 +83,17 @@ def nesi_setup():
     print("="*120)
     print("It is quite normal for there to be gaps of up to a few minutes between output, as the setup is")
     print("happening in the background.")
-    print("="*120)
-    print("Please be prepared to enter you NeSI password and second factor below")
-    print("Also, please ensure the second factor has at least 5 seconds remaining before it refreshes")
     print()
 
     # get extra info from user
     username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
     account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
-    password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
-    token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
     print("="*120)
 
     # create the setup object
-    nesi = NeSISetup(username, password, token, account)
+    nesi = NeSISetup(username, account)
+
+    sys.exit("just testing login for now")
 
     # do the globus setup first because it is more interactive
     nesi.setup_globus()
