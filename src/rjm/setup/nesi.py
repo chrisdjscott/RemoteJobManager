@@ -25,7 +25,7 @@ FUNCX_NODES = [
     "login02",
 ]
 FUNCX_MODULE = "globus-compute-endpoint/3.7.0-foss-2023a-Python-3.11.6"
-FUNCX_ENDPOINT_NAME = "default"
+FUNCX_ENDPOINT_NAME = "rjm"
 GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
 GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
 GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"

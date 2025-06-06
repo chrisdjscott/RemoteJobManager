@@ -1,7 +1,7 @@
 
 export LOGIN_NODES=(login01 login02)
 export PRIMARY_NODE=login.hpc.nesi.org.nz
-export ENDPOINT_NAME=default
+export ENDPOINT_NAME=rjm
 export FUNCX_MODULE="globus-compute-endpoint/3.7.0-foss-2023a-Python-3.11.6"
 export INIT_COMMAND="source /etc/profile; source ~/.funcx-endpoint-persist-nesi-functions.sh; module load ${FUNCX_MODULE}"
 export ENDPOINT_PIDFILE="${HOME}/.globus_compute/${ENDPOINT_NAME}/daemon.pid"
