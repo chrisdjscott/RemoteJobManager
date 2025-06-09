@@ -19,13 +19,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pwinput",
-    "retry",
-    "requests",
-    "paramiko",
     "fair-research-login",
-    "globus-sdk",
     "globus-compute-sdk==3.7.0",
+    "globus-sdk",
+    "paramiko",
+    "requests",
+    "retry",
 ]
 dynamic = ["version"]
 

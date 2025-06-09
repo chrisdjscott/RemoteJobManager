@@ -16,8 +16,6 @@ import argparse
 import logging
 import getpass
 
-import pwinput
-
 from rjm import utils
 from rjm import config as config_helper
 from rjm import __version__
@@ -93,12 +91,10 @@ def nesi_setup():
     # create the setup object
     nesi = NeSISetup(username, account)
 
-    sys.exit("just testing login for now")
-
     # do the globus setup first because it is more interactive
     nesi.setup_globus()
 
-    # do the funcx setup
+    # do the globus copmute setup
     nesi.setup_globus_compute(restart=True, reauthenticate=args.reauth)
 
     # write values to config file
@@ -106,12 +102,13 @@ def nesi_setup():
 
     # get config values
     globus_ep, globus_path = nesi.get_globus_config()
-    funcx_ep = nesi.get_funcx_config()
+    funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults
     done_globus_ep = False
     done_globus_path = False
     done_funcx_ep = False
+    done_account_id = False
     for optd in req_opts:
         if optd["section"] == "GLOBUS" and optd["name"] == "remote_endpoint":
             optd["override"] = globus_ep
@@ -122,9 +119,13 @@ def nesi_setup():
         elif optd["section"] == "FUNCX" and optd["name"] == "remote_endpoint":
             optd["override"] = funcx_ep
             done_funcx_ep = True
+        elif optd["section"] == "FUNCX" and optd["name"] == "account_id":
+            optd["override"] = account
+            done_account_id = True
     assert done_globus_ep
     assert done_globus_path
     assert done_funcx_ep
+    assert done_account_id
 
     # backup current config if any
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):

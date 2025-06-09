@@ -12,8 +12,6 @@ import argparse
 import logging
 import getpass
 
-import pwinput
-
 from rjm import utils
 from rjm import config as config_helper
 from rjm import __version__
@@ -59,7 +57,7 @@ def nesi_setup():
 
     print("="*120)
     print("This is an interactive script to restart funcX on NeSI for use with RJM")
-    print("You will be required to enter information along the way, including NeSI credentials and to")
+    print("You will be required to enter information along the way, including opening a link to enter your NeSI credentials and to")
     print("authenticate with Globus in a browser when asked to do so")
     print("="*120)
     print("At times a browser window will be automatically opened and you will be asked to authenticate")
@@ -68,20 +66,15 @@ def nesi_setup():
     print("="*120)
     print("It is quite normal for there to be gaps of up to a few minutes between output, as the setup is")
     print("happening in the background.")
-    print("="*120)
-    print("Please be prepared to enter you NeSI password and second factor below")
-    print("Also, please ensure the second factor has at least 5 seconds remaining before it refreshes")
     print()
 
     # get extra info from user
     username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
     account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
-    password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
-    token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
     print("="*120)
 
     # create the setup object
-    nesi = NeSISetup(username, password, token, account)
+    nesi = NeSISetup(username, account)
 
     # restart funcx
     nesi.setup_globus_compute(restart=True, reauthenticate=args.reauth)

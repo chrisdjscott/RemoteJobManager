@@ -73,9 +73,8 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)
             if cli_extra:
-                # same level for globus and funcx
+                # same level for globus
                 logging.getLogger("globus").setLevel(level)
-                logging.getLogger("funcx").setLevel(level)
                 logging.getLogger("globus_compute_sdk").setLevel(level)
 
 
