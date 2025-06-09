@@ -108,7 +108,6 @@ def nesi_setup():
     done_globus_ep = False
     done_globus_path = False
     done_funcx_ep = False
-    done_account_id = False
     for optd in req_opts:
         if optd["section"] == "GLOBUS" and optd["name"] == "remote_endpoint":
             optd["override"] = globus_ep
@@ -119,13 +118,9 @@ def nesi_setup():
         elif optd["section"] == "FUNCX" and optd["name"] == "remote_endpoint":
             optd["override"] = funcx_ep
             done_funcx_ep = True
-        elif optd["section"] == "FUNCX" and optd["name"] == "account_id":
-            optd["override"] = account
-            done_account_id = True
     assert done_globus_ep
     assert done_globus_path
     assert done_funcx_ep
-    assert done_account_id
 
     # backup current config if any
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):

@@ -37,7 +37,6 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         # the Globus Compute endpoint on the remote machine
         self._endpoint = self._config.get("FUNCX", "remote_endpoint")
-        self._account_id = self._config.get("FUNCX", "account_id")
 
         # globus compute login manager
         self._login_manager = CustomLoginManager()
