@@ -48,13 +48,13 @@ fallback_version = "0.0.0unknown"
 
 [project.optional-dependencies]
 dev = [
+    "pip-licenses",
+    "pyls-flake8",
     "pytest",
     "pytest-mock",
-    "responses",
     "python-lsp-server",
-    "pyls-flake8",
     "pyinstaller",
-    "pip-licenses",
+    "responses",
     "sphinx",
     "sphinx-argparse",
 ]
