@@ -13,5 +13,5 @@ output that can be useful for debugging):
 
 There is no longer any need to run :code:`rjm_restart` as we are now using the NeSI managed Globus Compute endpoint.
 
-If you encounter problems, please contact [NeSI Support](mailto:support@nesi.org.nz) and mention that you are using
+If you encounter problems, please contact `NeSI Support <mailto:support@nesi.org.nz>`_ and mention that you are using
 Globus Transfer and Compute via the RemoteJobManager tool. You could also include the output from :code:`rjm_health_check -ll debug`.
