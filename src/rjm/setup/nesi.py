@@ -81,7 +81,7 @@ class NeSISetup:
             transfer_client.operation_mkdir(GLOBUS_NESI_COLLECTION, path=tmp_path)
 
             # delete the tmp directory
-            delete_data = DeleteData(transfer_client, GLOBUS_NESI_COLLECTION, recursive=True)
+            delete_data = DeleteData(transfer_client, GLOBUS_NESI_COLLECTION, recursive=True, notify_on_succeeded=False)
             delete_data.add_item(tmp_path)
             transfer_client.submit_delete(delete_data)
 
