@@ -96,7 +96,7 @@ def nesi_setup():
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS_REQUIRED)
 
     # get config values
-    globus_ep, globus_path = nesi.get_globus_config()
+    globus_ep, globus_path = nesi.get_globus_transfer_config()
     funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults

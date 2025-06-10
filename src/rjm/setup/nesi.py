@@ -132,6 +132,7 @@ class NeSISetup:
             gcs_authoriser = authorisers[endpoint_scope]
 
             # setting up the transfer client with consents if required
+            print("Testing access to NeSI using Globus, please wait... (note: this may require an additional authorisation step)")
             try:
                 transfer_client = TransferClient(authorizer=authorisers[TransferScopes.all])
                 logger.debug(f"Attempting to list NeSI filesystem: {guest_collection_dir}")
@@ -152,6 +153,7 @@ class NeSISetup:
             # we should now have a working transfer client
 
             # create the directory, if it succeeds all good, if it fails due to already existing we need to check access if ok eg by making a subdir (we could always do that to be safe)
+            print("Creating remote directory for transferring files to, please wait...")
             logger.debug(f"Attempting to create remote directory: {guest_collection_dir}")
             try:
                 response = transfer_client.operation_mkdir(GLOBUS_NESI_COLLECTION, path=guest_collection_dir)
@@ -161,6 +163,8 @@ class NeSISetup:
                     self._confirm_remote_write_permissions(transfer_client, guest_collection_dir)
                 else:
                     raise
+
+            print("Setting up the directory with Globus for RJM access, please wait...")
 
             # GCS client
             client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=gcs_authoriser)
