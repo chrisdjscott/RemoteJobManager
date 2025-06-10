@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
+
+set -e
 
 ./cleanup.sh
 rjm_batch_submit -f localdirs.txt -ll debug

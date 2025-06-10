@@ -19,13 +19,12 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "pwinput",
-    "retry",
-    "requests",
-    "paramiko",
     "fair-research-login",
+    "globus-compute-sdk==3.7.0",
     "globus-sdk",
-    "globus-compute-sdk==3.4.0",
+    "paramiko",
+    "requests",
+    "retry",
 ]
 dynamic = ["version"]
 
@@ -49,13 +48,13 @@ fallback_version = "0.0.0unknown"
 
 [project.optional-dependencies]
 dev = [
+    "pip-licenses",
+    "pyls-flake8",
     "pytest",
     "pytest-mock",
-    "responses",
     "python-lsp-server",
-    "pyls-flake8",
     "pyinstaller",
-    "pip-licenses",
+    "responses",
     "sphinx",
     "sphinx-argparse",
 ]

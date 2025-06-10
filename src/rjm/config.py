@@ -32,7 +32,7 @@ CONFIG_OPTIONS_REQUIRED = [
         "section": "FUNCX",
         "name": "remote_endpoint",
         "default": None,
-        "help": "Enter the endpoint id of the funcX endpoint running on the remote machine",
+        "help": "Enter the endpoint id of the Globus Compute endpoint running on the remote machine",
     },
 ]
 CONFIG_OPTIONS_OPTIONAL = [  # default values must be strings

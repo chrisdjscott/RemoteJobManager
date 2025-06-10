@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # source functions file
-source ${HOME}/.funcx-endpoint-persist-nesi-functions.sh
+source ${HOME}/.globus-compute-endpoint-persist-nesi-functions.sh
 
 echo ""
 echo "Running $0 at $(date)"

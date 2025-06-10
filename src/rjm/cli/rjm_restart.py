@@ -1,9 +1,12 @@
 """
-This is an interactive script that will restart the funcX endpoint running on NeSI. Sometimes the endpoint gets into a
+This is a legacy script that is no longer required as we move to using a Multi-User endpoint on NeSI. You can still run it but
+it won't do anything.
+
+This is an interactive script that will restart your Globus Compute endpoint running on NeSI. Sometimes the endpoint gets into a
 bad state due to network, file system, etc issues on NeSI and this script will attempt to fix it.
 
-While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
-will need to use a web browser to carry out the Globus authentication as required.
+While running this script, you will need to enter your NeSI username and your NeSI project code and
+will need to use a web browser to carry out NeSI and Globus authentication as required.
 
 """
 import os
@@ -11,8 +14,6 @@ import sys
 import argparse
 import logging
 import getpass
-
-import pwinput
 
 from rjm import utils
 from rjm import config as config_helper
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def make_parser():
     """Return ArgumentParser"""
-    parser = argparse.ArgumentParser(description="Restart funcX on NeSI for use with RJM")
+    parser = argparse.ArgumentParser(description="Restart Globus Compute on NeSI for use with RJM")
     parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
@@ -58,8 +59,8 @@ def nesi_setup():
     logger.info(f"Running rjm_restart v{__version__}")
 
     print("="*120)
-    print("This is an interactive script to restart funcX on NeSI for use with RJM")
-    print("You will be required to enter information along the way, including NeSI credentials and to")
+    print("This is an interactive script to restart Globus Compute on NeSI for use with RJM")
+    print("You will be required to enter information along the way, including opening a link to enter your NeSI credentials and to")
     print("authenticate with Globus in a browser when asked to do so")
     print("="*120)
     print("At times a browser window will be automatically opened and you will be asked to authenticate")
@@ -68,20 +69,15 @@ def nesi_setup():
     print("="*120)
     print("It is quite normal for there to be gaps of up to a few minutes between output, as the setup is")
     print("happening in the background.")
-    print("="*120)
-    print("Please be prepared to enter you NeSI password and second factor below")
-    print("Also, please ensure the second factor has at least 5 seconds remaining before it refreshes")
     print()
 
     # get extra info from user
     username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
     account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
-    password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
-    token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
     print("="*120)
 
     # create the setup object
-    nesi = NeSISetup(username, password, token, account)
+    nesi = NeSISetup(username, account)
 
     # restart funcx
     nesi.setup_globus_compute(restart=True, reauthenticate=args.reauth)

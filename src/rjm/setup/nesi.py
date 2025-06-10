@@ -18,33 +18,31 @@ from rjm import utils
 
 logger = logging.getLogger(__name__)
 
-GATEWAY = "lander.nesi.org.nz"
-LOGIN_NODE = "login.mahuika.nesi.org.nz"
-FUNCX_NODES = [
-    "mahuika01",
-    "mahuika02",
-]
-FUNCX_MODULE = "globus-compute-endpoint/3.4.0-foss-2023a-Python-3.11.6"
-FUNCX_ENDPOINT_NAME = "default"
-GLOBUS_NESI_COLLECTION = 'cc45cfe3-21ae-4e31-bad4-5b3e7d6a2ca1'
-GLOBUS_NESI_ENDPOINT = '90b0521d-ebf8-4743-a492-b07176fe103f'
-GLOBUS_NESI_GCS_ADDRESS = "c61f4.bd7c.data.globus.org"
-NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.sh"
-NESI_PERSIST_FUNCTIONS_PATH = "/home/{username}/.funcx-endpoint-persist-nesi-functions.sh"
-NESI_PERSIST_LOG_PATH = "/home/{username}/.funcx-endpoint-persist-nesi.log"
+GATEWAY = "lander.hpc.nesi.org.nz"
+LOGIN_NODE = "login.hpc.nesi.org.nz"
+GLOBUS_COMPUTE_MODULE = "globus-compute-endpoint/3.7.0-foss-2023a-Python-3.11.6"
+GLOBUS_COMPUTE_ENDPOINT_NAME = "rjm"
+GLOBUS_NESI_COLLECTION = '763d50ee-e814-4080-878b-6a8be5cf7570'
+GLOBUS_NESI_ENDPOINT = 'd8223624-a701-41b0-859b-e88d4dd4b4d8'
+GLOBUS_NESI_GCS_ADDRESS = "b09844.75bc.data.globus.org"
+GLOBUS_COMPUTE_NESI_ENDPOINT = "63c0b682-43d1-4b97-bf23-6a676dfdd8bd"
+GLOBUS_COMPUTE_USE_MEP = True
+NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.globus-compute-endpoint-persist-nesi.sh"
+NESI_PERSIST_FUNCTIONS_PATH = "/home/{username}/.globus-compute-endpoint-persist-nesi-functions.sh"
+NESI_PERSIST_LOG_PATH = "/home/{username}/.globus-compute-endpoint-persist-nesi.log"
 NESI_STORAGE_DB_PATH = "/home/{username}/.globus_compute/storage.db"
 SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
 SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
-ENDPOINT_CONFIG = """display_name: null
+ENDPOINT_CONFIG = """display_name: RJM Endpoint
 engine:
   type: GlobusComputeEngine
   max_retries_on_system_failure: 2
   max_workers_per_node: 8
   provider:
     type: LocalProvider
-    init_blocks: 1
+    init_blocks: 0
     max_blocks: 1
-    min_blocks: 1
+    min_blocks: 0
 """
 
 
@@ -53,15 +51,13 @@ class NeSISetup:
     Runs setup steps specific to NeSI:
 
     - open SSH connection to Mahuika login node
-    - configure funcx endpoint (TODO: how to do auth)
-    - start default funcx endpoint
+    - configure globus compute endpoint
+    - start globus compute endpoint
     - install scrontab entry to persist default endpoint (TODO: also, restart if newer version of endpoint?)
 
     """
-    def __init__(self, username, password, token, account):
+    def __init__(self, username, account):
         self._username = username
-        self._password = password
-        self._token = token
         self._account = account
         self._num_handler_requests = 0
         self._client = None
@@ -69,15 +65,14 @@ class NeSISetup:
         self._lander_client = None
 
         # initialise values we are setting up
-        self._funcx_id = None  # funcX endpoint id
+        self._globus_compute_endpoint_id = None  # globus compute endpoint id
         self._globus_id = None  # globus endpoint id
         self._globus_path = None  # path to globus share
 
-        # funcx file locations
-        self._funcx_config_file = f"/home/{self._username}/.funcx/{FUNCX_ENDPOINT_NAME}/config.py"
-        self._globus_compute_endpoint_dir = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}"
-        self._globus_compute_config_file = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}/config.py"
-        self._globus_compute_config_file_new = f"/home/{self._username}/.globus_compute/{FUNCX_ENDPOINT_NAME}/config.yaml"
+        # globus compute file locations
+        self._globus_compute_endpoint_dir = f"/home/{self._username}/.globus_compute/{GLOBUS_COMPUTE_ENDPOINT_NAME}"
+        self._globus_compute_config_file = f"/home/{self._username}/.globus_compute/{GLOBUS_COMPUTE_ENDPOINT_NAME}/config.py"
+        self._globus_compute_config_file_new = f"/home/{self._username}/.globus_compute/{GLOBUS_COMPUTE_ENDPOINT_NAME}/config.yaml"
 
         # functions file path
         self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
@@ -87,9 +82,14 @@ class NeSISetup:
 
         self._connect()
 
-    def get_funcx_config(self):
-        """Return funcx config values"""
-        return self._funcx_id
+    def get_globus_compute_config(self):
+        """Return globus compute config values"""
+        if GLOBUS_COMPUTE_USE_MEP:
+            endpoint_id = GLOBUS_COMPUTE_NESI_ENDPOINT
+        else:
+            endpoint_id = self._globus_compute_endpoint_id
+
+        return endpoint_id
 
     def get_globus_config(self):
         return self._globus_id, self._globus_path
@@ -132,7 +132,7 @@ class NeSISetup:
         logger.debug("Connecting to login node through tunnel")
         self._client = paramiko.SSHClient()
         self._client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
-        self._client.connect(GATEWAY, username=self._username, sock=self._proxy, password=self._password)
+        self._client.connect(GATEWAY, username=self._username, sock=self._proxy)
 
         # create an sftp client too
         self._sftp = self._client.open_sftp()
@@ -151,25 +151,22 @@ class NeSISetup:
             self._lander_client.close()
 
     def _auth_handler(self, title, instructions, prompt_list):
-        """auth handler that returns first and second factors for NeSI"""
+        """auth handler that authenticates with NeSI"""
         self._num_handler_requests += 1
-        logger.debug(f"auth_handler called with: {prompt_list}")
+        logger.debug(f"Entering auth_handler (count = {self._num_handler_requests})")
+        logger.debug(f"auth_handler called with:")
+        logger.debug(f"  title: {title}")
+        logger.debug(f"  instructions: {instructions}")
+        logger.debug(f"  prompt_list: {prompt_list}")
 
-        if self._num_handler_requests == 1:
-            return_val = [self._password]  # first prompt asks for password
-            logger.debug("returning first factor")
+        # fall back to interactive
+        if len(title.strip()):
+            print(title.strip())
+        if len(instructions.strip()):
+            print(instructions.strip())
+        return_val = [echo and input(prompt) or getpass.getpass(os.linesep + prompt) for (prompt, echo) in prompt_list]
 
-        elif self._num_handler_requests == 2:
-            return_val = [self._token]  # second asks for token
-            logger.debug("returning second factor")
-
-        else:
-            # fall back to interactive
-            if len(title.strip()):
-                print(title.strip())
-            if len(instructions.strip()):
-                print(instructions.strip())
-            return_val = [echo and input(prompt) or getpass.getpass(prompt) for (prompt, echo) in prompt_list]
+        logger.debug(f'Returning from auth handler: {return_val}')
 
         return return_val
 
@@ -248,10 +245,10 @@ class NeSISetup:
             print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
             print("                     Globus is used by RJM to transfer files to and from NeSI")
             print("")
-            print("NOTE: If you are asked for a linked identity with the NeSI Wellington OIDC Server please do one of the following:")
-            print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@wlg-dtn-oidc.nesi.org.nz'")
+            print("NOTE: If you are asked for a linked identity with NeSI Keycloak please do one of the following:")
+            print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@iam.nesi.org.nz'")
             print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
-            print("      - Otherwise, choose the option to 'Link an identity from NeSI Wellington OIDC Server'")
+            print("      - Otherwise, choose the option to 'Link an identity from NeSI Keycloak'")
             print("")
             print("="*120)
 
@@ -266,7 +263,7 @@ class NeSISetup:
             # make certain they can view files on NeSI
             print("="*120)
             print("Before proceeding, please open this link in a browser and, if required, authenticate")
-            print("with the NeSI Wellington OIDC Server (see instructions above):")
+            print("with NeSI Keycloak (see instructions above):")
             print()
             print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
             print("")
@@ -353,6 +350,10 @@ class NeSISetup:
         If restart is True, then restart the endpoint if it is already running
 
         """
+        if GLOBUS_COMPUTE_USE_MEP:
+            print("Skipping Globus Compute setup since we're using the NeSI multi user endpoint...")
+            return
+
         print("Setting up Globus Compute, please wait...")
 
         # check home directory permissions - there was a problem with the provisioner
@@ -361,14 +362,14 @@ class NeSISetup:
         self._check_home_permissions()
 
         # remove existing scrontab to avoid interference
-        self._remove_funcx_scrontab()
+        self._remove_globus_compute_scrontab()
 
         # upload bash scripts
-        self._upload_funcx_scripts()
+        self._upload_globus_compute_scripts()
 
-        # configure funcx endpoint
-        if not self.is_funcx_endpoint_configured():
-            logger.info(f"Configuring Globus Compute '{FUNCX_ENDPOINT_NAME}' endpoint")
+        # configure globus compute endpoint
+        if not self.is_globus_compute_endpoint_configured():
+            logger.info(f"Configuring Globus Compute '{GLOBUS_COMPUTE_ENDPOINT_NAME}' endpoint")
             print("Configuring Globus Compute, please wait...")
 
             # make sure the config directory exists
@@ -386,7 +387,7 @@ class NeSISetup:
             with self._sftp.file(self._globus_compute_config_file_new, 'w') as fh:
                 fh.write(ENDPOINT_CONFIG)
 
-            assert self.is_funcx_endpoint_configured(), "funcX endpoint configuration failed"
+            assert self.is_globus_compute_endpoint_configured(), "Globus Compute endpoint configuration failed"
             logger.info("Globus Compute endpoint configuration complete")
 
             restart = True
@@ -420,14 +421,14 @@ class NeSISetup:
         print("="*120)
 
         # store endpoint id
-        self._funcx_id = endpoint_id
+        self._globus_compute_endpoint_id = endpoint_id
 
         # install scrontab if not already installed
-        self._setup_funcx_scrontab()
+        self._setup_globus_compute_scrontab()
         logger.info("Installed scrontab entry to ensure Globus Compute endpoint keeps running (run 'scrontab -l' on mahuika to view)")
         print("A scrontab entry has been added to periodically check the status of the Globus Compute endpoint and restart it if needed")
         print("On mahuika, run 'scrontab -l' to view it")
-        print("You may also notice two Slurm jobs have been created with names 'funcxcheck' and 'funcxrestart', please do not cancel them!")
+        print("You may also notice two Slurm jobs have been created with names 'globcompcheck' and 'globcomprestart', please do not cancel them!")
         print("="*120)
 
     def _globus_compute_endpoint_authentication(self):
@@ -482,9 +483,9 @@ class NeSISetup:
 
         return current_scrontab
 
-    def _remove_funcx_scrontab(self):
+    def _remove_globus_compute_scrontab(self):
         """
-        Remove existing funcx scrontab entry
+        Remove existing globus compute scrontab entry
 
         """
         print("Removing existing scrontab to avoid interference, please wait...")
@@ -542,15 +543,15 @@ class NeSISetup:
             status, stdout, stderr = self.run_command(f"dos2unix {remote_path}", profile=False)
             assert status == 0, f"Failed to convert convert file to unix format: {stdout} {stderr}"
 
-    def _upload_funcx_scripts(self):
+    def _upload_globus_compute_scripts(self):
         """
-        Upload the bash script and functions for interacting with funcx
+        Upload the bash script and functions for interacting with Globus Compute
 
         """
-        print("Uploading funcx scripts, please wait...")
+        print("Uploading Globus Compute helper scripts, please wait...")
 
         # write script to NeSI
-        with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi.sh') as p:
+        with importlib.resources.path('rjm.setup', 'globus-compute-endpoint-persist-nesi.sh') as p:
             # upload the script to NeSI
             script_path = self._script_path
             assert os.path.exists(p), "Problem finding shell script resource ({p})"
@@ -559,7 +560,7 @@ class NeSISetup:
         logger.debug(f"Uploaded file to: {script_path}")
 
         # write functions file to NeSI
-        with importlib.resources.path('rjm.setup', 'funcx-endpoint-persist-nesi-functions.sh') as p:
+        with importlib.resources.path('rjm.setup', 'globus-compute-endpoint-persist-nesi-functions.sh') as p:
             # upload the script to NeSI
             script_path = self._functions_path
             assert os.path.exists(p), "Problem finding shell script resource ({p})"
@@ -567,12 +568,12 @@ class NeSISetup:
         assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
         logger.debug(f"Uploaded file to: {script_path}")
 
-    def _setup_funcx_scrontab(self):
+    def _setup_globus_compute_scrontab(self):
         """
-        Create a scrontab job for keeping funcx endpoint running
+        Create a scrontab job for keeping globus compute endpoint running
 
         """
-        print("Setting up funcX scrontab entry, please wait...")
+        print("Setting up Globus Compute scrontab entry, please wait...")
 
         # retrieve current scrontab
         current_scrontab = self._retrieve_current_scrontab()
@@ -585,13 +586,13 @@ class NeSISetup:
             scrontab_lines.append("")  # insert space if there were lines before
         scrontab_lines.append(SCRON_SECTION_START)
         scrontab_lines.append("#SCRON --time=05:00")
-        scrontab_lines.append("#SCRON --job-name=funcxpersist")
+        scrontab_lines.append("#SCRON --job-name=globcomppersist")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
         scrontab_lines.append(f"30 0-14,16-23 * * * {self._script_path} >> {self._persist_log_path} 2>&1")  # times are in UTC
         scrontab_lines.append("")
         scrontab_lines.append("#SCRON --time=05:00")
-        scrontab_lines.append("#SCRON --job-name=funcxrestart")
+        scrontab_lines.append("#SCRON --job-name=globcomprestart")
         scrontab_lines.append(f"#SCRON --account={self._account}")
         scrontab_lines.append("#SCRON --mem=128")
         scrontab_lines.append(f"30 15 * * * env ENDPOINT_RESTART=1 {self._script_path} >> {self._persist_log_path} 2>&1")  # times are in UTC
@@ -625,12 +626,6 @@ class NeSISetup:
 
         return exists
 
-    def get_funcx_status(self):
-        """Checks whether funcx is authorised and the default endpoint is configured and running"""
-        # assume it is configured if the credentials and default endpoint files exist
-        # or run status and see if we can tell from that
-        # first test if funcx
-
     def is_globus_compute_endpoint_authenticated(self):
         """
         Check whether the globus compute endpoint is authenticated
@@ -638,7 +633,7 @@ class NeSISetup:
         """
         print("Checking if Globus Compute endpoint is authenticated, please wait...")
 
-        command = f"module load {FUNCX_MODULE} && globus-compute-endpoint whoami"
+        command = f"module load {GLOBUS_COMPUTE_MODULE} && globus-compute-endpoint whoami"
         status, output, error = self.run_command(command)
         # failure should look like: "Error: Unable to retrieve user information. Please log in again."
         if status or "Error" in output or "Unable to retrieve user information" in output:
@@ -661,9 +656,9 @@ class NeSISetup:
 
         return match
 
-    def is_funcx_endpoint_configured(self):
+    def is_globus_compute_endpoint_configured(self):
         """
-        Check whether the funcx default endpoint is configured already
+        Check whether the globus compute endpoint is configured already
 
         """
         # test if default endpoint config exists, if so, we assume it is configured

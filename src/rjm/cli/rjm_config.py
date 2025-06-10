@@ -1,12 +1,11 @@
 """
-This is an interactive script to set up Globus and funcX on NeSI for use with RJM. It will create a new Globus guest collection
-(shared directory) on NeSI and check whether the user already has a funcX endpoint running on NeSI. If a funcX endpoint is
-not already running, one will be created and started on NeSI. If an existing funcX endpoint is found to be running, it will
-not be restarted. Finally, all configuration values from the above steps will be written to the RJM config file on the local
+This is an interactive script to set up Globus Transfer and Globus Compute on NeSI for use with RJM. It will create a new Globus guest collection
+(shared directory) on NeSI and will configure RJM to use the Globus Compute endpoint run by NeSI.
+Finally, all configuration values will be written to the RJM config file on the local
 machine and the authentication steps will be run.
 
-While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
-will need to use a web browser to carry out the Globus authentication as required.
+While running this script, you will need to enter your NeSI username and your NeSI project code and
+will need to use a web browser to carry out NeSI and Globus authentication as required.
 
 """
 import os
@@ -15,8 +14,6 @@ import copy
 import argparse
 import logging
 import getpass
-
-import pwinput
 
 from rjm import utils
 from rjm import config as config_helper
@@ -73,8 +70,8 @@ def nesi_setup():
     logger.info(f"Running rjm_config v{__version__}")
 
     print("="*120)
-    print("This is an interactive script to setup RJM for accessing NeSI")
-    print("You will be required to enter information along the way, including NeSI credentials and to")
+    print("This is an interactive script to configure RJM for accessing NeSI")
+    print("You will be required to enter information along the way, including opening a link to enter your NeSI credentials and to")
     print("authenticate with Globus in a browser when asked to do so")
     print("="*120)
     print("At times a browser window will be automatically opened and you will be asked to authenticate")
@@ -83,25 +80,20 @@ def nesi_setup():
     print("="*120)
     print("It is quite normal for there to be gaps of up to a few minutes between output, as the setup is")
     print("happening in the background.")
-    print("="*120)
-    print("Please be prepared to enter you NeSI password and second factor below")
-    print("Also, please ensure the second factor has at least 5 seconds remaining before it refreshes")
     print()
 
     # get extra info from user
     username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
     account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
-    password = pwinput.pwinput(prompt="Enter NeSI Login Password (First Factor): ")
-    token = input("Enter NeSI Authenticator Code (Second Factor with at least 5s before it refreshes): ")
     print("="*120)
 
     # create the setup object
-    nesi = NeSISetup(username, password, token, account)
+    nesi = NeSISetup(username, account)
 
     # do the globus setup first because it is more interactive
     nesi.setup_globus()
 
-    # do the funcx setup
+    # do the globus compute setup
     nesi.setup_globus_compute(restart=True, reauthenticate=args.reauth)
 
     # write values to config file
@@ -109,7 +101,7 @@ def nesi_setup():
 
     # get config values
     globus_ep, globus_path = nesi.get_globus_config()
-    funcx_ep = nesi.get_funcx_config()
+    funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults
     done_globus_ep = False

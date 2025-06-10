@@ -6,5 +6,5 @@
 #SBATCH --mem-per-cpu=250
 #SBATCH --ntasks=4
 
-module load NONMEM/7.5.0
+module load NONMEM/7.5.1-iimpi-2022a
 bash nmgrid.sh
