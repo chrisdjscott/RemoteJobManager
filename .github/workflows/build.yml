@@ -66,9 +66,6 @@ jobs:
       - name: Build rjm_config
         run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_config.py
         working-directory: ./extra/pyinstaller
-      - name: Build rjm_restart
-        run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_restart.py
-        working-directory: ./extra/pyinstaller
       - name: Build rjm_health_check
         run: pyinstaller --additional-hooks-dir=. -F ../../src/rjm/cli/rjm_health_check.py
         working-directory: ./extra/pyinstaller
@@ -91,8 +88,8 @@ jobs:
       - name: Display RJM version
         run: dist/rjm_batch_submit.exe --version
         working-directory: ./extra/pyinstaller
-      - name: Check pyinstaller build rjm_restart help
-        run: dist/rjm_restart.exe --help
+      - name: Check pyinstaller build rjm_config help
+        run: dist/rjm_config.exe --help
         working-directory: ./extra/pyinstaller
 
       # archive the binaries
