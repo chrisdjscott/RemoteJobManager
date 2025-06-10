@@ -1,9 +1,12 @@
 """
-This is an interactive script that will restart the funcX endpoint running on NeSI. Sometimes the endpoint gets into a
+This is a legacy script that is no longer required as we move to using a Multi-User endpoint on NeSI. You can still run it but
+it won't do anything.
+
+This is an interactive script that will restart your Globus Compute endpoint running on NeSI. Sometimes the endpoint gets into a
 bad state due to network, file system, etc issues on NeSI and this script will attempt to fix it.
 
-While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
-will need to use a web browser to carry out the Globus authentication as required.
+While running this script, you will need to enter your NeSI username and your NeSI project code and
+will need to use a web browser to carry out NeSI and Globus authentication as required.
 
 """
 import os
@@ -23,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def make_parser():
     """Return ArgumentParser"""
-    parser = argparse.ArgumentParser(description="Restart funcX on NeSI for use with RJM")
+    parser = argparse.ArgumentParser(description="Restart Globus Compute on NeSI for use with RJM")
     parser.add_argument('-l', '--logfile', help="logfile. if not specified, all messages will be printed to the terminal.")
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
@@ -56,7 +59,7 @@ def nesi_setup():
     logger.info(f"Running rjm_restart v{__version__}")
 
     print("="*120)
-    print("This is an interactive script to restart funcX on NeSI for use with RJM")
+    print("This is an interactive script to restart Globus Compute on NeSI for use with RJM")
     print("You will be required to enter information along the way, including opening a link to enter your NeSI credentials and to")
     print("authenticate with Globus in a browser when asked to do so")
     print("="*120)

@@ -1,12 +1,11 @@
 """
-This is an interactive script to set up Globus and funcX on NeSI for use with RJM. It will create a new Globus guest collection
-(shared directory) on NeSI and check whether the user already has a funcX endpoint running on NeSI. If a funcX endpoint is
-not already running, one will be created and started on NeSI. If an existing funcX endpoint is found to be running, it will
-not be restarted. Finally, all configuration values from the above steps will be written to the RJM config file on the local
+This is an interactive script to set up Globus Transfer and Globus Compute on NeSI for use with RJM. It will create a new Globus guest collection
+(shared directory) on NeSI and will configure RJM to use the Globus Compute endpoint run by NeSI.
+Finally, all configuration values will be written to the RJM config file on the local
 machine and the authentication steps will be run.
 
-While running this script, you will need to enter your NeSI username, password and second factor, your NeSI project code and
-will need to use a web browser to carry out the Globus authentication as required.
+While running this script, you will need to enter your NeSI username and your NeSI project code and
+will need to use a web browser to carry out NeSI and Globus authentication as required.
 
 """
 import os
@@ -94,7 +93,7 @@ def nesi_setup():
     # do the globus setup first because it is more interactive
     nesi.setup_globus()
 
-    # do the globus copmute setup
+    # do the globus compute setup
     nesi.setup_globus_compute(restart=True, reauthenticate=args.reauth)
 
     # write values to config file

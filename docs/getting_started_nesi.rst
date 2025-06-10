@@ -32,7 +32,7 @@ In order to proceed with the setup you will need the following:
 * Globus account (https://app.globus.org/)
 
   - You can usually sign up with your institutional credentials (e.g.
-    University of Auckland) for convenience but it is not essential
+    *The University of Auckland*) for convenience but it is not essential
 
 **Note:** during the setup you may be asked to authenticate multiple times and
 in some cases a browser window may be opened automatically for you to
@@ -43,11 +43,11 @@ when running the setup script.
 Linking Globus and NeSI accounts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You may be asked for a linked identity with the *NeSI Wellington OIDC Server*.
+You may be asked for a linked identity with *NeSI Keycloak*.
 If you already have a linked identity it should appear in the list like
-*<username>@wlg-dtn-oidc.nesi.org.nz* (where *<username>* is your NeSI username).
+*<username>@iam.nesi.org.nz* (where *<username>* is your NeSI username).
 Otherwise, you can follow the instructions to *Link an identity from NeSI
-Wellington OIDC Server*.
+Keycloak*.
 
 Run the NeSI setup script (once per machine)
 --------------------------------------------
@@ -55,12 +55,9 @@ Run the NeSI setup script (once per machine)
 Running the NeSI setup script with no arguments (:code:`rjm_config`) will
 do the following:
 
-* configure and start a "funcX endpoint" on NeSI, which RJM will use to execute
-  commands on NeSI
-* setup a periodic task (via scrontab) to check that the funcX endpoint is
-  running and restart it if it has stopped
 * create a "Globus Guest Collection" in your NeSI nobackup directory, which will
   be used to transfer files to and from NeSI
+* set the NeSI Globus Compute Multi-User endpoint id
 * write configutation values from the above steps into the RJM config file on
   your local machine
 * obtain the required authentication tokens so that you can start using RJM
@@ -68,12 +65,12 @@ do the following:
   reauthenticate on the same machine)
 
 When you run the setup script you will need to input values and authenticate
-multiple times, which can't be avoided at this time unfortunately. In some cases
+multiple times, which can't be avoided. In some cases
 a browser window will open where you will need to do the authentication, in other
 cases you will enter details directly at the terminal. You will
 need to authenticate with NeSI (first and sector factor) and with Globus, which
-can usually be done using your institutional credentials, e.g. University of
-Auckland.
+can usually be done using your institutional credentials, e.g. *The University of
+Auckland*.
 
 **Note:** you only need to run this script once per machine.
 

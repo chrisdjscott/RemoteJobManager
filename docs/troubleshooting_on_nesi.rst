@@ -11,23 +11,7 @@ output that can be useful for debugging):
 
    rjm_health_check -ll debug
 
-If this command fails, a good first step is to try resetting your funcX endpoint on NeSI, which can
-sometimes get into a bad state, particularly if there was a network issue on NeSI or one of the login
-nodes went down:
+There is no longer any need to run :code:`rjm_restart` as we are now using the NeSI managed Globus Compute endpoint.
 
-.. code-block:: bash
-
-   rjm_restart -ll debug
-
-After running this command, try the :code:`rjm_health_check` program. If it still doesn't work, there is likely to be a
-bigger issue, please contact `NeSI support <https://support.nesi.org.nz/hc/en-gb/requests/new>`_ with the error message
-and mention you are using Globus, funcX and the RemoteJobManager tool.
-
-Common errors
--------------
-
- 
-
-
-
-
+If you encounter problems, please contact [NeSI Support](mailto:support@nesi.org.nz) and mention that you are using
+Globus Transfer and Compute via the RemoteJobManager tool. You could also include the output from :code:`rjm_health_check -ll debug`.
