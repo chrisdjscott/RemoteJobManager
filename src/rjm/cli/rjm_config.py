@@ -68,17 +68,24 @@ def nesi_setup():
     logger = logging.getLogger(__name__)
     logger.info(f"Running rjm_config v{__version__}")
 
+    print()
     print("="*120)
-    print("This is an interactive script to configure RJM for accessing NeSI")
-    print("You will be required to enter information along the way, including opening a link to enter your NeSI credentials and to")
-    print("authenticate with Globus in a browser when asked to do so")
+    print()
+    print("This is an interactive script to configure RJM for accessing NeSI. "
+          "You will be required to enter information along the way, including your NeSI username and project code.")
+    print()
     print("="*120)
-    print("At times a browser window will be automatically opened and you will be asked to authenticate")
-    print("and allow RJM to have access. Please ensure the default browser on your system is set to a modern")
-    print("and reasonably up to date browser.")
+    print()
+    print("At times either a browser window will be automatically opened, or you will be asked to copy a link and open it "
+          "in a browser, where you will be asked to authenticate and allow RJM to have access. "
+          "Please ensure the default browser on your system is set to a modern and reasonably up to date browser.")
+    print()
     print("="*120)
-    print("It is quite normal for there to be gaps of up to a few minutes between output, as the setup is")
-    print("happening in the background.")
+    print()
+    print("In some situations a new link will be opened in your browser immediately after you authenticated the last one, "
+          "which can be easy to miss, so if it looks like nothing is happening, please check your browser window for a pending authentication.")
+    print()
+    print("="*120)
     print()
 
     # get extra info from user
