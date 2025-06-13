@@ -1,49 +1,23 @@
 
 import os
-import sys
-import stat
-import time
+import uuid
 import logging
-import getpass
 import tempfile
-import importlib.resources
 
-import paramiko
-from globus_sdk import GCSClient
+import globus_sdk
+from globus_sdk import GCSClient, TransferClient, DeleteData
 from globus_sdk.services.gcs.data import GuestCollectionDocument
-from globus_compute_sdk.sdk.login_manager import LoginManager as GlobusComputeLoginManager
+from globus_sdk.scopes import TransferScopes
 
 from rjm import utils
 
 
 logger = logging.getLogger(__name__)
 
-GATEWAY = "lander.hpc.nesi.org.nz"
-LOGIN_NODE = "login.hpc.nesi.org.nz"
-GLOBUS_COMPUTE_MODULE = "globus-compute-endpoint/3.7.0-foss-2023a-Python-3.11.6"
-GLOBUS_COMPUTE_ENDPOINT_NAME = "rjm"
 GLOBUS_NESI_COLLECTION = '763d50ee-e814-4080-878b-6a8be5cf7570'
 GLOBUS_NESI_ENDPOINT = 'd8223624-a701-41b0-859b-e88d4dd4b4d8'
 GLOBUS_NESI_GCS_ADDRESS = "b09844.75bc.data.globus.org"
 GLOBUS_COMPUTE_NESI_ENDPOINT = "63c0b682-43d1-4b97-bf23-6a676dfdd8bd"
-GLOBUS_COMPUTE_USE_MEP = True
-NESI_PERSIST_SCRIPT_PATH = "/home/{username}/.globus-compute-endpoint-persist-nesi.sh"
-NESI_PERSIST_FUNCTIONS_PATH = "/home/{username}/.globus-compute-endpoint-persist-nesi-functions.sh"
-NESI_PERSIST_LOG_PATH = "/home/{username}/.globus-compute-endpoint-persist-nesi.log"
-NESI_STORAGE_DB_PATH = "/home/{username}/.globus_compute/storage.db"
-SCRON_SECTION_START = "# BEGIN RJM AUTOMATICALLY ADDED SECTION"
-SCRON_SECTION_END = "# END RJM AUTOMATICALLY ADDED SECTION"
-ENDPOINT_CONFIG = """display_name: RJM Endpoint
-engine:
-  type: GlobusComputeEngine
-  max_retries_on_system_failure: 2
-  max_workers_per_node: 8
-  provider:
-    type: LocalProvider
-    init_blocks: 0
-    max_blocks: 1
-    min_blocks: 0
-"""
 
 
 class NeSISetup:
@@ -59,156 +33,73 @@ class NeSISetup:
     def __init__(self, username, account):
         self._username = username
         self._account = account
-        self._num_handler_requests = 0
-        self._client = None
-        self._sftp = None
-        self._lander_client = None
 
         # initialise values we are setting up
-        self._globus_compute_endpoint_id = None  # globus compute endpoint id
         self._globus_id = None  # globus endpoint id
         self._globus_path = None  # path to globus share
 
-        # globus compute file locations
-        self._globus_compute_endpoint_dir = f"/home/{self._username}/.globus_compute/{GLOBUS_COMPUTE_ENDPOINT_NAME}"
-        self._globus_compute_config_file = f"/home/{self._username}/.globus_compute/{GLOBUS_COMPUTE_ENDPOINT_NAME}/config.py"
-        self._globus_compute_config_file_new = f"/home/{self._username}/.globus_compute/{GLOBUS_COMPUTE_ENDPOINT_NAME}/config.yaml"
-
-        # functions file path
-        self._script_path = NESI_PERSIST_SCRIPT_PATH.format(username=self._username)
-        self._functions_path = NESI_PERSIST_FUNCTIONS_PATH.format(username=self._username)
-        self._persist_log_path = NESI_PERSIST_LOG_PATH.format(username=self._username)
-        self._storage_db_path = NESI_STORAGE_DB_PATH.format(username=self._username)
-
-        self._connect()
-
     def get_globus_compute_config(self):
         """Return globus compute config values"""
-        if GLOBUS_COMPUTE_USE_MEP:
-            endpoint_id = GLOBUS_COMPUTE_NESI_ENDPOINT
-        else:
-            endpoint_id = self._globus_compute_endpoint_id
+        return GLOBUS_COMPUTE_NESI_ENDPOINT
 
-        return endpoint_id
-
-    def get_globus_config(self):
+    def get_globus_transfer_config(self):
         return self._globus_id, self._globus_path
 
-    def _connect(self):
-        # create SSH client for lander
-        print("Connecting to NeSI, please wait...")
-        logger.info(f"Connecting to {LOGIN_NODE} via {GATEWAY} as {self._username}")
-        self._lander_client = paramiko.SSHClient()
-        self._lander_client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    def _handle_globus_auth(self, token_file, request_scopes, authoriser_scopes, by_scopes=True):
+        """Login to globus and return authoriser"""
+        print("="*120)
+        print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
+        print("                     Globus is used by RJM to transfer files to and from NeSI")
+        print("")
+        print("NOTE: If you are asked for a linked identity with NeSI Keycloak please do one of the following:")
+        print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@iam.nesi.org.nz'")
+        print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
+        print("      - Otherwise, choose the option to 'Link an identity from NeSI Keycloak'")
+        print("")
+        print("="*120)
 
-        # try to connect to setup transport etc
-        try:
-            self._lander_client.connect(GATEWAY, username=self._username)
-        except paramiko.ssh_exception.SSHException:
-            pass
+        # globus auth
+        globus_cli = utils.handle_globus_auth(
+            request_scopes,
+            token_file=token_file,
+        )
+
+        if by_scopes:
+            authorisers = globus_cli.get_authorizers_by_scope(requested_scopes=authoriser_scopes)
         else:
-            # expected to fail with 2-factor
-            raise RuntimeError("Expected initial connection attempt to fail but it did not")
+            authorisers = globus_cli.get_authorizers(requested_scopes=authoriser_scopes)
 
-        # now get the transport and run auth_interactive
+        return authorisers
+
+    def _confirm_remote_write_permissions(self, transfer_client: TransferClient, path: str):
+        """Confirms write access to the remote directory."""
+        # create a temporary directory in the remote directory and then delete it
+        tmp_path = f"{path}/testwriteperms.{str(uuid.uuid4())}"
         try:
-            self._lander_client.get_transport().auth_interactive(username=self._username, handler=self._auth_handler)
-        except paramiko.ssh_exception.AuthenticationException as exc:
-            logger.error(repr(exc))
-            sys.stderr.write("Authentication error: please check your NeSI credentials and try again!\n")
-            sys.exit(1)
+            # create the directory
+            logger.debug(f"Creating remote dir to test write permissions: {tmp_path}")
+            transfer_client.operation_mkdir(GLOBUS_NESI_COLLECTION, path=tmp_path)
 
-        # run command
-        stdin, stdout, stderr = self._lander_client.exec_command("echo $HOSTNAME")
-        logger.debug(f"Hostname after first connect is {stdout.read().strip().decode('utf-8')}")
+            # delete the tmp directory
+            delete_data = DeleteData(transfer_client, GLOBUS_NESI_COLLECTION, recursive=True, notify_on_succeeded=False)
+            delete_data.add_item(tmp_path)
+            transfer_client.submit_delete(delete_data)
 
-        # open channel to lander
-        logger.debug("Opening tunnel from lander to login node")
-        local_addr = (GATEWAY, 22)
-        dest_addr = (LOGIN_NODE, 22)
-        self._proxy = self._lander_client.get_transport().open_channel('direct-tcpip', dest_addr, local_addr)
+        except Exception as e:
+            logger.error(f"Failed to confirm write permissions on remote directory: {e}")
 
-        # connect to login node
-        logger.debug("Connecting to login node through tunnel")
-        self._client = paramiko.SSHClient()
-        self._client.set_missing_host_key_policy(paramiko.AutoAddPolicy)
-        self._client.connect(GATEWAY, username=self._username, sock=self._proxy)
+        logger.debug("Remote write permissions confirmed")
 
-        # create an sftp client too
-        self._sftp = self._client.open_sftp()
-
-        # test run command
-        status, stdout, stderr = self.run_command("echo $HOSTNAME", profile=False)
-        logger.info(f"Successfully opened connection to '{stdout}'")
-
-    def __del__(self):
-        # close connection
-        if self._client is not None:
-            self._client.close()
-        if self._sftp is not None:
-            self._sftp.close()
-        if self._lander_client is not None:
-            self._lander_client.close()
-
-    def _auth_handler(self, title, instructions, prompt_list):
-        """auth handler that authenticates with NeSI"""
-        self._num_handler_requests += 1
-        logger.debug(f"Entering auth_handler (count = {self._num_handler_requests})")
-        logger.debug(f"auth_handler called with:")
-        logger.debug(f"  title: {title}")
-        logger.debug(f"  instructions: {instructions}")
-        logger.debug(f"  prompt_list: {prompt_list}")
-
-        # fall back to interactive
-        if len(title.strip()):
-            print(title.strip())
-        if len(instructions.strip()):
-            print(instructions.strip())
-        return_val = [echo and input(prompt) or getpass.getpass(os.linesep + prompt) for (prompt, echo) in prompt_list]
-
-        logger.debug(f'Returning from auth handler: {return_val}')
-
-        return return_val
-
-    def run_command(self, command, input_text=None, profile=True):
+    def setup_globus_transfer(self):
         """
-        Execute command on NeSI and return stdout and stderr.
-
-        Ensure /etc/profile is sourced prior to running the command.
-
-        If input_text is specified, write that to stdin
-
-        If profile is specified, source /etc/profile before running the command
-
-        """
-        if profile:
-            full_command = f"source /etc/profile && {command}"
-        else:
-            full_command = command
-        logger.debug(f"Running command: '{full_command}'")
-        stdin, stdout, stderr = self._client.exec_command(full_command)
-
-        if input_text is not None:
-            stdin.write(input_text)
-            stdin.flush()
-            stdin.channel.shutdown_write()  # send EOF
-
-        output = stdout.read().decode('utf-8').strip()
-        error = stderr.read().decode('utf-8').strip()
-        status = stdout.channel.recv_exit_status()
-
-        return status, output, error
-
-    def setup_globus(self):
-        """
-        Sets up globus:
+        Sets up globus transfer:
 
         1. Create a directory for the guest collection
         2. Create a guest collection to share the directory
         3. Report back the endpoint id and url for managing the new guest collection
 
         """
-        print("Setting up Globus, please wait...")
+        print("Setting up Globus Transfer, please wait...")
 
         # select directory for sharing
         guest_collection_dir = f"/nesi/nobackup/{self._account}/{self._username}/rjm-jobs"
@@ -223,58 +114,60 @@ class NeSISetup:
         logger.info(f"Guest collection directory: {guest_collection_dir}")
         print("Continuing, please wait...")
 
-        # create the directory if it doesn't exist
-        if self._remote_path_exists(guest_collection_dir):
-            # confirm have write access to the directory
-            write_access = self._remote_path_writeable(guest_collection_dir)
-            logger.debug(f"Testing for write access: {write_access}")
-            if not write_access:
-                raise ValueError(f"User does not have write access to: {guest_collection_dir}")
-            logger.debug("Guest collection directory already exists")
-        else:
-            logger.debug("Creating guest collection directory...")
-            self._remote_dir_create(guest_collection_dir)
-
-        # request scope for creating collection
+        # request globus scopes for creating collection and transfer client
         endpoint_scope = GCSClient.get_gcs_endpoint_scopes(GLOBUS_NESI_ENDPOINT).manage_collections
         collection_scope = GCSClient.get_gcs_collection_scopes(GLOBUS_NESI_COLLECTION).data_access
-        required_scope = f"{endpoint_scope}[*{collection_scope}]"
-        logger.debug(f"Requesting scope: {required_scope}")
+        create_collection_scope = f"{endpoint_scope}[*{collection_scope}]"
+        logger.debug(f"Create collection scope: {create_collection_scope}")
+        logger.debug(f"Transfer scope: {TransferScopes.all}")
+        required_scopes = [create_collection_scope, TransferScopes.all]
+        authoriser_scopes = [endpoint_scope, TransferScopes.all]
         with tempfile.TemporaryDirectory() as tmpdir:
-            print("="*120)
-            print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
-            print("                     Globus is used by RJM to transfer files to and from NeSI")
-            print("")
-            print("NOTE: If you are asked for a linked identity with NeSI Keycloak please do one of the following:")
-            print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@iam.nesi.org.nz'")
-            print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
-            print("      - Otherwise, choose the option to 'Link an identity from NeSI Keycloak'")
-            print("")
-            print("="*120)
-
-            # globus auth
             tmp_token_file = os.path.join(tmpdir, "tokens.json")
-            globus_cli = utils.handle_globus_auth(
-                [required_scope],
-                token_file=tmp_token_file,
-            )
-            authorisers = globus_cli.get_authorizers_by_scope(endpoint_scope)
 
-            # make certain they can view files on NeSI
-            print("="*120)
-            print("Before proceeding, please open this link in a browser and, if required, authenticate")
-            print("with NeSI Keycloak (see instructions above):")
-            print()
-            print(f"    https://app.globus.org/file-manager?origin_id={GLOBUS_NESI_COLLECTION}")
-            print("")
-            print("Please confirm you can see your files on NeSI via the above link before continuing")
-            print("")
-            input("Once you can access your NeSI files at the above link, press enter to continue... ")
-            print()
-            print("Continuing, please wait...")
+            # requesting the scopes for creating the guest collection and also for transfer
+            authorisers = self._handle_globus_auth(tmp_token_file, required_scopes, authoriser_scopes)
+
+            # store for use later
+            gcs_authoriser = authorisers[endpoint_scope]
+
+            # setting up the transfer client with consents if required
+            print("Testing access to NeSI using Globus, please wait... (note: this may require an additional authorisation step)")
+            try:
+                transfer_client = TransferClient(authorizer=authorisers[TransferScopes.all])
+                logger.debug(f"Attempting to list NeSI filesystem: {guest_collection_dir}")
+                response = transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
+
+            except globus_sdk.TransferAPIError as err:
+                if not err.info.consent_required:
+                    raise
+
+                # request the new scopes for the consent
+                consent_required_scopes = err.info.consent_required.required_scopes
+                logger.debug(f"Consent required scopes: {consent_required_scopes}")
+                authorisers = self._handle_globus_auth(tmp_token_file, consent_required_scopes, [TransferScopes.all], by_scopes=False)
+                transfer_client = TransferClient(authorizer=authorisers["transfer.api.globus.org"])
+                logger.debug(f"Attempting to list NeSI filesystem after consents: {guest_collection_dir}")
+                response = transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
+
+            # we should now have a working transfer client
+
+            # create the directory, if it succeeds all good, if it fails due to already existing we need to check access if ok eg by making a subdir (we could always do that to be safe)
+            print("Creating remote directory for transferring files to, please wait...")
+            logger.debug(f"Attempting to create remote directory: {guest_collection_dir}")
+            try:
+                response = transfer_client.operation_mkdir(GLOBUS_NESI_COLLECTION, path=guest_collection_dir)
+            except globus_sdk.TransferAPIError as err:
+                if err.code == "ExternalError.MkdirFailed.Exists":
+                    logger.debug("Directory already exists; confirming write access")
+                    self._confirm_remote_write_permissions(transfer_client, guest_collection_dir)
+                else:
+                    raise
+
+            print("Setting up the directory with Globus for RJM access, please wait...")
 
             # GCS client
-            client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=authorisers[endpoint_scope])
+            client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=gcs_authoriser)
 
             # user credentials
             cred = client.get("/user_credentials")
@@ -314,364 +207,3 @@ class NeSISetup:
         # also store the endpoint id and path
         self._globus_id = endpoint_id
         self._globus_path = guest_collection_dir
-
-    def _check_home_permissions(self):
-        """
-        Check home directory permissions - there was a problem with the provisioner
-        that resulted in some homes having group write permission which results in
-        passwordless ssh between login nodes not working
-
-        """
-        print("Checking for suitable home directory permissions on NeSI, please wait...")
-
-        s = self._sftp.stat(f"/home/{self._username}")
-        logger.debug(f"Home directory stat: {s}")
-        group_write = bool(s.st_mode & stat.S_IWGRP)
-        logger.debug(f"Group write permission on home (should be False): {group_write}")
-
-        if group_write:
-            print("WARNING: your home directory on NeSI has group write permissions")
-            print("         this was probably a mistake when your account was set up")
-            proceed = input('Enter "yes" to fix this now (it should not cause any issues): ').strip() == "yes"
-            if not proceed:
-                sys.exit("Cannot proceed with bad home directory permissions")
-
-            # remove group write from home directory
-            cmd = f"chmod g-w /home/{self._username}"
-            print(f'Fixing home directory permissions: "{cmd}"')
-            status, output, stderr = self.run_command(cmd, profile=False)
-            if status:
-                raise RuntimeError(f"Failed to fix home directory permissions:\n\n{output}\n\n{stderr}")
-
-    def setup_globus_compute(self, restart=True, reauthenticate=False):
-        """
-        Sets up the Globus Compute endpoint on NeSI.
-
-        If restart is True, then restart the endpoint if it is already running
-
-        """
-        if GLOBUS_COMPUTE_USE_MEP:
-            print("Skipping Globus Compute setup since we're using the NeSI multi user endpoint...")
-            return
-
-        print("Setting up Globus Compute, please wait...")
-
-        # check home directory permissions - there was a problem with the provisioner
-        #  that resulted in some homes having group write permission which results in
-        #  passwordless ssh between login nodes not working
-        self._check_home_permissions()
-
-        # remove existing scrontab to avoid interference
-        self._remove_globus_compute_scrontab()
-
-        # upload bash scripts
-        self._upload_globus_compute_scripts()
-
-        # configure globus compute endpoint
-        if not self.is_globus_compute_endpoint_configured():
-            logger.info(f"Configuring Globus Compute '{GLOBUS_COMPUTE_ENDPOINT_NAME}' endpoint")
-            print("Configuring Globus Compute, please wait...")
-
-            # make sure the config directory exists
-            logger.debug(f"Making sure endpoint config dir exists: {self._globus_compute_endpoint_dir}")
-            self._remote_dir_create(self._globus_compute_endpoint_dir)
-
-            # if it exists, delete the old config file
-            logger.debug("Deleting old config if it exists")
-            status, output, error = self.run_command(f"rm -f {self._globus_compute_config_file}", profile=False)
-            if status:
-                raise RuntimeError("Failed to delete old config if it exists")
-
-            # write the new config file
-            logger.debug(f"Writing endpoint config file to: {self._globus_compute_config_file_new}")
-            with self._sftp.file(self._globus_compute_config_file_new, 'w') as fh:
-                fh.write(ENDPOINT_CONFIG)
-
-            assert self.is_globus_compute_endpoint_configured(), "Globus Compute endpoint configuration failed"
-            logger.info("Globus Compute endpoint configuration complete")
-
-            restart = True
-
-        # reauthenticate
-        if reauthenticate or not self.is_globus_compute_endpoint_authenticated():
-            self._globus_compute_endpoint_authentication()
-
-        # run the bash script that will ensure one endpoint is running on NeSI
-        if restart:
-            print("Restarting the Globus Compute endpoint, please wait...")
-        else:
-            print("Ensuring the Globus Compute endpoint is running, please wait...")
-        cmd = f"export ENDPOINT_RESTART={'1' if restart else '0'} && {self._script_path}"
-        logger.debug(f'Running Globus Compute script: "{cmd}"')
-        status, stdout, stderr = self.run_command(cmd)
-        assert status == 0, f"Running Globus Compute script failed: {stdout} {stderr}"
-        logger.debug(f"Stdout:\n{stdout}")
-
-        # get the endpoint id
-        cmd = f"source {self._functions_path} && get_endpoint_id && echo ${{ENDPOINT_ID}}"
-        logger.debug(f"Getting endpoint id: '{cmd}'")
-        status, stdout, stderr = self.run_command(cmd)
-        assert status == 0, f"Getting endpoint id failed: {stdout} {stderr}"
-        endpoint_id = stdout.strip()
-        logger.debug(f"Got endpoint id: '{endpoint_id}'")
-
-        # report endpoint id for configuring rjm
-        print("="*120)
-        print(f"Globus Compute endpoint is running and has id: '{endpoint_id}'")
-        print("="*120)
-
-        # store endpoint id
-        self._globus_compute_endpoint_id = endpoint_id
-
-        # install scrontab if not already installed
-        self._setup_globus_compute_scrontab()
-        logger.info("Installed scrontab entry to ensure Globus Compute endpoint keeps running (run 'scrontab -l' on mahuika to view)")
-        print("A scrontab entry has been added to periodically check the status of the Globus Compute endpoint and restart it if needed")
-        print("On mahuika, run 'scrontab -l' to view it")
-        print("You may also notice two Slurm jobs have been created with names 'globcompcheck' and 'globcomprestart', please do not cancel them!")
-        print("="*120)
-
-    def _globus_compute_endpoint_authentication(self):
-        """
-        Set up authentication for the Globus Compute endpoint
-
-        Use the LoginManager from GlobusComputeSDK to create a 'storage.db' file
-        locally, which we then copy to the remote machine. Work in a temp dir locally.
-
-        """
-        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
-            # set environment variable so that globus compute writes tokens to tmp dir
-            logger.debug(f"Setting GLOBUS_COMPUTE_USER_DIR={tmpdir}")
-            os.environ["GLOBUS_COMPUTE_USER_DIR"] = tmpdir
-
-            try:
-                print("Authenticating Globus Compute Endpoint, please follow the instructions...")
-
-                # run the login flow
-                login_manager = GlobusComputeLoginManager()
-                login_manager.run_login_flow()
-
-                # check the file was created
-                auth_file = os.path.join(tmpdir, "storage.db")
-                if not os.path.exists(auth_file):
-                    print(f"ERROR NO FILE: {auth_file}")
-                    time.sleep(300)
-                    raise RuntimeError("Globus compute authentication failed, no 'storage.db' file found")
-
-                # copy the file onto NeSI
-                logger.debug(f"Uploading new credentials file to NeSI: {self._storage_db_path}")
-                self._upload_file(auth_file, self._storage_db_path, text=False)
-
-            finally:
-                # revert environment
-                del os.environ["GLOBUS_COMPUTE_USER_DIR"]
-
-    def _retrieve_current_scrontab(self):
-        """
-        Retrieve the current scrontab
-
-        """
-        status, stdout, stderr = self.run_command('scrontab -l')
-        if status != 0:
-            if "no crontab for" in stdout or "no crontab for" in stderr:
-                # blank scrontab
-                current_scrontab = ""
-            else:
-                raise RuntimeError(f"Failed to retrieve current scrontab contents: '{stdout}' '{stderr}'")
-        else:
-            current_scrontab = stdout
-
-        return current_scrontab
-
-    def _remove_globus_compute_scrontab(self):
-        """
-        Remove existing globus compute scrontab entry
-
-        """
-        print("Removing existing scrontab to avoid interference, please wait...")
-
-        current_scrontab = self._retrieve_current_scrontab()
-
-        # remove rjm section from current scrontab, if any
-        new_scrontab_lines = []
-        in_rjm_section = False
-        modified = False
-        for line in current_scrontab.splitlines():
-            if SCRON_SECTION_START in line:
-                in_rjm_section = True
-                logger.debug("Found beginning of rjm section in existing scrontab")
-                modified = True
-            elif in_rjm_section and SCRON_SECTION_END in line:
-                in_rjm_section = False
-                logger.debug("Found end of rjm section in existing scrontab")
-                modified = True
-            elif in_rjm_section:
-                logger.debug(f"Removing current rjm section ({line})")
-                modified = True
-            else:
-                new_scrontab_lines.append(line)
-
-        # write the new scrontab if changed
-        if modified:
-            new_scrontab_text = "\n".join(new_scrontab_lines)
-            self._write_new_scrontab(new_scrontab_text)
-
-    def _write_new_scrontab(self, scrontab_text):
-        """
-        Write the text to the scrontab
-
-        """
-        logger.debug(f"New scrontab content follows:\n{scrontab_text}")
-        status, stdout, stderr = self.run_command("scrontab -", input_text=scrontab_text)
-        assert status == 0, f"Setting scrontab failed: {stdout} {stderr}"
-
-    def _upload_file(self, local_path, remote_path, executable=False, text=True):
-        """
-        Upload the given file, optionally making it executable
-
-        """
-        logger.debug(f"Uploading file '{local_path}' to '{remote_path}'")
-        self._sftp.put(local_path, remote_path)
-
-        if executable:
-            # make sure the script is executable
-            status, stdout, stderr = self.run_command(f"chmod +x {remote_path}", profile=False)
-            assert status == 0, f"Failed to make file executable: {stdout} {stderr}"
-
-        if text:
-            # make sure it has unix line endings (if it is a text file)
-            status, stdout, stderr = self.run_command(f"dos2unix {remote_path}", profile=False)
-            assert status == 0, f"Failed to convert convert file to unix format: {stdout} {stderr}"
-
-    def _upload_globus_compute_scripts(self):
-        """
-        Upload the bash script and functions for interacting with Globus Compute
-
-        """
-        print("Uploading Globus Compute helper scripts, please wait...")
-
-        # write script to NeSI
-        with importlib.resources.path('rjm.setup', 'globus-compute-endpoint-persist-nesi.sh') as p:
-            # upload the script to NeSI
-            script_path = self._script_path
-            assert os.path.exists(p), "Problem finding shell script resource ({p})"
-            self._upload_file(p, script_path, executable=True)
-        assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
-        logger.debug(f"Uploaded file to: {script_path}")
-
-        # write functions file to NeSI
-        with importlib.resources.path('rjm.setup', 'globus-compute-endpoint-persist-nesi-functions.sh') as p:
-            # upload the script to NeSI
-            script_path = self._functions_path
-            assert os.path.exists(p), "Problem finding shell script resource ({p})"
-            self._upload_file(p, script_path, executable=False)
-        assert self._remote_path_exists(script_path), f"Failed to upload persist script: '{script_path}'"
-        logger.debug(f"Uploaded file to: {script_path}")
-
-    def _setup_globus_compute_scrontab(self):
-        """
-        Create a scrontab job for keeping globus compute endpoint running
-
-        """
-        print("Setting up Globus Compute scrontab entry, please wait...")
-
-        # retrieve current scrontab
-        current_scrontab = self._retrieve_current_scrontab()
-
-        # for storing new scrontab
-        scrontab_lines = current_scrontab.splitlines()
-
-        # add new rjm section (assume existing section was already removed)
-        if len(scrontab_lines) > 0 and len(scrontab_lines[-1].strip()) > 0:
-            scrontab_lines.append("")  # insert space if there were lines before
-        scrontab_lines.append(SCRON_SECTION_START)
-        scrontab_lines.append("#SCRON --time=05:00")
-        scrontab_lines.append("#SCRON --job-name=globcomppersist")
-        scrontab_lines.append(f"#SCRON --account={self._account}")
-        scrontab_lines.append("#SCRON --mem=128")
-        scrontab_lines.append(f"30 0-14,16-23 * * * {self._script_path} >> {self._persist_log_path} 2>&1")  # times are in UTC
-        scrontab_lines.append("")
-        scrontab_lines.append("#SCRON --time=05:00")
-        scrontab_lines.append("#SCRON --job-name=globcomprestart")
-        scrontab_lines.append(f"#SCRON --account={self._account}")
-        scrontab_lines.append("#SCRON --mem=128")
-        scrontab_lines.append(f"30 15 * * * env ENDPOINT_RESTART=1 {self._script_path} >> {self._persist_log_path} 2>&1")  # times are in UTC
-        scrontab_lines.append(SCRON_SECTION_END)
-        scrontab_lines.append("")  # end with a newline
-
-        # install new scrontab
-        new_scrontab_text = "\n".join(scrontab_lines)
-        self._write_new_scrontab(new_scrontab_text)
-
-    def _remote_dir_create(self, path):
-        """Create directory at the given path"""
-        status, stdout, stderr = self.run_command(f'mkdir -p "{path}"', profile=False)
-        assert status == 0, f"Creating '{path}' failed: {stdout} {stderr}"
-        if not self._remote_path_exists(path):
-            raise RuntimeError(f"Creating '{path}' failed: ({stdout}) ({stderr})")
-
-    def _remote_path_writeable(self, path):
-        """Return True if the path is writeable, otherwise False"""
-        status, _, _ = self.run_command(f'test -w "{path}"', profile=False)
-
-        return not status
-
-    def _remote_path_exists(self, path):
-        """Return True if the path exists on the remote, otherwise False"""
-        try:
-            self._sftp.stat(path)
-            exists = True
-        except FileNotFoundError:
-            exists = False
-
-        return exists
-
-    def is_globus_compute_endpoint_authenticated(self):
-        """
-        Check whether the globus compute endpoint is authenticated
-
-        """
-        print("Checking if Globus Compute endpoint is authenticated, please wait...")
-
-        command = f"module load {GLOBUS_COMPUTE_MODULE} && globus-compute-endpoint whoami"
-        status, output, error = self.run_command(command)
-        # failure should look like: "Error: Unable to retrieve user information. Please log in again."
-        if status or "Error" in output or "Unable to retrieve user information" in output:
-            logger.debug(f"Globus compute endpoint is not authenticated, output follows:\n{output}\n{error}\n")
-            authenticated = False
-        else:
-            logger.debug(f"Globus compute endpoint is authenticated:\n{output}")
-            authenticated = True
-
-        return authenticated
-
-    def string_in_remote_file(self, file_path, string_match):
-        """Return `True` if `string_match` exists in remote file `file_path`"""
-        command = f'grep "{string_match}" "{file_path}"'
-        status, output, error = self.run_command(command, profile=False)
-        if status:
-            match = False
-        else:
-            match = True
-
-        return match
-
-    def is_globus_compute_endpoint_configured(self):
-        """
-        Check whether the globus compute endpoint is configured already
-
-        """
-        # test if default endpoint config exists, if so, we assume it is configured
-        if self._remote_path_exists(self._globus_compute_config_file_new):
-            # test if the config refers to the deprecated HighThroughputEngine
-            if self.string_in_remote_file(self._globus_compute_config_file_new, "HighThroughputEngine"):
-                logger.debug("Globus Compute endpoint configuration is out of date (refers to HighThroughputEngine)")
-                configured = False
-            else:
-                logger.debug("Assuming Globus Compute endpoint is configured as config file exists")
-                configured = True
-        else:
-            logger.debug(f"Globus Compute config file does not exist: {self._globus_compute_config_file_new}")
-            configured = False
-
-        return configured

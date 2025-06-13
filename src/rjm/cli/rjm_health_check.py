@@ -73,7 +73,7 @@ def health_check():
         # use transferer to make a directory on the remote machine (tests funcx)
         prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}"
         print()
-        print("Testing creation of unique remote directory...")
+        print("Testing creation of unique remote directory (this could take up to a couple of minutes)...")
         rj.make_remote_directory(prefix=prefix, retries=args.retries)
         remote_dir = rj.get_remote_directory()
         print(f'Created remote directory: "{remote_dir}"')

@@ -32,7 +32,6 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
-    parser.add_argument('-r', '--reauth', action="store_true", help="Force reauthentication of globus-compute-endpoint")
     parser.add_argument('-w', '--where-config', action="store_true", help="Print location of the config file and exit")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
@@ -91,16 +90,13 @@ def nesi_setup():
     nesi = NeSISetup(username, account)
 
     # do the globus setup first because it is more interactive
-    nesi.setup_globus()
-
-    # do the globus compute setup
-    nesi.setup_globus_compute(restart=True, reauthenticate=args.reauth)
+    nesi.setup_globus_transfer()
 
     # write values to config file
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS_REQUIRED)
 
     # get config values
-    globus_ep, globus_path = nesi.get_globus_config()
+    globus_ep, globus_path = nesi.get_globus_transfer_config()
     funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults

@@ -22,7 +22,6 @@ dependencies = [
     "fair-research-login",
     "globus-compute-sdk==3.7.0",
     "globus-sdk",
-    "paramiko",
     "requests",
     "retry",
 ]
