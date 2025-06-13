@@ -23,5 +23,4 @@ rjm.cli
    rjm_batch_wait
    rjm_config
    rjm_health_check
-   rjm_restart
    tests
