@@ -1,5 +1,6 @@
 
 import os
+import time
 import uuid
 import logging
 import tempfile
@@ -126,13 +127,20 @@ class NeSISetup:
             tmp_token_file = os.path.join(tmpdir, "tokens.json")
 
             # requesting the scopes for creating the guest collection and also for transfer
+            print("You may now be asked to authenticate with Globus (a link might be opened in your browser automatically)...")
             authorisers = self._handle_globus_auth(tmp_token_file, required_scopes, authoriser_scopes)
+            print("Continuing, please wait...")
+
+            # insert a short sleep to give user time to notice if another link is opened automatically
+            time.sleep(10)
 
             # store for use later
             gcs_authoriser = authorisers[endpoint_scope]
 
             # setting up the transfer client with consents if required
-            print("Testing access to NeSI using Globus, please wait... (note: this may require an additional authorisation step)")
+            print("Testing access to NeSI using Globus, please wait...")
+            print("This step may require another authentication with Globus depending on how recently you did it last")
+            print("if so, a link might be opened in your browser automatically)...")
             try:
                 transfer_client = TransferClient(authorizer=authorisers[TransferScopes.all])
                 logger.debug(f"Attempting to list NeSI filesystem: {guest_collection_dir}")
