@@ -9,6 +9,7 @@ It will test that:
 
 """
 import os
+import logging
 import argparse
 from datetime import datetime
 import tempfile
@@ -61,7 +62,10 @@ def health_check():
     # setup logging
     utils.setup_logging(log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
 
+    logger = logging.getLogger(__name__)
+
     print(f"Running RJM health check v{__version__}...")
+    logger.debug(f"Running RJM health check v{__version__}...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # create remote job object
@@ -74,9 +78,11 @@ def health_check():
         prefix = f"health-check-{datetime.now().strftime('%Y%m%dT%H%M%S')}"
         print()
         print("Testing creation of unique remote directory (this could take up to a couple of minutes)...")
+        logger.debug("Testing creation of unique remote directory...")
         rj.make_remote_directory(prefix=prefix, retries=args.retries)
         remote_dir = rj.get_remote_directory()
         print(f'Created remote directory: "{remote_dir}"')
+        logger.debug(f'Created remote directory: "{remote_dir}"')
 
         # write file to local directory
         test_file_name = "test.txt"
@@ -87,21 +93,27 @@ def health_check():
         # upload that file
         print()
         print("Testing uploading a file...")
+        logger.debug("Testing uploading a file...")
         t.upload_files([test_file_local])  # this function always does retries
         print("Finished testing uploading a file")
+        logger.debug("Finished testing uploading a file")
 
         # use runner to check the directory and file exists (tests funcx)
         print()
         print("Using runner to check directory and file exist...")
+        logger.debug("Using runner to check directory and file exist...")
         run_function = r.run_function_with_retries if args.retries else r.run_function
         result = run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
         if result is None:
             print("Finished checking directory and file exist")
+            logger.debug("Finished checking directory and file exist")
         else:
+            logger.error(f"Error checking directory and file exist: {result}")
             raise RuntimeError(f"Error checking directory and file exist: {result}")
 
     print()
     print("If there were no errors above it looks like basic functionality is good")
+    logger.debug("If there were no errors above it looks like basic functionality is good")
     print()
 
 
