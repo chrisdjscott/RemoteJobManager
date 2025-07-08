@@ -19,7 +19,9 @@ def configobj():
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
-        "poll_interval": "1",
+        "poll_interval": "2",
+        "warmup_poll_interval": "1",
+        "warmup_duration": "3",
     }
     config["RETRY"] = {
         "delay": "1",

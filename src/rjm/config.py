@@ -44,6 +44,18 @@ CONFIG_OPTIONS_OPTIONAL = [  # default values must be strings
     },
     {
         "section": "SLURM",
+        "name": "warmup_poll_interval",
+        "default": "10",
+        "help": "Interval (in seconds) between checking whether the Slurm job has completed during the initial phase",
+    },
+    {
+        "section": "SLURM",
+        "name": "warmup_duration",
+        "default": "120",
+        "help": "Duration (in seconds) during which we apply the `warmup_poll_interval` before switching to `poll_interval`",
+    },
+    {
+        "section": "SLURM",
         "name": "poll_interval",
         "default": "60",
         "help": "Interval (in seconds) between checking whether the Slurm job has completed",

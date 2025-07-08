@@ -5,6 +5,7 @@ import configparser
 import pytest
 
 from rjm.runners import globus_compute_slurm_runner
+from rjm.runners.globus_compute_slurm_runner import MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION
 from rjm.errors import RemoteJobRunnerError
 
 
@@ -16,7 +17,9 @@ def configobj():
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
-        "poll_interval": "1",
+        "poll_interval": "2",
+        "warmup_poll_interval": "1",
+        "warmup_duration": "3",
     }
 
     return config
@@ -360,3 +363,34 @@ def test_check_slurm_job_statuses_missing(mocker):
     assert "56789" in status_dict
     assert status_dict["56789"] == "COMPLETED"
     assert "01234" not in status_dict
+
+
+@pytest.mark.parametrize("config_vals,user_vals,expected_vals", [
+    ([MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION], [None, None, None], [MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION]),
+    ([MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10], [None, None, None], [MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10]),
+    ([MIN_POLLING_INTERVAL-1, MIN_WARMUP_POLLING_INTERVAL-1, MAX_WARMUP_DURATION+1], [None, None, None], [MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION]),
+    ([MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION], [MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10], [MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10]),
+    ([MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10], [MIN_POLLING_INTERVAL-10, MIN_WARMUP_POLLING_INTERVAL-10, MAX_WARMUP_DURATION+10], [MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION]),
+])
+def test_get_poll_interval(config_vals, user_vals, expected_vals, mocker):
+    config = configparser.ConfigParser()
+    config["FUNCX"] = {
+        "remote_endpoint": "abcdefg",
+    }
+    config["SLURM"] = {
+        "slurm_script": "run.sl",
+        "poll_interval": str(config_vals[0]),
+        "warmup_poll_interval": str(config_vals[1]),
+        "warmup_duration": str(config_vals[2]),
+    }
+
+    mocker.patch('rjm.config.load_config', return_value=config)
+    runner = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
+
+    polling_interval, warmup_polling_interval, warmup_duration = runner.get_poll_interval(
+        user_vals[0], user_vals[1], user_vals[2]
+    )
+
+    assert polling_interval == expected_vals[0]
+    assert warmup_polling_interval == expected_vals[1]
+    assert warmup_duration == expected_vals[2]

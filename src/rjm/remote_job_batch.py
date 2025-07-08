@@ -169,7 +169,7 @@ class RemoteJobBatch:
 
         return unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs
 
-    def wait_and_download(self, polling_interval=None, min_polling_override=False):
+    def wait_and_download(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for jobs to complete and download once completed.
 
@@ -177,7 +177,9 @@ class RemoteJobBatch:
         logger.info(f"Waiting and downloading {len(self._remote_jobs)} jobs")
 
         # override polling interval from config file?
-        polling_interval = self._runner.get_poll_interval(polling_interval, min_polling_override=min_polling_override)
+        polling_interval, warmup_polling_interval, warmup_duration = self._runner.get_poll_interval(
+            polling_interval, warmup_polling_interval, warmup_duration
+        )
 
         # categorising remote_jobs
         unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs = self._categorise_jobs()

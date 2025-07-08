@@ -362,7 +362,7 @@ class RemoteJob:
                                            max_delay=self._retry_max_delay)
             self._save_state()
 
-    def run_wait(self, polling_interval=None, min_polling_override=False):
+    def run_wait(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """Wait for the processing to complete"""
         if self.run_completed():
             self._log(logging.INFO, "Run already completed")
@@ -375,7 +375,8 @@ class RemoteJob:
         else:
             self._log(logging.INFO, "Waiting for run to complete...")
             run_succeeded = retry_call(self._runner.wait, fkwargs={'polling_interval': polling_interval,
-                                                                   'min_polling_override': min_polling_override},
+                                                                   'warmup_polling_interval': warmup_polling_interval,
+                                                                   'warmup_duration': warmup_duration},
                                        tries=self._retry_tries, backoff=self._retry_backoff,
                                        delay=self._retry_delay, max_delay=self._retry_max_delay)
             self.set_run_completed(success=run_succeeded)
@@ -403,17 +404,17 @@ class RemoteJob:
         self.upload_files()
         self.run_start()
 
-    def wait_and_download(self, polling_interval=None, min_polling_override=False):
+    def wait_and_download(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for the run to complete and then download files.
 
         """
-        self.run_wait(polling_interval=polling_interval, min_polling_override=min_polling_override)
+        self.run_wait(polling_interval=polling_interval, warmup_polling_interval=warmup_polling_interval, warmup_duration=warmup_duration)
         self.download_files()
 
     def workflow(self):
         """do everything: upload, run, download"""
-        self._upload_and_start()
+        self.upload_and_start()
         self.wait_and_download()
 
     def get_transferer(self):
