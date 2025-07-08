@@ -79,6 +79,7 @@ def load_or_make_config(config_file=CONFIG_FILE_LOCATION):
     """Load the config file if it exists or create an empty config object"""
     try:
         config = load_config(config_file=config_file)
+        logger.debug(f"Loaded config from: {config_file}")
 
     except RemoteJobConfigError:
         if not os.path.isdir(os.path.dirname(CONFIG_FILE_LOCATION)):
@@ -86,6 +87,7 @@ def load_or_make_config(config_file=CONFIG_FILE_LOCATION):
 
         # create empty config object
         config = configparser.ConfigParser()
+        logger.debug("Created empty config object")
 
     return config
 
@@ -95,18 +97,29 @@ def _process_option(config, optd, ask=True):
     name = optd["name"]
     default = optd["default"]
     text = optd["help"]
+    logger.debug(f"Processing option: {section}:{name} ({text}) : {default}")
 
     # current value if any
     try:
         value = config[section][name]
+        logger.debug(f"Found existing config value: {value}")
+
+        # special case - we want to make the default the minimum
+        if section == "SLURM" and name == "poll_interval":
+            if value < default:
+                value = default
+                logger.debug(f"Forcing default minimum value for SLURM:poll_interval: {value}")
+
     except KeyError:
         value = default
+        logger.debug(f"Using default config value: {value}")
 
     # override selected value
     override = False
     if "override" in optd and optd["override"] is not None:
         value = optd["override"]
         override = True
+        logger.debug(f"Overriding config value with: {value}")
 
     # user input
     if ask and not override:
@@ -117,6 +130,7 @@ def _process_option(config, optd, ask=True):
             new_value = input(msg).strip()
         if len(new_value):
             value = new_value
+            logger.debug(f"Got new value from user input: {value}")
 
     # check we got a value
     if value is None:
@@ -141,14 +155,17 @@ def do_configuration(required_options=CONFIG_OPTIONS_REQUIRED,
         without requesting confirmation, defaults to False
 
     """
+    logger.debug("Configuring RJM...")
     print("Configuring RJM...")
     if not accept_defaults:
         print("Please enter configuration values below or accept the defaults (in square brackets)")
 
     # load config file if it already exists
+    logger.debug("Load existing config or make a new config object")
     config = load_or_make_config()
 
     # loop over the options, asking user for input
+    logger.debug("Processing required options")
     for optd in required_options:
         _process_option(config, optd)
 
@@ -162,6 +179,7 @@ def do_configuration(required_options=CONFIG_OPTIONS_REQUIRED,
     else:
         ask = True
 
+    logger.debug("Processing optional options")
     for optd in optional_options:
         _process_option(config, optd, ask=ask)
 
@@ -169,4 +187,5 @@ def do_configuration(required_options=CONFIG_OPTIONS_REQUIRED,
     with open(CONFIG_FILE_LOCATION, 'w') as cf:
         config.write(cf)
 
+    logger.debug(f"Written config file to: {CONFIG_FILE_LOCATION}")
     print(f"Written config file to: {CONFIG_FILE_LOCATION}")
