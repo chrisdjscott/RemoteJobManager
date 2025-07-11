@@ -10,6 +10,7 @@ rjm.tests.test\_remote\_job\_batch
    
       configobj
       rjb
+      test_calc_wait_time
       test_categorise_jobs
       test_make_directories
       test_write_stderr

@@ -17,6 +17,7 @@ rjm.runners.tests.test\_globus\_compute\_slurm\_runner
       test_check_slurm_job_statuses_sacct
       test_check_slurm_job_statuses_squeue
       test_check_slurm_job_statuses_squeue_sacct
+      test_get_poll_interval
       test_make_remote_directory_list
       test_make_remote_directory_single
       test_reset_globus_compute_client
