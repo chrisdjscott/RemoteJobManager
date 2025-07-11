@@ -15,7 +15,7 @@ import traceback
 from rjm import __version__
 from rjm import utils
 from rjm.remote_job_batch import RemoteJobBatch
-from rjm.runners.globus_compute_slurm_runner import MIN_POLLING_INTERVAL
+from rjm.runners.globus_compute_slurm_runner import MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION
 
 
 logger = logging.getLogger(__name__)
@@ -35,9 +35,11 @@ def make_parser():
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
     parser.add_argument('-le', '--logextra', action='store_true', help='Also log funcx and globus at the chosen loglevel')
     parser.add_argument('-z', '--pollingintervalsec', type=int,
-                        help=f"job status polling interval in seconds (minimum is {MIN_POLLING_INTERVAL} unless `-o` specified too)")
-    parser.add_argument('-o', '--min-polling-override', action='store_true',
-                        help=f'override minimum polling interval of {MIN_POLLING_INTERVAL} s')
+                        help=f"job status polling interval in seconds (minimum is {MIN_POLLING_INTERVAL})")
+    parser.add_argument('-w', '--warmuppollingintervalsec', type=int,
+                        help=f"job status polling interval in seconds during the warmup period (minimum is {MIN_WARMUP_POLLING_INTERVAL})")
+    parser.add_argument('-d', '--warmupdurationsec', type=int,
+                        help=f"Warmup period duration for job status polling (maximum is {MAX_WARMUP_DURATION})")
     parser.add_argument('-n', '--defaultlogname', action='store_true', help='Use default log name instead of "batch_wait"')
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
@@ -67,7 +69,11 @@ def batch_wait(args=None):
 
     # wait for jobs to complete
     try:
-        rjb.wait_and_download(polling_interval=args.pollingintervalsec, min_polling_override=args.min_polling_override)
+        rjb.wait_and_download(
+            polling_interval=args.pollingintervalsec,
+            warmup_polling_interval=args.warmuppollingintervalsec,
+            warmup_duration=args.warmupdurationsec,
+        )
     except BaseException as exc:
         # writing an stderr.txt file into the directory of unfinished jobs, for wfn
         rjb.write_stderr_for_unfinshed_jobs(traceback.format_exc())

@@ -18,6 +18,8 @@ SLURM_UNFINISHED_STATUS = ['RUNNING', 'PENDING', 'NODE_FAIL', 'COMPLETING']
 SLURM_WARN_STATUS = ["NODE_FAIL"]
 SLURM_SUCCESSFUL_STATUS = ['COMPLETED']
 MIN_POLLING_INTERVAL = 60
+MIN_WARMUP_POLLING_INTERVAL = 10
+MAX_WARMUP_DURATION = 300
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,8 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         # how often to poll for Slurm job completion
         self._poll_interval = self._config.getint("SLURM", "poll_interval")
+        self._warmup_poll_interval = self._config.getint("SLURM", "warmup_poll_interval")
+        self._warmup_duration = self._config.getint("SLURM", "warmup_duration")
 
         # Slurm job id
         self._jobid = None
@@ -293,7 +297,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         return started
 
-    def wait(self, polling_interval=None, min_polling_override=False):
+    def wait(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for the Slurm job to finish
 
@@ -304,7 +308,9 @@ class GlobusComputeSlurmRunner(RunnerBase):
             raise ValueError("Must call 'run_start' before 'run_wait'")
 
         # get the polling interval
-        polling_interval = self.get_poll_interval(polling_interval, min_polling_override=min_polling_override)
+        polling_interval, warmup_polling_interval, warmup_duration = self.get_poll_interval(
+            polling_interval, warmup_polling_interval, warmup_duration
+        )
 
         # loop until job has finished
         self._log(logging.INFO, f"Waiting for Slurm job {self._jobid} to finish")
@@ -362,7 +368,12 @@ class GlobusComputeSlurmRunner(RunnerBase):
         else:
             self._log(logging.WARNING, f'Cancelling job failed ({returncode}): "{stdout}"')
 
-    def get_poll_interval(self, requested_interval, min_polling_override=False):
+    def get_poll_interval(
+        self,
+        requested_interval: int | None,
+        requested_warmup_interval: int | None,
+        requested_warmup_duration: int | None,
+    ):
         """Returns the poll interval from Slurm config"""
         if requested_interval is None:
             polling_interval = self._poll_interval
@@ -371,11 +382,34 @@ class GlobusComputeSlurmRunner(RunnerBase):
             polling_interval = requested_interval
             self._log(logging.DEBUG, f"Using requested polling interval: {polling_interval}")
 
-        if polling_interval < MIN_POLLING_INTERVAL and not min_polling_override:
+        if polling_interval < MIN_POLLING_INTERVAL:
             polling_interval = MIN_POLLING_INTERVAL
-            self._log(logging.DEBUG, f"Overriding polling interval with minimum polling interval: {polling_interval}")
+            self._log(logging.WARNING, f"Overriding polling interval with minimum value: {polling_interval}")
 
-        return polling_interval
+        if requested_warmup_interval is None:
+            warmup_polling_interval = self._warmup_poll_interval
+            self._log(logging.DEBUG, f"Using warmup polling interval from config file: {warmup_polling_interval}")
+        else:
+            warmup_polling_interval = requested_warmup_interval
+            self._log(logging.DEBUG, f"Using requested warmup polling interval: {warmup_polling_interval}")
+
+        if warmup_polling_interval < MIN_WARMUP_POLLING_INTERVAL:
+            warmup_polling_interval = MIN_WARMUP_POLLING_INTERVAL
+            self._log(logging.WARNING, f"Overriding warmup polling interval with minimum value: {warmup_polling_interval}")
+
+
+        if requested_warmup_duration is None:
+            warmup_duration = self._warmup_duration
+            self._log(logging.DEBUG, f"Using warmup duration from config file: {warmup_duration}")
+        else:
+            warmup_duration = requested_warmup_duration
+            self._log(logging.DEBUG, f"Using requested warmup duration: {warmup_duration}")
+
+        if warmup_duration > MAX_WARMUP_DURATION:
+            warmup_duration = MAX_WARMUP_DURATION
+            self._log(logging.WARNING, f"Overriding warmup duration with maximum value: {warmup_duration}")
+
+        return polling_interval, warmup_polling_interval, warmup_duration
 
     def check_finished_jobs(self, remote_jobs):
         """

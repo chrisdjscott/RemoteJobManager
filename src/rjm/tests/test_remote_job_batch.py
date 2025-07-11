@@ -1,9 +1,11 @@
 
 import os
 import configparser
+import time
 
 import pytest
 
+from rjm import remote_job_batch
 from rjm.remote_job_batch import RemoteJobBatch
 from rjm.remote_job import RemoteJob
 
@@ -20,7 +22,9 @@ def configobj():
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
-        "poll_interval": "1",
+        "poll_interval": "2",
+        "warmup_poll_interval": "1",
+        "warmup_duration": "3",
     }
     config["RETRY"] = {
         "delay": "1",
@@ -183,3 +187,16 @@ def test_categorise_jobs(rjb):
     # undownloaded
     assert len(undown) == 1
     assert undown[0]._label == "1"
+
+
+@pytest.mark.parametrize("input_vals,current_time,expected_val", [
+    ([10, 1, 20, 100.0], 110.0, 1),
+    ([10, 1, 20, 100.0], 130.0, 10),
+])
+def test_calc_wait_time(input_vals, current_time, expected_val, mocker):
+    mocker.patch('time.time', return_value=current_time)
+    assert time.time() == current_time
+
+    wait_time = remote_job_batch._calc_wait_time(input_vals[0], input_vals[1], input_vals[2], input_vals[3])
+
+    assert wait_time == expected_val

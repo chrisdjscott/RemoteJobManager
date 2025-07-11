@@ -169,7 +169,7 @@ class RemoteJobBatch:
 
         return unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs
 
-    def wait_and_download(self, polling_interval=None, min_polling_override=False):
+    def wait_and_download(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for jobs to complete and download once completed.
 
@@ -177,7 +177,9 @@ class RemoteJobBatch:
         logger.info(f"Waiting and downloading {len(self._remote_jobs)} jobs")
 
         # override polling interval from config file?
-        polling_interval = self._runner.get_poll_interval(polling_interval, min_polling_override=min_polling_override)
+        polling_interval, warmup_polling_interval, warmup_duration = self._runner.get_poll_interval(
+            polling_interval, warmup_polling_interval, warmup_duration
+        )
 
         # categorising remote_jobs
         unuploaded_jobs, unstarted_jobs, unfinished_jobs, undownloaded_jobs = self._categorise_jobs()
@@ -205,7 +207,8 @@ class RemoteJobBatch:
 
             # loop until jobs have finished
             logger.info(f"Waiting for {len(unfinished_jobs)} Slurm jobs to finish")
-            logger.debug(f"Polling interval is: {polling_interval} seconds")
+            logger.debug(f"Warmup polling interval: {warmup_polling_interval}s; warmup duration: {warmup_duration}s; polling interval: {polling_interval}s")
+            wait_start_time = time.time()
             count_succeeded = 0
             count_failed = 0
             while len(unfinished_jobs):
@@ -231,8 +234,9 @@ class RemoteJobBatch:
 
                 # wait before checking for finished jobs again
                 if len(unfinished_jobs):
-                    logger.debug(f"Waiting for {polling_interval} seconds before checking unfinished jobs: {unfinished_jobs}")
-                    time.sleep(polling_interval)
+                    wait_time = _calc_wait_time(polling_interval, warmup_polling_interval, warmup_duration, wait_start_time)
+                    logger.debug(f"Waiting for {wait_time} seconds before checking unfinished jobs: {unfinished_jobs}")
+                    time.sleep(wait_time)
 
             # wait for downloads to complete
             if len(future_to_rj):
@@ -313,3 +317,14 @@ class RemoteJobBatch:
                 logger.warning(f'Local directory does not exist: "{local_dir}" (skipping)')
 
         return local_dirs_exist
+
+
+def _calc_wait_time(poll_interval: int, warmup_poll_interval: int, warmup_duration: int, start_time: float):
+    """Return the polling interval to be used"""
+    wait_total_duration = time.time() - start_time
+    if wait_total_duration > warmup_duration:
+        wait_time = poll_interval
+    else:
+        wait_time = warmup_poll_interval
+
+    return wait_time
