@@ -79,7 +79,8 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
 
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,
-                       client_id=CLIENT_ID, name="RemoteJobManager"):
+                       client_id=CLIENT_ID, name="RemoteJobManager",
+                       query_params=None):
     """Load the globus auth that should have already been configured"""
     # TODO: make open browser tab optional
 
@@ -89,8 +90,11 @@ def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,
         app_name=name,
     )
 
+    if query_params is not None:
+        logger.debug(f"Query params for globus auth login: {query_params}")
+
     # get the requested scopes (load tokens from file if available, otherwise request new tokens)
-    cli.login(refresh_tokens=True, requested_scopes=scopes)
+    cli.login(refresh_tokens=True, requested_scopes=scopes, query_params=query_params)
 
     return cli
 
