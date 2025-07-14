@@ -18,17 +18,15 @@ logger = logging.getLogger(__name__)
 GLOBUS_NESI_COLLECTION = '763d50ee-e814-4080-878b-6a8be5cf7570'
 GLOBUS_NESI_ENDPOINT = 'd8223624-a701-41b0-859b-e88d4dd4b4d8'
 GLOBUS_NESI_GCS_ADDRESS = "b09844.75bc.data.globus.org"
+GLOBUS_NESI_IDENTITY_DOMAIN = "iam.nesi.org.nz"
 GLOBUS_COMPUTE_NESI_ENDPOINT = "63c0b682-43d1-4b97-bf23-6a676dfdd8bd"
 
 
 class NeSISetup:
     """
-    Runs setup steps specific to NeSI:
+    Runs setup steps specific to NeSI.
 
-    - open SSH connection to Mahuika login node
-    - configure globus compute endpoint
-    - start globus compute endpoint
-    - install scrontab entry to persist default endpoint (TODO: also, restart if newer version of endpoint?)
+    This includes setting up a Globus guest collection on the NeSI Globus data transfer endpoint.
 
     """
     def __init__(self, username, account):
@@ -44,9 +42,10 @@ class NeSISetup:
         return GLOBUS_COMPUTE_NESI_ENDPOINT
 
     def get_globus_transfer_config(self):
+        """Return globus transfer config values"""
         return self._globus_id, self._globus_path
 
-    def _handle_globus_auth(self, token_file, request_scopes, authoriser_scopes, by_scopes=True):
+    def _handle_globus_auth(self, token_file, request_scopes, authoriser_scopes, by_scopes=True, require_nesi_identity=True):
         """Login to globus and return authoriser"""
         print("="*120)
         print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
@@ -54,15 +53,23 @@ class NeSISetup:
         print("")
         print("NOTE: If you are asked for a linked identity with NeSI Keycloak please do one of the following:")
         print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@iam.nesi.org.nz'")
-        print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials")
+        print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials if required")
         print("      - Otherwise, choose the option to 'Link an identity from NeSI Keycloak'")
         print("")
         print("="*120)
+
+        if require_nesi_identity:
+            query_params = {
+                "session_required_single_domain": GLOBUS_NESI_IDENTITY_DOMAIN,
+            }
+        else:
+            query_params = None
 
         # globus auth
         globus_cli = utils.handle_globus_auth(
             request_scopes,
             token_file=token_file,
+            query_params=query_params,
         )
 
         if by_scopes:
@@ -116,6 +123,7 @@ class NeSISetup:
         print("Continuing, please wait...")
 
         # request globus scopes for creating collection and transfer client
+        # TODO: there is an example on globus site which shows a different way
         endpoint_scope = GCSClient.get_gcs_endpoint_scopes(GLOBUS_NESI_ENDPOINT).manage_collections
         collection_scope = GCSClient.get_gcs_collection_scopes(GLOBUS_NESI_COLLECTION).data_access
         create_collection_scope = f"{endpoint_scope}[*{collection_scope}]"
@@ -131,9 +139,6 @@ class NeSISetup:
             authorisers = self._handle_globus_auth(tmp_token_file, required_scopes, authoriser_scopes)
             print("Continuing, please wait...")
 
-            # insert a short sleep to give user time to notice if another link is opened automatically
-            time.sleep(10)
-
             # store for use later
             gcs_authoriser = authorisers[endpoint_scope]
 
@@ -147,6 +152,7 @@ class NeSISetup:
                 response = transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
 
             except globus_sdk.TransferAPIError as err:
+                logger.debug(f"Caught TransferAPIError... {err.info}")
                 if not err.info.consent_required:
                     raise
 
