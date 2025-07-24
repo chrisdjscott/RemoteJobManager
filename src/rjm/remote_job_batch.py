@@ -35,9 +35,13 @@ class RemoteJobBatch:
         # Globus auth
         scopes = self._runner.get_globus_scopes()
         scopes.extend(self._transfer.get_globus_scopes())
-        globus_cli = utils.handle_globus_auth(scopes)
+        if len(scopes):
+            globus_cli = utils.handle_globus_auth(scopes)
+        else:
+            globus_cli = None
+
         self._runner.setup_globus_auth(globus_cli)
-        self._transfer.setup_globus_auth(globus_cli)
+        self._transfer.setup(globus_cli)
 
         # read the list of local directories and create RemoteJobs
         local_dirs = self._read_jobs_file(remote_jobs_file)

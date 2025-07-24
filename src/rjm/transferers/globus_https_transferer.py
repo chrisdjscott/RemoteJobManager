@@ -4,7 +4,6 @@ import os
 import time
 import concurrent.futures
 import urllib.parse
-import hashlib
 import platform
 
 import globus_sdk
@@ -63,6 +62,10 @@ class GlobusHttpsTransferer(TransfererBase):
         ]
 
         return required_scopes
+
+    def setup(self, globus_cli):
+        """Set up the transferer"""
+        return self.setup_globus_auth(globus_cli)
 
     def setup_globus_auth(self, globus_cli, transfer=None):
         """Setting up Globus authentication."""
@@ -279,18 +282,6 @@ class GlobusHttpsTransferer(TransfererBase):
         return retry_call(self._download_file, fargs=(filename, checksum),
                           tries=self._retry_tries, backoff=self._retry_backoff,
                           delay=self._retry_delay, max_delay=self._retry_max_delay)
-
-    def _calculate_checksum(self, filename):
-        """
-        Calculate the checksum of the given file
-
-        """
-        with open(filename, 'rb') as fh:
-            checksum = hashlib.sha256()
-            while chunk := fh.read(FILE_CHUNK_SIZE):
-                checksum.update(chunk)
-
-        return checksum.hexdigest()
 
     def _download_file(self, filename: str, checksum: str):
         """

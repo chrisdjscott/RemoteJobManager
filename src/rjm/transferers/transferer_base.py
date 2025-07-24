@@ -1,5 +1,6 @@
 
 import os
+import hashlib
 import logging
 from typing import List
 
@@ -46,6 +47,10 @@ class TransfererBase:
         if "remote_path" in state_dict:
             self._remote_path = state_dict["remote_path"]
 
+    def setup(self, *args, **kwargs):
+        """Do any setup required by the specific transferer implementation"""
+        pass
+
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
         return []
@@ -82,6 +87,18 @@ class TransfererBase:
         self._log(log_level, f"{text} {local_file}: {file_size:.1f} {file_size_units} in {elapsed_time:.1f} s "
                              f"({file_size / elapsed_time:.1f} {file_size_units}/s)")
 
+    def _calculate_checksum(self, filename):
+        """
+        Calculate the checksum of the given file
+
+        """
+        with open(filename, 'rb') as fh:
+            checksum = hashlib.sha256()
+            while chunk := fh.read(FILE_CHUNK_SIZE):
+                checksum.update(chunk)
+
+        return checksum.hexdigest()
+
     def upload_files(self, filenames: List[str]):
         """
         Upload the given files (which should be relative to `local_path`) to
@@ -94,7 +111,7 @@ class TransfererBase:
         """
         raise NotImplementedError
 
-    def download_files(self, filenames: List[str]):
+    def download_files(self, filenames: List[str], *args, **kwargs):
         """
         Download the given files (which should be relative to `remote_path`) to
         the local directory.
