@@ -88,6 +88,10 @@ class GlobusComputeSlurmRunner(RunnerBase):
         """If any Globus scopes are required, override this method and return them in a list"""
         return self._login_manager.get_scopes()
 
+    def setup(self, globus_cli, runner=None):
+        """Set up the transferer"""
+        return self.setup_globus_auth(globus_cli, runner=runner)
+
     def setup_globus_auth(self, globus_cli, runner=None):
         """Do any Globus auth setup here, if required"""
         self._setup_done = True

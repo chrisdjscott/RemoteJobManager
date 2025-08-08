@@ -28,8 +28,8 @@ class ParamikoSftpTransferer(TransfererBase):
 
         # config
         self._ssh_private_key_file = f"{os.environ['HOME']}/.ssh/id_ed25519"
-        self._remote_address = "192.168.1.51"
-        self._remote_user = "cdjs"
+        self._remote_address = os.environ["REMOTE_ADDRESS"]
+        self._remote_user = os.environ["REMOTE_USER"]
         self._remote_base_path = "/tmp"
 
         # retry params

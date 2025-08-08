@@ -40,7 +40,7 @@ class RemoteJobBatch:
         else:
             globus_cli = None
 
-        self._runner.setup_globus_auth(globus_cli)
+        self._runner.setup(globus_cli)
         self._transfer.setup(globus_cli)
 
         # read the list of local directories and create RemoteJobs

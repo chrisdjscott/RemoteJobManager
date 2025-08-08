@@ -63,9 +63,9 @@ class GlobusHttpsTransferer(TransfererBase):
 
         return required_scopes
 
-    def setup(self, globus_cli):
+    def setup(self, globus_cli, transfer=None):
         """Set up the transferer"""
-        return self.setup_globus_auth(globus_cli)
+        return self.setup_globus_auth(globus_cli, transfer=transfer)
 
     def setup_globus_auth(self, globus_cli, transfer=None):
         """Setting up Globus authentication."""
