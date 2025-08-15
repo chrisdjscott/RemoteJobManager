@@ -32,6 +32,8 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-s', '--ssh', action='store_true',
+                        help='Generate an SSH key pair (stored under ~/.rjm) for use with the Paramiko runner')
     parser.add_argument('-w', '--where-config', action="store_true", help="Print location of the config file and exit")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
@@ -98,6 +100,16 @@ def nesi_setup():
 
     # do the globus setup first because it is more interactive
     nesi.setup_globus_transfer()
+
+    # If the user asked for an SSH key‑pair, generate it now
+    if args.ssh:
+        private_key, public_key = nesi.create_ssh_keypair()
+        logger.info("SSH key pair created: private=%s, public=%s", private_key, public_key)
+        print("=" * 120)
+        print("SSH key pair generated:")
+        print(f"  Private key: {private_key}")
+        print(f"  Public  key: {public_key}")
+        print("=" * 120)
 
     # write values to config file
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS)
