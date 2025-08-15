@@ -45,6 +45,7 @@ class NeSISetup:
         # Paramiko key paths (filled by create_ssh_keypair)
         self._private_key_path = None
         self._public_key_path = None
+        self._remote_address = None
 
     def get_globus_compute_config(self):
         """Return globus compute config values"""
@@ -293,7 +294,20 @@ class NeSISetup:
         The chosen base path is stored on the instance for later use and the
         private/public key file paths are returned.
         """
-        # Default – a temporary directory under /tmp unique to the user
+        # -----------------------------------------------------------------
+        # 1️⃣ Ask for the remote machine address (IP or DNS name)
+        # -----------------------------------------------------------------
+        remote_addr = input(
+            "Enter remote address (IP or DNS name) for Paramiko: "
+        ).strip()
+        if not remote_addr:
+            raise ValueError("Remote address is required for Paramiko setup")
+        self._remote_address = remote_addr
+        logger.info("Paramiko remote address set to: %s", remote_addr)
+
+        # -----------------------------------------------------------------
+        # 2️⃣ Ask for the remote base path (default under /tmp)
+        # -----------------------------------------------------------------
         default_path = f"/tmp/{self._username}/rjm"
         remote_base = input(
             f"Enter remote base path for Paramiko (default [{default_path}]): "
@@ -303,7 +317,9 @@ class NeSISetup:
         self._remote_base_path = remote_base
         logger.info("Paramiko remote base path set to: %s", remote_base)
 
-        # Generate the SSH key pair (stores paths on the instance)
+        # -----------------------------------------------------------------
+        # 3️⃣ Generate the SSH key pair (stores paths on the instance)
+        # -----------------------------------------------------------------
         private_key, public_key = self.create_ssh_keypair()
 
         # Store the paths on the instance for later retrieval
@@ -352,4 +368,5 @@ class NeSISetup:
             "private_key_file": self._private_key_path,
             "remote_user": self._username,
             "remote_base_path": self._remote_base_path,
+            "remote_address": self._remote_address,
         }
