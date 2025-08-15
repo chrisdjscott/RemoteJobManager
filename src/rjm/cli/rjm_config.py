@@ -107,20 +107,11 @@ def nesi_setup():
         # This step is interactive and may open a browser
         nesi.setup_globus_transfer()
 
-    # Prepare placeholders for SSH key paths
-    private_key = None
-    public_key = None
-
     # If the user asked for an SSH key‑pair, generate it now via the new helper
     if args.ssh:
         # This will prompt for the remote base path and create the key pair
-        private_key, public_key = nesi.setup_paramiko()
-        logger.info("SSH key pair created: private=%s, public=%s", private_key, public_key)
-        print("=" * 120)
-        print("SSH key pair generated:")
-        print(f"  Private key: {private_key}")
-        print(f"  Public  key: {public_key}")
-        print("=" * 120)
+        nesi.setup_paramiko()
+        paramiko_cfg = nesi.get_paramiko_config()
 
     # write values to config file
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS)
@@ -152,7 +143,6 @@ def nesi_setup():
 
         # ----- Paramiko overrides (only when SSH key pair was generated) -----
         if args.ssh:
-            paramiko_cfg = nesi.get_paramiko_config()
             if optd["section"] == "PARAMIKO":
                 if optd["name"] == "private_key_file":
                     optd["override"] = paramiko_cfg["private_key_file"]
