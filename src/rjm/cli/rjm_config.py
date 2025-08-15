@@ -32,6 +32,10 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-n',
+                        '--no-globus',
+                        action='store_true',
+                        help='Skip Globus transfer and compute setup steps')
     parser.add_argument('-s', '--ssh', action='store_true',
                         help='Generate an SSH key pair (stored under ~/.rjm) for use with the Paramiko runner')
     parser.add_argument('-w', '--where-config', action="store_true", help="Print location of the config file and exit")
@@ -98,8 +102,14 @@ def nesi_setup():
     # create the setup object
     nesi = NeSISetup(username, account)
 
-    # do the globus setup first because it is more interactive
-    nesi.setup_globus_transfer()
+    # do the globus setup unless the user asked to skip it
+    if not args.no_globus:
+        # This step is interactive and may open a browser
+        nesi.setup_globus_transfer()
+
+    # Prepare placeholders for SSH key paths
+    private_key = None
+    public_key = None
 
     # If the user asked for an SSH key‑pair, generate it now
     if args.ssh:
@@ -114,27 +124,42 @@ def nesi_setup():
     # write values to config file
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS)
 
-    # get config values
-    globus_ep, globus_path = nesi.get_globus_transfer_config()
-    funcx_ep = nesi.get_globus_compute_config()
+    # get config values (only if globus setup was performed)
+    if not args.no_globus:
+        globus_ep, globus_path = nesi.get_globus_transfer_config()
+        funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults
     done_globus_ep = False
     done_globus_path = False
     done_funcx_ep = False
+
+    # Populate overrides – the Globus overrides are only applied when the
+    # Globus setup was performed.  Paramiko overrides are applied when the
+    # user asked for an SSH key pair (``--ssh``).
     for optd in req_opts:
-        if optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_endpoint":
-            optd["override"] = globus_ep
-            done_globus_ep = True
-        elif optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_path":
-            optd["override"] = globus_path
-            done_globus_path = True
-        elif optd["section"] == "GLOBUS_COMPUTE" and optd["name"] == "remote_endpoint":
-            optd["override"] = funcx_ep
-            done_funcx_ep = True
-    assert done_globus_ep
-    assert done_globus_path
-    assert done_funcx_ep
+        # ----- Globus overrides (only when Globus setup was run) -----
+        if not args.no_globus:
+            if optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_endpoint":
+                optd["override"] = globus_ep
+                done_globus_ep = True
+            elif optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_path":
+                optd["override"] = globus_path
+                done_globus_path = True
+            elif optd["section"] == "GLOBUS_COMPUTE" and optd["name"] == "remote_endpoint":
+                optd["override"] = funcx_ep
+                done_funcx_ep = True
+
+        # ----- Paramiko overrides (only when SSH key pair was generated) -----
+        if args.ssh and private_key is not None:
+            if optd["section"] == "PARAMIKO" and optd["name"] == "private_key_file":
+                optd["override"] = private_key
+
+    # sanity checks – only required when Globus overrides were attempted
+    if not args.no_globus:
+        assert done_globus_ep
+        assert done_globus_path
+        assert done_funcx_ep
 
     # backup current config if any
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
