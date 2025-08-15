@@ -277,10 +277,6 @@ class NeSISetup:
             public_key_path,
         )
 
-        # Store the paths on the instance for later retrieval
-        self._private_key_path = private_key_path
-        self._public_key_path = public_key_path
-
         return private_key_path, public_key_path
 
     # --------------------------------------------------------------------- #
@@ -309,7 +305,10 @@ class NeSISetup:
 
         # Generate the SSH key pair (stores paths on the instance)
         private_key, public_key = self.create_ssh_keypair()
-        return private_key, public_key
+
+        # Store the paths on the instance for later retrieval
+        self._private_key_path = private_key
+        self._public_key_path = public_key
 
     # --------------------------------------------------------------------- #
     # Helper to expose Paramiko configuration
