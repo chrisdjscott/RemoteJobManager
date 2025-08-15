@@ -173,10 +173,12 @@ def nesi_setup():
     print("="*120)
     print("Configuration file has been updated")
     print("="*120)
-    print("Running authenticate next...")
 
-    # force fresh authentication
-    do_authentication(force=True, verbose=True)
+    # Run authentication only if Globus steps were not skipped
+    if not args.no_globus:
+        print("Running authenticate next...")
+        # force fresh authentication
+        do_authentication(force=True, verbose=True)
 
     print("="*120)
     print("You should be ready to start using rjm now")
