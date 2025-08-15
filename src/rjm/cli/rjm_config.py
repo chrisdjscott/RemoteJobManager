@@ -154,6 +154,9 @@ def nesi_setup():
         if args.ssh and private_key is not None:
             if optd["section"] == "PARAMIKO" and optd["name"] == "private_key_file":
                 optd["override"] = private_key
+            # also write the remote user (the username entered earlier)
+            if optd["section"] == "PARAMIKO" and optd["name"] == "remote_user":
+                optd["override"] = username
 
     # sanity checks – only required when Globus overrides were attempted
     if not args.no_globus:
