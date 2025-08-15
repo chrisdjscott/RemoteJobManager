@@ -5,20 +5,26 @@ from rjm import config as config_helper
 from rjm.errors import RemoteJobConfigError
 
 
-CONFIG_FILE_TEST = """[GLOBUS]
+CONFIG_FILE_TEST = """[GLOBUS_TRANSFER]
 remote_endpoint = abcdefg
 remote_path = /remote/path
 
-[FUNCX]
+[GLOBUS_COMPUTE]
 remote_endpoint = abcdefg
 
 [SLURM]
 slurm_script = run.sl
+
+[POLLING]
 poll_interval = 10
 
 [FILES]
 uploads_file = rjm_uploads.txt
 downloads_file = rjm_downloads.txt
+
+[COMPONENTS]
+runner = globus_compute_slurm_runner
+transferer = globus_compute_https_transferer
 """
 
 
@@ -31,11 +37,11 @@ def config_file(tmp_path):
 
 def test_load_config(config_file):
     config = config_helper.load_config(config_file=str(config_file))
-    assert config.get("GLOBUS", "remote_endpoint") == "abcdefg"
-    assert config.get("GLOBUS", "remote_path") == "/remote/path"
-    assert config.get("FUNCX", "remote_endpoint") == "abcdefg"
+    assert config.get("GLOBUS_TRANSFER", "remote_endpoint") == "abcdefg"
+    assert config.get("GLOBUS_TRANSFER", "remote_path") == "/remote/path"
+    assert config.get("GLOBUS_COMPUTE", "remote_endpoint") == "abcdefg"
     assert config.get("SLURM", "slurm_script") == "run.sl"
-    assert config.getint("SLURM", "poll_interval") == 10
+    assert config.getint("POLLING", "poll_interval") == 10
     assert config.get("FILES", "uploads_file") == "rjm_uploads.txt"
     assert config.get("FILES", "downloads_file") == "rjm_downloads.txt"
 

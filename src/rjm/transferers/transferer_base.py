@@ -8,6 +8,8 @@ from rjm import utils
 from rjm import config as config_helper
 
 
+FILE_CHUNK_SIZE = 8000000
+
 logger = logging.getLogger(__name__)
 
 

@@ -100,7 +100,7 @@ def nesi_setup():
     nesi.setup_globus_transfer()
 
     # write values to config file
-    req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS_REQUIRED)
+    req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS)
 
     # get config values
     globus_ep, globus_path = nesi.get_globus_transfer_config()
@@ -111,13 +111,13 @@ def nesi_setup():
     done_globus_path = False
     done_funcx_ep = False
     for optd in req_opts:
-        if optd["section"] == "GLOBUS" and optd["name"] == "remote_endpoint":
+        if optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_endpoint":
             optd["override"] = globus_ep
             done_globus_ep = True
-        elif optd["section"] == "GLOBUS" and optd["name"] == "remote_path":
+        elif optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_path":
             optd["override"] = globus_path
             done_globus_path = True
-        elif optd["section"] == "FUNCX" and optd["name"] == "remote_endpoint":
+        elif optd["section"] == "GLOBUS_COMPUTE" and optd["name"] == "remote_endpoint":
             optd["override"] = funcx_ep
             done_funcx_ep = True
     assert done_globus_ep
@@ -131,7 +131,7 @@ def nesi_setup():
         print("="*120)
 
     # call method to set config file
-    config_helper.do_configuration(required_options=req_opts, accept_defaults=True)
+    config_helper.do_configuration(config_options=req_opts)
 
     print("="*120)
     print("Configuration file has been updated")
