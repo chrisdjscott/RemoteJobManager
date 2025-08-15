@@ -17,7 +17,6 @@ from rjm.errors import RemoteJobTransfererError
 
 DOWNLOAD_CHUNK_SIZE = 8000000
 DOWNLOAD_SUFFIX = '.rjm'
-FILE_CHUNK_SIZE = 8000000
 REQUESTS_TIMEOUT = 30
 
 logger = logging.getLogger(__name__)
@@ -33,8 +32,8 @@ class GlobusHttpsTransferer(TransfererBase):
         super(GlobusHttpsTransferer, self).__init__(config=config)
 
         # the Globus endpoint for the remote guest collection
-        self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")
-        self._remote_base_path = self._config.get("GLOBUS", "remote_path")
+        self._remote_endpoint = self._config.get("GLOBUS_TRANSFER", "remote_endpoint")
+        self._remote_base_path = self._config.get("GLOBUS_TRANSFER", "remote_path")
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
 
         # retry params

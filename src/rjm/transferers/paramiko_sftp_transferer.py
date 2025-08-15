@@ -27,10 +27,10 @@ class ParamikoSftpTransferer(TransfererBase):
         super(ParamikoSftpTransferer, self).__init__(config=config)
 
         # config
-        self._ssh_private_key_file = f"{os.environ['HOME']}/.ssh/id_ed25519"
-        self._remote_address = os.environ["REMOTE_ADDRESS"]
-        self._remote_user = os.environ["REMOTE_USER"]
-        self._remote_base_path = "/tmp"
+        self._ssh_private_key_file = self._config.get("PARAMIKO", "private_key_file")
+        self._remote_address = self._config.get("PARAMIKO", "remote_address")
+        self._remote_user = self._config.get("PARAMIKO", "remote_user")
+        self._remote_base_path = self._config.get("PARAMIKO", "remote_base_path")
 
         # retry params
         self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(self._config)

@@ -12,11 +12,13 @@ from rjm.errors import RemoteJobRunnerError
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
-    config["FUNCX"] = {
+    config["GLOBUS_COMPUTE"] = {
         "remote_endpoint": "abcdefg",
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
+    }
+    config["POLLING"] = {
         "poll_interval": "2",
         "warmup_poll_interval": "1",
         "warmup_duration": "3",
@@ -374,11 +376,13 @@ def test_check_slurm_job_statuses_missing(mocker):
 ])
 def test_get_poll_interval(config_vals, user_vals, expected_vals, mocker):
     config = configparser.ConfigParser()
-    config["FUNCX"] = {
+    config["GLOBUS_COMPUTE"] = {
         "remote_endpoint": "abcdefg",
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
+    }
+    config["POLLING"] = {
         "poll_interval": str(config_vals[0]),
         "warmup_poll_interval": str(config_vals[1]),
         "warmup_duration": str(config_vals[2]),

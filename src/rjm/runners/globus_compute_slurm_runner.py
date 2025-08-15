@@ -38,7 +38,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
         self._setup_done = False
 
         # the Globus Compute endpoint on the remote machine
-        self._endpoint = self._config.get("FUNCX", "remote_endpoint")
+        self._endpoint = self._config.get("GLOBUS_COMPUTE", "remote_endpoint")
 
         # globus compute login manager
         self._login_manager = CustomLoginManager()
@@ -52,9 +52,9 @@ class GlobusComputeSlurmRunner(RunnerBase):
         self._slurm_script = self._config.get("SLURM", "slurm_script")
 
         # how often to poll for Slurm job completion
-        self._poll_interval = self._config.getint("SLURM", "poll_interval")
-        self._warmup_poll_interval = self._config.getint("SLURM", "warmup_poll_interval")
-        self._warmup_duration = self._config.getint("SLURM", "warmup_duration")
+        self._poll_interval = self._config.getint("POLLING", "poll_interval")
+        self._warmup_poll_interval = self._config.getint("POLLING", "warmup_poll_interval")
+        self._warmup_duration = self._config.getint("POLLING", "warmup_duration")
 
         # Slurm job id
         self._jobid = None

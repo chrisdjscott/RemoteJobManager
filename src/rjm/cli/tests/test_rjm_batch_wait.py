@@ -10,15 +10,17 @@ from rjm.cli import rjm_batch_wait
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
-    config["GLOBUS"] = {
+    config["GLOBUS_TRANSFER"] = {
         "remote_endpoint": "qwerty",
         "remote_path": "asdfg",
     }
-    config["FUNCX"] = {
+    config["GLOBUS_COMPUTE"] = {
         "remote_endpoint": "abcdefg",
     }
     config["SLURM"] = {
         "slurm_script": "run.sl",
+    }
+    config["POLLING"] = {
         "poll_interval": "2",
         "warmup_poll_interval": "1",
         "warmup_duration": "3",

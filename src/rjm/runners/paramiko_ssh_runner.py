@@ -34,18 +34,19 @@ class ParamikoSSHRunner(RunnerBase):
         self._ssh_client = None
 
         # config
-        self._ssh_private_key_file = f"{os.environ['HOME']}/.ssh/id_ed25519"
-        self._remote_address = os.environ["REMOTE_ADDRESS"]
-        self._remote_user = os.environ["REMOTE_USER"]
-        self._job_script = "run.sh"
+        self._ssh_private_key_file = self._config.get("PARAMIKO", "private_key_file")
+        self._remote_address = self._config.get("PARAMIKO", "remote_address")
+        self._remote_user = self._config.get("PARAMIKO", "remote_user")
+        self._job_script = self._config.get("PARAMIKO", "job_script")
 
         # how often to poll for job completion
-        self._poll_interval = self._config.getint("SLURM", "poll_interval")
-        self._warmup_poll_interval = self._config.getint("SLURM", "warmup_poll_interval")
-        self._warmup_duration = self._config.getint("SLURM", "warmup_duration")
+        self._poll_interval = self._config.getint("POLLING", "poll_interval")
+        self._warmup_poll_interval = self._config.getint("POLLING", "warmup_poll_interval")
+        self._warmup_duration = self._config.getint("POLLING", "warmup_duration")
 
         # tmux session name
         self._tmux_session_name = None
+        self._working_directory = None
 
     def _log(self, level, message, *args, **kwargs):
         """Add a label to log messages, identifying this specific RemoteJob"""
@@ -59,6 +60,8 @@ class ParamikoSSHRunner(RunnerBase):
         state_dict = super(ParamikoSSHRunner, self).save_state()
         if self._tmux_session_name is not None:
             state_dict["tmux_session_name"] = self._tmux_session_name
+        if self._working_directory is not None:
+            state_dict["working_directory"] = self._working_directory
 
         return state_dict
 
@@ -71,6 +74,8 @@ class ParamikoSSHRunner(RunnerBase):
         super(ParamikoSSHRunner, self).load_state(state_dict)
         if "tmux_session_name" in state_dict:
             self._tmux_session_name = state_dict["tmux_session_name"]
+        if "working_directory" in state_dict:
+            self._working_directory = state_dict["working_directory"]
 
     def setup(self, *args, **kwargs):
         """Setup the SFTP client"""
@@ -217,7 +222,7 @@ class ParamikoSSHRunner(RunnerBase):
         self._log(logging.DEBUG, f"Starting job for: {working_directory}")
         try:
             self._tmux_session_name = self.run_command(
-                f'cd "{working_directory}" && bash {self._job_script} > stdout.txt 2> stderr.txt',
+                f'cd "{working_directory}" && bash {self._job_script} > stdout.txt 2> stderr.txt && touch "{working_directory}/.rjm-succeeded"',
                 background=False
             )
         
@@ -228,8 +233,8 @@ class ParamikoSSHRunner(RunnerBase):
             raise exc
 
         self._log(logging.INFO, f'Started job with tmux session name: {self._tmux_session_name}')
+        self._working_directory = working_directory
         started = True
-        # TODO: save state here???
 
         return started
 
@@ -265,15 +270,21 @@ class ParamikoSSHRunner(RunnerBase):
                 # TODO: should also check stderr as expected... eg should contain "can't find session"
                 job_finished = True
 
-                # TODO: need to confirm whether or not it succeeded
-                job_succeeded = True
+                # TODO: need to confirm whether or not it succeeded, i.e. does the file exist?
+                stdin, stdout, stderr = self._ssh_client.exec_command(f"test -f {self._working_directory}/.rjm-succeeded")
+                exit_status = stdout.channel.recv_exit_status()
+                if exit_status:
+                    job_succeeded = False
+                else:
+                    job_succeeded = True
 
             else:
+                self._log(logging.DEBUG, "Not finished yet")
                 time.sleep(polling_interval)
 
         assert job_succeeded is not None, "Unexpected error during wait"
         if job_finished:
-            self._log(logging.INFO, f"Remote job {self._tmux_session_name} has finished")
+            self._log(logging.INFO, f"Remote job {self._tmux_session_name} has finished (success: {job_succeeded})")
 
         return job_succeeded
 
@@ -331,56 +342,16 @@ class ParamikoSSHRunner(RunnerBase):
         :param remote_jobs: list of remote jobs to check
 
         :returns: tuple of lists of RemoteJobs containing:
-            - finished jobs
+            - successful jobs
+            - failed jobs
             - unfinished jobs
 
         """
-        # get list of job ids from list of remote jobs
-        job_ids = [rj.get_runner().get_jobid() for rj in remote_jobs]
-
-        # remote function call with retries
-        job_status_dict = retry_call(
-            self._check_slurm_jobs_wrapper,
-            fargs=(job_ids,),
-            tries=self._retry_tries,
-            backoff=self._retry_backoff,
-            delay=self._retry_delay,
-            max_delay=self._retry_max_delay,
-        )
-
-        # loop over job statuses
-        successful_jobs = []
-        failed_jobs = []
-        unfinished_jobs = []
-        for jobid in job_status_dict:
-            job_status = job_status_dict[jobid]
-
-            # pop this job out of the incoming list
-            idx = job_ids.index(jobid)
-            job_ids.pop(idx)
-            rj = remote_jobs.pop(idx)
-
-            if len(job_status) and job_status not in SLURM_UNFINISHED_STATUS:
-                # job has finished, was it successful
-                if job_status in SLURM_SUCCESSFUL_STATUS:
-                    successful_jobs.append(rj)
-                    self._log(logging.DEBUG, f"Job {jobid} has finished successfully: {job_status}")
-                else:
-                    failed_jobs.append(rj)
-                    self._log(logging.DEBUG, f"Job {jobid} has finished unsuccessfully: {job_status}")
-            else:
-                unfinished_jobs.append(rj)
-                self._log(logging.DEBUG, f"Job {jobid} is unfinished: {job_status}")
-
-        if len(job_status_dict) == 0:
-            self._log(logging.WARNING, "No job statuses parsed, trying again later")
-            unfinished_jobs = remote_jobs
-
-        return successful_jobs, failed_jobs, unfinished_jobs
+        raise NotImplementedError
 
     def get_checksums(self, working_directory, files):
         """
-        Return checksums for the list of files
+        Return SHA256 checksums for the list of files
 
         :param files: list of files to calculate checksums of
         :param working_directory: directory to switch to first
@@ -388,96 +359,4 @@ class ParamikoSSHRunner(RunnerBase):
         :returns: dictionary with file names as keys and checksums as values
 
         """
-        # remote function call with retries
-        self._log(logging.DEBUG, f"Calculating checksums for {len(files)} files")
-        checksums = retry_call(
-            self._get_checksums_wrapper,
-            fargs=(files, working_directory),
-            tries=self._retry_tries,
-            backoff=self._retry_backoff,
-            delay=self._retry_delay,
-            max_delay=self._retry_max_delay,
-        )
-        self._log(logging.DEBUG, f"Calculated checksums for {len([c for c in checksums if c is not None])} of {len(files)} files")
-
-        return checksums
-
-    def _get_checksums_wrapper(self, files, working_directory):
-        """
-        Wrapper function that raises exception if returncode is nonzero.
-
-        """
-        returncode, checksums = self.run_function(_calculate_checksums, files, working_directory)
-
-        if returncode != 0:
-            msg = f"Calculating checksums failed ({returncode}): {checksums}"
-            self._log(logging.ERROR, msg)
-            raise RemoteJobRunnerError(msg)
-
-        return checksums
-
-    def _check_slurm_jobs_wrapper(self, unfinished_jobids):
-        """
-        Wrapper function that raises exception if returncode is nonzero
-
-        Required because raising exceptions in globus compute functions breaks things
-        due to exception dependency on parsl (may not still be the case)
-
-        """
-        job_status_dict, msg = self.run_function(_check_slurm_job_statuses, unfinished_jobids)
-
-        self._log(logging.DEBUG, "Output from check Slurm job status function follows:")
-        self._log(logging.DEBUG, os.linesep.join(msg))
-
-        if job_status_dict is None:
-            msg = f"Checking job statuses failed: {msg}"
-            self._log(logging.ERROR, os.linesep.join(msg))
-            raise RemoteJobRunnerError(msg)
-
-        return job_status_dict
-
-
-# function that calculates checksums for a list of files
-def _calculate_checksums(files, working_directory):
-    # catch all errors due to problem with exceptions being wrapped in parsl class
-    # and parsl may not be installed on host (particularly windows)
-    try:
-        import os.path
-        import hashlib
-
-        file_chunk_size = 8192
-
-        checksums = {}
-        for fn in files:
-            file_path = os.path.join(working_directory, fn)
-            if os.path.isfile(file_path):
-                with open(file_path, 'rb') as fh:
-                    checksum = hashlib.sha256()
-                    while chunk := fh.read(file_chunk_size):
-                        checksum.update(chunk)
-                checksums[fn] = checksum.hexdigest()
-            else:
-                checksums[fn] = None
-
-        return 0, checksums
-
-    except Exception as exc:
-        return 1, repr(exc)
-
-
-# function to make directories on the remote machine
-def _make_remote_directories(base_path, prefixes):
-    try:
-        import os
-        import tempfile
-
-        remote_dirs = []
-        for prefix in prefixes:
-            remote_full_path = tempfile.mkdtemp(prefix=prefix + "-", dir=base_path)
-            os.chmod(remote_full_path, 0o755)
-            remote_dirs.append((remote_full_path, os.path.relpath(remote_full_path, start=base_path)))
-
-    except Exception as exc:
-        remote_dirs = repr(exc)
-
-    return remote_dirs
+        raise NotImplementedError
