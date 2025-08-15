@@ -221,12 +221,8 @@ class NeSISetup:
 
         # report endpoint id for configuring rjm
         print("="*120)
-        print(f"Glob
-
-us guest collection endpoint id: '{endpoint_id}'")
-        print(f"Glob
-
-us guest collection endpoint path: '{guest_collection_dir}'")
+        print(f"Globus guest collection endpoint id: '{endpoint_id}'")
+        print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
         print("You can manage the endpoint you just created online at:")
         print(f"    https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
         print("="*120)
