@@ -60,7 +60,7 @@ class NeSISetup:
         print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
         print("                     Globus is used by RJM to transfer files to and from NeSI")
         print("")
-        print("NOTE: If you are asked for a linked identity with NeSI Keycloak please do one of the following:")
+        print("NOTE: if you are asked for a linked identity with NeSI Keycloak please do one of the following:")
         print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@iam.nesi.org.nz'")
         print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials if required")
         print("      - Otherwise, choose the option to 'Link an identity from NeSI Keycloak'")
@@ -214,7 +214,7 @@ class NeSISetup:
             )
             logger.debug(f"Collection document: {doc}")
 
-            # create Globus collection, report back endpoint id for config
+            # create the Globus collection, report back endpoint id for config
             response = client.create_collection(doc)
             endpoint_id = response.data["id"]
             logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
@@ -309,6 +309,28 @@ class NeSISetup:
         # Store the paths on the instance for later retrieval
         self._private_key_path = private_key
         self._public_key_path = public_key
+
+        # -----------------------------------------------------------------
+        # Inform the user how to install the public key on the remote host
+        # -----------------------------------------------------------------
+        try:
+            with open(public_key, "r", encoding="utf-8") as pk_f:
+                pub_key_contents = pk_f.read().strip()
+        except Exception as exc:  # pragma: no cover – defensive
+            logger.error("Failed to read generated public key: %s", exc)
+            pub_key_contents = "<could not read public key>"
+
+        print("\n" + "=" * 80)
+        print("Public key generated for Paramiko access.")
+        print("Copy the following line and paste it into the")
+        print("~/.ssh/authorized_keys file on the remote machine:")
+        print("-" * 80)
+        print(pub_key_contents)
+        print("-" * 80)
+        print("After you have added the key, press ENTER to continue.")
+        print("=" * 80 + "\n")
+        # Wait for user confirmation
+        input("Press ENTER when the public key has been added to the remote authorized_keys file...")
 
     # --------------------------------------------------------------------- #
     # Helper to expose Paramiko configuration
