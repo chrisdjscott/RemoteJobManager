@@ -150,6 +150,9 @@ def nesi_setup():
                     optd["override"] = paramiko_cfg["remote_user"]
                 elif optd["name"] == "remote_base_path":
                     optd["override"] = paramiko_cfg["remote_base_path"]
+                elif optd["name"] == "remote_address":
+                    # Store the remote machine address entered during Paramiko setup
+                    optd["override"] = paramiko_cfg["remote_address"]
 
     # sanity checks – only required when Globus overrides were attempted
     if not args.no_globus:
