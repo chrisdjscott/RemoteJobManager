@@ -1,9 +1,15 @@
+"""
+
+NeSI setup module for RJM.
+
+"""
 
 import os
 import time
 import uuid
 import logging
 import tempfile
+import paramiko
 
 import globus_sdk
 from globus_sdk import GCSClient, TransferClient, DeleteData
@@ -221,3 +227,68 @@ class NeSISetup:
         # also store the endpoint id and path
         self._globus_id = endpoint_id
         self._globus_path = guest_collection_dir
+
+    # --------------------------------------------------------------------- #
+    # SSH key‑pair handling
+    # --------------------------------------------------------------------- #
+    def create_ssh_keypair(
+        self,
+        key_type: str = "rsa",
+        bits: int = 2048,
+        private_key_path: str | None = None,
+    ) -> tuple[str, str]:
+        """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``.
+
+        Parameters
+        ----------
+        key_type: str, optional
+            The type of key to generate – ``"rsa"`` (default) or ``"ed25519"``.
+        bits: int, optional
+            Number of bits for RSA keys. Ignored for Ed25519 keys.
+        private_key_path: str | None, optional
+            Full path for the private key. If ``None`` the default location
+            ``~/.rjm/paramiko_private_key`` (used by the rest of RJM) is used.
+
+        Returns
+        -------
+        tuple[str, str]
+            ``(private_key_path, public_key_path)`` – absolute paths of the
+            written files.
+        """
+        # Resolve the default location if the caller did not provide one
+        if private_key_path is None:
+            private_key_path = os.path.join(
+                os.path.expanduser("~"), ".rjm", "paramiko_private_key"
+            )
+        public_key_path = private_key_path + ".pub"
+
+        # Ensure the target directory exists
+        os.makedirs(os.path.dirname(private_key_path), exist_ok=True)
+
+        # Generate the key
+        key_type = key_type.lower()
+        if key_type == "rsa":
+            key = paramiko.RSAKey.generate(bits)
+        elif key_type == "ed25519":
+            key = paramiko.Ed25519Key.generate()
+        else:
+            raise ValueError(f"Unsupported key_type '{key_type}'. Use 'rsa' or 'ed25519'.")
+
+        # Write the private key (chmod 600 for security)
+        key.write_private_key_file(private_key_path)
+        try:
+            os.chmod(private_key_path, 0o600)
+        except Exception:  # pragma: no cover – best‑effort only
+            pass
+
+        # Write the public key in the standard OpenSSH format
+        with open(public_key_path, "w", encoding="utf-8") as pub_f:
+            pub_f.write(f"{key.get_name()} {key.get_base64()}\n")
+
+        logger.info(
+            "Generated SSH key pair – private: %s, public: %s",
+            private_key_path,
+            public_key_path,
+        )
+
+        return private_key_path, public_key_path
