@@ -42,6 +42,7 @@ class NeSISetup:
         # initialise values we are setting up
         self._globus_id = None  # globus endpoint id
         self._globus_path = None  # path to globus share
+        self._remote_base_path = None  # base path on the remote system for Paramiko
 
     def get_globus_compute_config(self):
         """Return globus compute config values"""
@@ -292,3 +293,32 @@ class NeSISetup:
         )
 
         return private_key_path, public_key_path
+
+    # --------------------------------------------------------------------- #
+    # Paramiko (SSH) setup
+    # --------------------------------------------------------------------- #
+    def setup_paramiko(self):
+        """
+        Interactively set up the Paramiko runner:
+
+        * Ask the user for a base directory on the remote system where RJM
+          should operate.
+        * Generate an SSH key‑pair (using :meth:`create_ssh_keypair`).
+
+        The chosen base path is stored on the instance for later use and the
+        private/public key file paths are returned.
+        """
+        # Suggest a sensible default – a temporary directory under /tmp
+        # that is unique to the user running the script.
+        default_path = f"/tmp/{self._username}/rjm"
+        remote_base = input(
+            f"Enter remote base path for Paramiko (default [{default_path}]): "
+        ).strip() or default_path
+
+        # store for possible later use
+        self._remote_base_path = remote_base
+        logger.info("Paramiko remote base path set to: %s", remote_base)
+
+        # generate the SSH key pair (uses the default location under ~/.rjm)
+        private_key, public_key = self.create_ssh_keypair()
+        return private_key, public_key
