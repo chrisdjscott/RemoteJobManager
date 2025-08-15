@@ -111,9 +111,10 @@ def nesi_setup():
     private_key = None
     public_key = None
 
-    # If the user asked for an SSH key‑pair, generate it now
+    # If the user asked for an SSH key‑pair, generate it now via the new helper
     if args.ssh:
-        private_key, public_key = nesi.create_ssh_keypair()
+        # This will prompt for the remote base path and create the key pair
+        private_key, public_key = nesi.setup_paramiko()
         logger.info("SSH key pair created: private=%s, public=%s", private_key, public_key)
         print("=" * 120)
         print("SSH key pair generated:")
@@ -134,9 +135,8 @@ def nesi_setup():
     done_globus_path = False
     done_funcx_ep = False
 
-    # Populate overrides – the Globus overrides are only applied when the
-    # Globus setup was performed.  Paramiko overrides are applied when the
-    # user asked for an SSH key pair (``--ssh``).
+    # Populate overrides – Globus overrides are applied only when Globus was run.
+    # Paramiko overrides are applied only when the SSH option was chosen.
     for optd in req_opts:
         # ----- Globus overrides (only when Globus setup was run) -----
         if not args.no_globus:
@@ -151,12 +151,15 @@ def nesi_setup():
                 done_funcx_ep = True
 
         # ----- Paramiko overrides (only when SSH key pair was generated) -----
-        if args.ssh and private_key is not None:
-            if optd["section"] == "PARAMIKO" and optd["name"] == "private_key_file":
-                optd["override"] = private_key
-            # also write the remote user (the username entered earlier)
-            if optd["section"] == "PARAMIKO" and optd["name"] == "remote_user":
-                optd["override"] = username
+        if args.ssh:
+            paramiko_cfg = nesi.get_paramiko_config()
+            if optd["section"] == "PARAMIKO":
+                if optd["name"] == "private_key_file":
+                    optd["override"] = paramiko_cfg["private_key_file"]
+                elif optd["name"] == "remote_user":
+                    optd["override"] = paramiko_cfg["remote_user"]
+                elif optd["name"] == "remote_base_path":
+                    optd["override"] = paramiko_cfg["remote_base_path"]
 
     # sanity checks – only required when Globus overrides were attempted
     if not args.no_globus:

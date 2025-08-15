@@ -1,7 +1,5 @@
 """
-
 NeSI setup module for RJM.
-
 """
 
 import os
@@ -40,9 +38,13 @@ class NeSISetup:
         self._account = account
 
         # initialise values we are setting up
-        self._globus_id = None  # globus endpoint id
-        self._globus_path = None  # path to globus share
-        self._remote_base_path = None  # base path on the remote system for Paramiko
+        self._globus_id = None          # globus endpoint id
+        self._globus_path = None        # path to globus share
+        self._remote_base_path = None   # base path on the remote system for Paramiko
+
+        # Paramiko key paths (filled by create_ssh_keypair)
+        self._private_key_path = None
+        self._public_key_path = None
 
     def get_globus_compute_config(self):
         """Return globus compute config values"""
@@ -219,8 +221,12 @@ class NeSISetup:
 
         # report endpoint id for configuring rjm
         print("="*120)
-        print(f"Globus guest collection endpoint id: '{endpoint_id}'")
-        print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
+        print(f"Glob
+
+us guest collection endpoint id: '{endpoint_id}'")
+        print(f"Glob
+
+us guest collection endpoint path: '{guest_collection_dir}'")
         print("You can manage the endpoint you just created online at:")
         print(f"    https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
         print("="*120)
@@ -238,24 +244,7 @@ class NeSISetup:
         bits: int = 2048,
         private_key_path: str | None = None,
     ) -> tuple[str, str]:
-        """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``.
-
-        Parameters
-        ----------
-        key_type: str, optional
-            The type of key to generate – ``"rsa"`` (default) or ``"ed25519"``.
-        bits: int, optional
-            Number of bits for RSA keys. Ignored for Ed25519 keys.
-        private_key_path: str | None, optional
-            Full path for the private key. If ``None`` the default location
-            ``~/.rjm/paramiko_private_key`` (used by the rest of RJM) is used.
-
-        Returns
-        -------
-        tuple[str, str]
-            ``(private_key_path, public_key_path)`` – absolute paths of the
-            written files.
-        """
+        """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``."""
         # Resolve the default location if the caller did not provide one
         if private_key_path is None:
             private_key_path = os.path.join(
@@ -292,6 +281,10 @@ class NeSISetup:
             public_key_path,
         )
 
+        # Store the paths on the instance for later retrieval
+        self._private_key_path = private_key_path
+        self._public_key_path = public_key_path
+
         return private_key_path, public_key_path
 
     # --------------------------------------------------------------------- #
@@ -308,17 +301,38 @@ class NeSISetup:
         The chosen base path is stored on the instance for later use and the
         private/public key file paths are returned.
         """
-        # Suggest a sensible default – a temporary directory under /tmp
-        # that is unique to the user running the script.
+        # Default – a temporary directory under /tmp unique to the user
         default_path = f"/tmp/{self._username}/rjm"
         remote_base = input(
             f"Enter remote base path for Paramiko (default [{default_path}]): "
         ).strip() or default_path
 
-        # store for possible later use
+        # Store for later use
         self._remote_base_path = remote_base
         logger.info("Paramiko remote base path set to: %s", remote_base)
 
-        # generate the SSH key pair (uses the default location under ~/.rjm)
+        # Generate the SSH key pair (stores paths on the instance)
         private_key, public_key = self.create_ssh_keypair()
         return private_key, public_key
+
+    # --------------------------------------------------------------------- #
+    # Helper to expose Paramiko configuration
+    # --------------------------------------------------------------------- #
+    def get_paramiko_config(self):
+        """
+        Return the three Paramiko configuration values that RJM needs.
+
+        Returns
+        -------
+        dict
+            {
+                "private_key_file": <path to private key>,
+                "remote_user":      <username used for SSH>,
+                "remote_base_path": <base directory on the remote system>
+            }
+        """
+        return {
+            "private_key_file": self._private_key_path,
+            "remote_user": self._username,
+            "remote_base_path": self._remote_base_path,
+        }
