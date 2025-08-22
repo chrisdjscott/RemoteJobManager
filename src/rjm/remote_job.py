@@ -227,11 +227,11 @@ class RemoteJob:
 
         # setup runner
         self._log(logging.DEBUG, "Setting up globus auth for runner")
-        self._runner.setup_globus_auth(globus_cli, runner=runner)
+        self._runner.setup(globus_cli, runner=runner)
 
         # setup transferer
         self._log(logging.DEBUG, "Setting up globus auth for transferer")
-        self._transfer.setup_globus_auth(globus_cli, transfer=transfer)
+        self._transfer.setup(globus_cli, transfer=transfer)
 
     def cleanup(self):
         """
