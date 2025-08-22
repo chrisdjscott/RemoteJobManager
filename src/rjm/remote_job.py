@@ -10,6 +10,7 @@ from retry.api import retry_call
 from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
+from rjm.transferers import paramiko_sftp_transferer
 from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
 from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
 from rjm.errors import RemoteJobRunnerError
@@ -54,8 +55,11 @@ class RemoteJob:
         self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(config)
 
         # file transferer
-        # select between GlobusHttpsTransferer and ParamikoSftpTransferer depending on the value of config.get("COMPONENTS", "transferer") which is either globus_https_transferer or paramiko_sftp_transferer AI!
-        self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
+        transferer_type = config.get("COMPONENTS", "transferer")
+        if transferer_type == "paramiko_sftp_transferer":
+            self._transfer = paramiko_sftp_transferer.ParamikoSftpTransferer(config=config)
+        else:
+            self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
         runner_type = config.get("COMPONENTS", "runner")
