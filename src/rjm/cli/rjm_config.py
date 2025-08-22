@@ -32,12 +32,8 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
-    parser.add_argument('-n',
-                        '--no-globus',
-                        action='store_true',
-                        help='Skip Globus transfer and compute setup steps')
     parser.add_argument('-s', '--ssh', action='store_true',
-                        help='Generate an SSH key pair (stored under ~/.rjm) for use with the Paramiko runner')
+                        help='Generate an SSH key pair (stored under ~/.rjm) for use with the Paramiko runner. When this option is chosen, Globus Transfer/Compute setup is skipped.')
     parser.add_argument('-w', '--where-config', action="store_true", help="Print location of the config file and exit")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
