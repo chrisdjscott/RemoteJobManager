@@ -56,6 +56,7 @@ class RemoteJob:
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
+        # select between GlobusComputeSlurmRunner and ParamikoSSHRunner depending on the value of config.get("COMPONENTS", "runner") which is either globus_compute_slurm_runner or paramiko_ssh_runner AI!
         self._runner = GlobusComputeSlurmRunner(config=config)
 
     def files_uploaded(self):
