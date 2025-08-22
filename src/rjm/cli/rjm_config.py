@@ -140,6 +140,13 @@ def nesi_setup():
                 optd["override"] = funcx_ep
                 done_funcx_ep = True
 
+            # ----- set the transferer and runner based on whether ssh option was chosen or not
+            if optd["section"] == "COMPONENTS":
+                if optd["name"] == "runner":
+                    optd["override"] = "globus_compute_slurm_runner"
+                elif optd["name"] == "transferer":
+                    optd["override"] = "globus_https_transferer"
+
         # ----- Paramiko overrides (only when SSH key pair was generated) -----
         if args.ssh:
             if optd["section"] == "PARAMIKO":
@@ -152,6 +159,13 @@ def nesi_setup():
                 elif optd["name"] == "remote_address":
                     # Store the remote machine address entered during Paramiko setup
                     optd["override"] = paramiko_cfg["remote_address"]
+
+            # ----- set the transferer and runner based on whether ssh option was chosen or not
+            if optd["section"] == "COMPONENTS":
+                if optd["name"] == "runner":
+                    optd["override"] = "paramiko_ssh_runner"
+                elif optd["name"] == "transferer":
+                    optd["override"] = "paramiko_sftp_transferer"
 
     # sanity checks – only required when Globus overrides were attempted
     if not no_globus:

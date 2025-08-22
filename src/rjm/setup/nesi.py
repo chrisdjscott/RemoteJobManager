@@ -348,6 +348,9 @@ class NeSISetup:
         # Wait for user confirmation
         input("Press ENTER when the public key has been added to the remote authorized_keys file...")
 
+        # TODO: confirm ssh access to remote_addr using paramiko runner and created private key file
+        # TODO: confirm write access to remote_base_path (or create remote_base_path if it doesn't exist)
+
     # --------------------------------------------------------------------- #
     # Helper to expose Paramiko configuration
     # --------------------------------------------------------------------- #
