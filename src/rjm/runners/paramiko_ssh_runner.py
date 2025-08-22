@@ -220,7 +220,7 @@ class ParamikoSSHRunner(RunnerBase):
         :raises RemoteJobRunnerError: if the directory does not exist
 
         """
-        # AI implement this function to check the directory exists using the run_function method, raise an error if it doesn't exist, otherwise return nothing if it does exist
+        # implement this function to check the directory exists using the run_function method, raise an error if it doesn't exist, otherwise return nothing if it does exist AI!
 
     def start(self, working_directory):
         """
