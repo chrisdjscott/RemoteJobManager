@@ -12,6 +12,9 @@ from rjm.errors import RemoteJobBatchError
 from rjm.remote_job import RemoteJob
 from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
 from rjm.transferers.globus_https_transferer import GlobusHttpsTransferer
+from rjm import config as config_helper
+from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+from rjm.transferers.paramiko_sftp_transferer import ParamikoSftpTransferer
 
 
 logger = logging.getLogger(__name__)
@@ -24,8 +27,23 @@ class RemoteJobBatch:
     """
     def __init__(self):
         self._remote_jobs = []
-        self._runner = GlobusComputeSlurmRunner()
-        self._transfer = GlobusHttpsTransferer()
+
+        # Load configuration to decide which components to use
+        config = config_helper.load_config()
+
+        # Choose runner based on config COMPONENTS.runner
+        runner_type = config.get("COMPONENTS", "runner")
+        if runner_type == "paramiko_ssh_runner":
+            self._runner = ParamikoSSHRunner(config=config)
+        else:
+            self._runner = GlobusComputeSlurmRunner(config=config)
+
+        # Choose transferer based on config COMPONENTS.transferer
+        transferer_type = config.get("COMPONENTS", "transferer")
+        if transferer_type == "paramiko_sftp_transferer":
+            self._transfer = ParamikoSftpTransferer(config=config)
+        else:
+            self._transfer = GlobusHttpsTransferer(config=config)
 
     def setup(self, remote_jobs_file: str, force: bool = False):
         """Setup the runner"""
