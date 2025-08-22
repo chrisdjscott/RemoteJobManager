@@ -54,6 +54,7 @@ class RemoteJob:
         self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(config)
 
         # file transferer
+        # select between GlobusHttpsTransferer and ParamikoSftpTransferer depending on the value of config.get("COMPONENTS", "transferer") which is either globus_https_transferer or paramiko_sftp_transferer AI!
         self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
