@@ -301,6 +301,14 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         return started
 
+    def check_directory_exists(self, directory_path):
+        """Check the working directory exists"""
+        # sanity check the directory exists on the remote
+        dir_exists = self.run_function_with_retries(check_dir_exists, directory_path)
+        if not dir_exists:
+            self._log(logging.ERROR, f"The specified directory does not exist on remote: {directory_path}")
+            raise RemoteJobRunnerError(f"The specified directory does not exist on remote: {directory_path}")
+
     def wait(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for the Slurm job to finish
@@ -715,3 +723,9 @@ class CustomLoginManager(LoginManager):
 
         # return the selected authoriser
         return authorisers[resource_server]
+
+
+# function for checking directory exists on funcx endpoint
+def check_dir_exists(dirpath):
+    import os
+    return os.path.isdir(dirpath)
