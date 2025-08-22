@@ -11,6 +11,7 @@ from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
 from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
+from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
 from rjm.errors import RemoteJobRunnerError
 
 
