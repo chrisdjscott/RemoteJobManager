@@ -220,7 +220,13 @@ class ParamikoSSHRunner(RunnerBase):
         :raises RemoteJobRunnerError: if the directory does not exist
 
         """
-        # implement this function to check the directory exists using the run_function method, raise an error if it doesn't exist, otherwise return nothing if it does exist AI!
+        # Use SSH to test if the directory exists
+        command = f"test -d '{directory_path}'"
+        stdin, stdout, stderr = self._ssh_client.exec_command(command)
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status != 0:
+            raise RemoteJobRunnerError(f"Remote directory does not exist: {directory_path}")
+        # Directory exists; nothing to return
 
     def start(self, working_directory):
         """
