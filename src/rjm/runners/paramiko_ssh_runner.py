@@ -84,8 +84,7 @@ class ParamikoSSHRunner(RunnerBase):
         self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         self._log(logging.DEBUG, f"Loading SSH key from {self._ssh_private_key_file}")
-        # change this to load an RSA key, AI!
-        self._private_key = paramiko.Ed25519Key.from_private_key_file(self._ssh_private_key_file)
+        self._private_key = paramiko.RSAKey.from_private_key_file(self._ssh_private_key_file)
 
         # Connect to server
         self._ssh_client.connect(
