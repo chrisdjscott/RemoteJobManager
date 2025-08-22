@@ -212,6 +212,16 @@ class ParamikoSSHRunner(RunnerBase):
 
         return remote_dirs
 
+    def check_directory_exists(self, directory_path):
+        """
+        Check that the given directory exists on the remote machine
+
+        :param directory_path
+        :raises RemoteJobRunnerError: if the directory does not exist
+
+        """
+        # AI implement this function to check the directory exists using the run_function method, raise an error if it doesn't exist, otherwise return nothing if it does exist
+
     def start(self, working_directory):
         """
         Starts running the job script
