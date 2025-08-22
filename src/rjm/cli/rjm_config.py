@@ -52,6 +52,9 @@ def nesi_setup():
     # command line args
     parser = make_parser()
     args = parser.parse_args()
+    # Determine whether Globus setup should be performed.
+    # If SSH option is chosen, we skip Globus (mutually exclusive behavior).
+    no_globus = args.ssh
 
     if args.where_config:
         # print location of config file and exit
@@ -103,7 +106,7 @@ def nesi_setup():
     nesi = NeSISetup(username, account)
 
     # do the globus setup unless the user asked to skip it
-    if not args.no_globus:
+    if not no_globus:
         # This step is interactive and may open a browser
         nesi.setup_globus_transfer()
 
@@ -117,7 +120,7 @@ def nesi_setup():
     req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS)
 
     # get config values (only if globus setup was performed)
-    if not args.no_globus:
+    if not no_globus:
         globus_ep, globus_path = nesi.get_globus_transfer_config()
         funcx_ep = nesi.get_globus_compute_config()
 
@@ -130,7 +133,7 @@ def nesi_setup():
     # Paramiko overrides are applied only when the SSH option was chosen.
     for optd in req_opts:
         # ----- Globus overrides (only when Globus setup was run) -----
-        if not args.no_globus:
+        if not no_globus:
             if optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_endpoint":
                 optd["override"] = globus_ep
                 done_globus_ep = True
@@ -155,7 +158,7 @@ def nesi_setup():
                     optd["override"] = paramiko_cfg["remote_address"]
 
     # sanity checks – only required when Globus overrides were attempted
-    if not args.no_globus:
+    if not no_globus:
         assert done_globus_ep
         assert done_globus_path
         assert done_funcx_ep
@@ -174,7 +177,7 @@ def nesi_setup():
     print("="*120)
 
     # Run authentication only if Globus steps were not skipped
-    if not args.no_globus:
+    if not no_globus:
         print("Running authenticate next...")
         # force fresh authentication
         do_authentication(force=True, verbose=True)
