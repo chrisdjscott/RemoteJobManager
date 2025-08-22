@@ -79,15 +79,15 @@ def _remote_health_check_paramiko(runner, remote_dir, remote_file, keep):
     # Optional cleanup
     if not keep:
         # remove file
-        cmd_rm = f\"rm -f '{remote_path}'\"
+        cmd_rm = f"rm -f '{remote_path}'"
         exit_rm, _ = runner.run_command(cmd_rm, background=False, retries=False)
         if exit_rm != 0:
-            logger.warning(f\"Failed to delete remote file '{remote_path}' (exit {exit_rm})\")
+            logger.warning(f"Failed to delete remote file '{remote_path}' (exit {exit_rm})")
         # remove directory
-        cmd_rmdir = f\"rmdir '{remote_dir}'\"
+        cmd_rmdir = f"rmdir '{remote_dir}'"
         exit_rmdir, _ = runner.run_command(cmd_rmdir, background=False, retries=False)
         if exit_rmdir != 0:
-            logger.warning(f\"Failed to delete remote directory '{remote_dir}' (exit {exit_rmdir})\")
+            logger.warning(f"Failed to delete remote directory '{remote_dir}' (exit {exit_rmdir})")
 
     return None
 
