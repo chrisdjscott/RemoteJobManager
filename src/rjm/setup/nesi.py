@@ -273,10 +273,14 @@ class NeSISetup:
             format=serialization.PublicFormat.OpenSSH
         )
 
-        # write the private key to a file at `private_key_path` and make sure permissions are 0600 AI!
+        # Write private key to file with mode 0o600
+        with open(private_key_path, "wb") as pk_f:
+            pk_f.write(c_key_pem)
+        os.chmod(private_key_path, 0o600)
 
-
-        # write the public key to a file at `public_key_path` AI!
+        # Write public key to file
+        with open(public_key_path, "wb") as pub_f:
+            pub_f.write(public_key)
 
 
         logger.info(
