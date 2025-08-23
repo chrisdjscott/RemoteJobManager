@@ -273,10 +273,10 @@ class NeSISetup:
             format=serialization.PublicFormat.OpenSSH
         )
 
-        # write the private key to a file at `private_key_path` and make sure permissions are 0600
+        # write the private key to a file at `private_key_path` and make sure permissions are 0600 AI!
 
 
-        # write the public key to a file at `public_key_path`
+        # write the public key to a file at `public_key_path` AI!
 
 
         logger.info(
