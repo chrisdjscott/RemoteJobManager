@@ -3,7 +3,7 @@ NeSI setup module for RJM.
 """
 
 import os
-import time
+import io
 import uuid
 import logging
 import tempfile
@@ -13,6 +13,8 @@ import globus_sdk
 from globus_sdk import GCSClient, TransferClient, DeleteData
 from globus_sdk.services.gcs.data import GuestCollectionDocument
 from globus_sdk.scopes import TransferScopes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import asymmetric
 
 from rjm import utils
 
@@ -237,8 +239,6 @@ class NeSISetup:
     # --------------------------------------------------------------------- #
     def create_ssh_keypair(
         self,
-        key_type: str = "rsa",
-        bits: int = 2048,
         private_key_path: str | None = None,
     ) -> tuple[str, str]:
         """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``."""
@@ -253,24 +253,31 @@ class NeSISetup:
         os.makedirs(os.path.dirname(private_key_path), exist_ok=True)
 
         # Generate the key
-        key_type = key_type.lower()
-        if key_type == "rsa":
-            key = paramiko.RSAKey.generate(bits)
-        elif key_type == "ed25519":
-            key = paramiko.Ed25519Key.generate()
-        else:
-            raise ValueError(f"Unsupported key_type '{key_type}'. Use 'rsa' or 'ed25519'.")
+        c_key = asymmetric.ed25519.Ed25519PrivateKey.generate()
 
-        # Write the private key (chmod 600 for security)
-        key.write_private_key_file(private_key_path)
-        try:
-            os.chmod(private_key_path, 0o600)
-        except Exception:  # pragma: no cover – best‑effort only
-            pass
+        # Serialize the private key to OpenSSH format
+        c_key_pem = c_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.OpenSSH,
+            encryption_algorithm=serialization.NoEncryption()  # Use NoEncryption for simplicity; can add passphrase
+        )
 
-        # Write the public key in the standard OpenSSH format
-        with open(public_key_path, "w", encoding="utf-8") as pub_f:
-            pub_f.write(f"{key.get_name()} {key.get_base64()}\n")
+        # Load the private key into Paramiko
+        priv_obj = io.StringIO(c_key_pem.decode())
+        private_key = paramiko.ed25519key.Ed25519Key.from_private_key(priv_obj)
+
+        # Extract and serialize the public key (optional)
+        pub = private_key.public_key()
+        public_key = pub.public_bytes(
+            encoding=serialization.Encoding.OpenSSH,
+            format=serialization.PublicFormat.OpenSSH
+        )
+
+        # write the private key to a file at `private_key_path` and make sure permissions are 0600
+
+
+        # write the public key to a file at `public_key_path`
+
 
         logger.info(
             "Generated SSH key pair – private: %s, public: %s",
