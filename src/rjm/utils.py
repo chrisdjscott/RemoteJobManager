@@ -77,9 +77,10 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)
             if cli_extra:
-                # same level for globus
+                # same level for globus and paramiko
                 logging.getLogger("globus").setLevel(level)
                 logging.getLogger("globus_compute_sdk").setLevel(level)
+                logging.getLogger("paramiko").setLevel(level)
 
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,

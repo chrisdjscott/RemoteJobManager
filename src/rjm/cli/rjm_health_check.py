@@ -27,7 +27,7 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', default="critical",
                         help="level of log verbosity (default: %(default)s)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
-    parser.add_argument('-le', '--logextra', action='store_true', help='Also log funcx and globus at the chosen loglevel')
+    parser.add_argument('-le', '--logextra', action='store_true', help='Also log globus and paramiko at the chosen loglevel')
     parser.add_argument('-k', '--keep', action="store_true",
                         help="Keep health check files on remote system, i.e. do not delete them after completing the check (default=%(default)s)")
     parser.add_argument('-r', '--retries', action='store_true', help='Allow retries on function failures')
