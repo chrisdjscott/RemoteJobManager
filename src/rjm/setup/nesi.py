@@ -267,7 +267,7 @@ class NeSISetup:
         private_key = paramiko.ed25519key.Ed25519Key.from_private_key(priv_obj)
 
         # Extract and serialize the public key (optional)
-        pub = private_key.public_key()
+        pub = c_key.public_key()
         public_key = pub.public_bytes(
             encoding=serialization.Encoding.OpenSSH,
             format=serialization.PublicFormat.OpenSSH
