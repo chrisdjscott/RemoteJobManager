@@ -19,7 +19,6 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "cryptograpgy",
     "fair-research-login",
     "globus-compute-sdk==3.7.0",
     "globus-sdk",

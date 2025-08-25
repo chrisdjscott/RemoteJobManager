@@ -83,22 +83,15 @@ class ParamikoSSHRunner(RunnerBase):
         self._ssh_client = paramiko.SSHClient()
         self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-#        self._log(logging.DEBUG, f"Loading SSH key from {self._ssh_private_key_file}")
-#        # Attempt to load RSA key first, fallback to Ed25519Key if needed
-#        try:
-#            self._private_key = paramiko.RSAKey.from_private_key_file(self._ssh_private_key_file)
-#        except Exception:
-#            self._private_key = paramiko.Ed25519Key.from_private_key_file(self._ssh_private_key_file)
-#        self._log(logging.DEBUG, f"Loaded SSH key: {self._private_key}")
+        # load the private key
+        private_key = paramiko.RSAKey(filename=self._ssh_private_key_file)
 
         # Connect to server
         self._ssh_client.connect(
             hostname=self._remote_address,
             port=22,
             username=self._remote_user,
-            key_filename=self._ssh_private_key_file,
-            look_for_keys=False,
-#            pkey=self._private_key,
+            pkey=private_key,
             timeout=30,
         )
         self._log(logging.DEBUG, f"Connected to: {self._remote_user}@{self._remote_address} ({self._ssh_client})")
@@ -122,6 +115,9 @@ class ParamikoSSHRunner(RunnerBase):
         """
         if self._ssh_client is None:
             raise RuntimeError("Must call setup before run_command")
+
+        if retries:
+            self._log(logging.ERROR, "Retries are not implemented for the paramiko runner yet")
 
         self._log(logging.DEBUG, f"Running {'background ' if background else ''}command: {command}")
 
