@@ -392,6 +392,13 @@ class RemoteJob:
             self.set_run_completed(success=run_succeeded)
             self._save_state()
 
+    def check_job_status(self):
+        """
+        Check whether the job has finished and return a string with the state of the job
+
+        """
+        return self._runner.check_job_status()
+
     def run_cancel(self):
         """Cancel the run."""
         if not self._run_started:

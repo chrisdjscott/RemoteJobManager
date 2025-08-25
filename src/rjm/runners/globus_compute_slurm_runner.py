@@ -430,7 +430,8 @@ class GlobusComputeSlurmRunner(RunnerBase):
         :param remote_jobs: list of remote jobs to check
 
         :returns: tuple of lists of RemoteJobs containing:
-            - finished jobs
+            - successful jobs
+            - failed jobs
             - unfinished jobs
 
         """

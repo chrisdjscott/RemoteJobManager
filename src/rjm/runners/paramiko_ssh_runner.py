@@ -257,6 +257,41 @@ class ParamikoSSHRunner(RunnerBase):
 
         return started
 
+    def check_job_status(self):
+        """
+        Check the status of the job (SUCCEEDED, FAILED, UNFINISHED)
+
+        """
+        if self._tmux_session_name is None:
+            raise ValueError("Must call 'run_start' before 'check_job_status'")
+
+        self._log(logging.DEBUG, f"Checking job status: {self._tmux_session_name}")
+
+        cmd = f"tmux has-session {self._tmux_session_name}"
+        stdin, stdout, stderr = self._ssh_client.exec_command(cmd)
+
+        # Wait for command to complete
+        exit_status = stdout.channel.recv_exit_status()
+        self._log(logging.DEBUG, f'tmux has-session exit code: {exit_status} ({stdout}) ({stderr})')
+
+        if exit_status:
+            job_finished = True
+
+            # confirm whether or not it succeeded, i.e. does the file exist?
+            stdin, stdout, stderr = self._ssh_client.exec_command(f"test -f {self._working_directory}/.rjm-succeeded")
+            exit_status = stdout.channel.recv_exit_status()
+            if exit_status:
+                state = "FAILED"
+            else:
+                state = "SUCCEEDED"
+
+        else:
+            state = "UNFINISHED"
+
+        self._log(logging.DEBUG, f"Job status for {self._tmux_session_name}: {state}")
+
+        return state
+
     def wait(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for the job to finish
@@ -273,29 +308,20 @@ class ParamikoSSHRunner(RunnerBase):
         )
 
         # loop until job has finished
-        self._log(logging.INFO, f"Waiting for job {self._jobid} to finish")
+        self._log(logging.INFO, f"Waiting for job {self._tmux_session_name} to finish")
         self._log(logging.DEBUG, f"Polling interval is: {polling_interval} seconds")
         job_finished = False
         job_succeeded = None
         while not job_finished:
-            cmd = f"tmux has-session {self._tmux_session_name}"
-            stdin, stdout, stderr = self._ssh_client.exec_command(cmd)
+            state = self.check_job_status()
 
-            # Wait for command to complete
-            exit_status = stdout.channel.recv_exit_status()
-            self._log(logging.DEBUG, f'tmux has-session exit code: {exit_status} ({stdout}) ({stderr})')
-
-            if exit_status:
-                # TODO: should also check stderr as expected... eg should contain "can't find session"
+            if state in ("SUCCEEDED", "FAILED"):
                 job_finished = True
 
-                # TODO: need to confirm whether or not it succeeded, i.e. does the file exist?
-                stdin, stdout, stderr = self._ssh_client.exec_command(f"test -f {self._working_directory}/.rjm-succeeded")
-                exit_status = stdout.channel.recv_exit_status()
-                if exit_status:
-                    job_succeeded = False
-                else:
+                if state == "SUCCEEDED":
                     job_succeeded = True
+                else:
+                    job_succeeded = False
 
             else:
                 self._log(logging.DEBUG, "Not finished yet")
@@ -366,7 +392,30 @@ class ParamikoSSHRunner(RunnerBase):
             - unfinished jobs
 
         """
-        raise NotImplementedError
+        self._log(logging.DEBUG, "Checking for finished jobs")
+        successful_jobs = []
+        failed_jobs = []
+        unfinished_jobs = []
+        for rj in remote_jobs:
+            self._log(logging.DEBUG, f"Check job status for: {rj}")
+            status = rj.check_job_status()
+
+            if status == "SUCCEEDED":
+                successful_jobs.append(rj)
+                self._log(logging.DEBUG, f"{rj} finished successfully")
+
+            elif status == "FAILED":
+                failed_jobs.append(rj)
+                self._log(logging.DEBUG, f"{rj} finished unsuccessfully")
+
+            elif status == "UNFINISHED":
+                unfinished_jobs.append(rj)
+                self._log(logging.DEBUG, f"{rj} unfinished")
+
+            else:
+                raise ValueError(f"Unrecognised job status: \"{status}\"")
+
+        return successful_jobs, failed_jobs, unfinished_jobs
 
     def get_checksums(self, working_directory, files):
         """
