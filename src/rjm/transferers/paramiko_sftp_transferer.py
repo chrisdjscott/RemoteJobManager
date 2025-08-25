@@ -74,6 +74,7 @@ class ParamikoSftpTransferer(TransfererBase):
         self._log(logging.DEBUG, f"Connected to: {self._remote_address} ({self._sftp_client})")
 
         # Ensure remote base path exists
+        # change this to use "mkdir -p" with ssh_client AI!
         try:
             self._sftp_client.stat(self._remote_base_path)
         except OSError:
