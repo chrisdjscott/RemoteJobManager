@@ -3,7 +3,6 @@ NeSI setup module for RJM.
 """
 
 import os
-import io
 import uuid
 import logging
 import tempfile
@@ -13,8 +12,6 @@ import globus_sdk
 from globus_sdk import GCSClient, TransferClient, DeleteData
 from globus_sdk.services.gcs.data import GuestCollectionDocument
 from globus_sdk.scopes import TransferScopes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives import asymmetric
 
 from rjm import utils
 
@@ -240,6 +237,7 @@ class NeSISetup:
     def create_ssh_keypair(
         self,
         private_key_path: str | None = None,
+        bits: int = 2048
     ) -> tuple[str, str]:
         """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``."""
         # Resolve the default location if the caller did not provide one
@@ -252,36 +250,17 @@ class NeSISetup:
         # Ensure the target directory exists
         os.makedirs(os.path.dirname(private_key_path), exist_ok=True)
 
-        # Generate the key
-        c_key = asymmetric.ed25519.Ed25519PrivateKey.generate()
+        # Generate RSA key
+        private_key = paramiko.RSAKey.generate(bits=bits)
 
-        # Serialize the private key to OpenSSH format
-        c_key_pem = c_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.OpenSSH,
-            encryption_algorithm=serialization.NoEncryption()  # Use NoEncryption for simplicity; can add passphrase
-        )
+        # Write private key
+        with open(private_key_path, 'w', encoding='utf-8') as private_file:
+            key.write_private_key(private_file)
 
-        # Load the private key into Paramiko
-        priv_obj = io.StringIO(c_key_pem.decode())
-        private_key = paramiko.ed25519key.Ed25519Key.from_private_key(priv_obj)
-
-        # Extract and serialize the public key (optional)
-        pub = c_key.public_key()
-        public_key = pub.public_bytes(
-            encoding=serialization.Encoding.OpenSSH,
-            format=serialization.PublicFormat.OpenSSH
-        )
-
-        # Write private key to file with mode 0o600
-        with open(private_key_path, "wb") as pk_f:
-            pk_f.write(c_key_pem)
-        os.chmod(private_key_path, 0o600)
-
-        # Write public key to file
-        with open(public_key_path, "wb") as pub_f:
-            pub_f.write(public_key)
-
+        # Write public key (OpenSSH format)
+        public_key_str = f"{private_key.get_name()} {private_key.get_base64()}\n"
+        with open(public_key_path, 'w', encoding='utf-8') as public_file:
+            public_file.write(public_key_str)
 
         logger.info(
             "Generated SSH key pair – private: %s, public: %s",
