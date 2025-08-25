@@ -242,9 +242,9 @@ class ParamikoSSHRunner(RunnerBase):
         try:
             self._tmux_session_name = self.run_command(
                 f'cd "{working_directory}" && bash {self._job_script} > stdout.txt 2> stderr.txt && touch "{working_directory}/.rjm-succeeded"',
-                background=False
+                background=True
             )
-        
+
         except RemoteJobRunnerError as exc:
             self._log(logging.ERROR, f'Starting job failed in remote directory: "{working_directory}"')
             self._log(logging.ERROR, f'{exc}')
