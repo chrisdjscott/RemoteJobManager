@@ -73,7 +73,12 @@ class ParamikoSftpTransferer(TransfererBase):
         self._sftp_client = self._ssh_client.open_sftp()
         self._log(logging.DEBUG, f"Connected to: {self._remote_address} ({self._sftp_client})")
 
-        # use the SFTP client, or SSH client, to create the remote_base_path directory if it doesn't already exist, AI!
+        # Ensure remote base path exists
+        try:
+            self._sftp_client.stat(self._remote_base_path)
+        except OSError:
+            self._log(logging.DEBUG, f"Creating remote base path: {self._remote_base_path}")
+            self._sftp_client.mkdir(self._remote_base_path)
 
     def upload_files(self, filenames: list[str]):
         """
