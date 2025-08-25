@@ -57,7 +57,7 @@ class ParamikoSftpTransferer(TransfererBase):
         self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         self._log(logging.DEBUG, f"Loading SSH key from {self._ssh_private_key_file}")
-        self._private_key = paramiko.Ed25519Key.from_private_key_file(self._ssh_private_key_file)
+        self._private_key = paramiko.RSAKey(filename=self._ssh_private_key_file)
 
         # Connect to server
         self._ssh_client.connect(
@@ -66,11 +66,14 @@ class ParamikoSftpTransferer(TransfererBase):
             username=self._remote_user,
             pkey=self._private_key,
             timeout=30,
+            look_for_keys=False,
         )
 
         # Create SFTP client
         self._sftp_client = self._ssh_client.open_sftp()
         self._log(logging.DEBUG, f"Connected to: {self._remote_address} ({self._sftp_client})")
+
+        # use the SFTP client, or SSH client, to create the remote_base_path directory if it doesn't already exist, AI!
 
     def upload_files(self, filenames: list[str]):
         """
@@ -82,10 +85,12 @@ class ParamikoSftpTransferer(TransfererBase):
 
         """
         self._log(logging.DEBUG, "Uploading files...")
+        self._log(logging.DEBUG, f"Remote base path is: {self._remote_base_path}")
+        self._log(logging.DEBUG, f"Remote path is: {self._remote_path}")
         for filename in filenames:
             # use basename for remote file name
             basename = os.path.basename(filename)
-            remote_filename = f"{self._remote_path}/{basename}"
+            remote_filename = f"{self._remote_base_path}/{self._remote_path}/{basename}"
             self._log(logging.DEBUG, f"Uploading: {filename} -> {remote_filename}")
 
             # upload
@@ -118,7 +123,7 @@ class ParamikoSftpTransferer(TransfererBase):
         downloaded_tmp_files = []
         for fn in filenames:
             self._log(logging.DEBUG, f"Downloading: {fn}")
-            remote_fn = f"{self._remote_path}/{fn}"
+            remote_fn = f"{self._remote_base_path}/{self._remote_path}/{fn}"
 
             # check it exists first
 
@@ -177,7 +182,7 @@ class ParamikoSftpTransferer(TransfererBase):
         """
         self._log(logging.DEBUG, f"Listing remote directory: {path}")
 
-        raw_listing = self._sftp_client.listdir_attr(path=self._remote_path)
+        raw_listing = self._sftp_client.listdir_attr(path=path)
 
         listing = {}
         for entry in raw_listing:
