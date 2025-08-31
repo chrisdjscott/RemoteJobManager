@@ -247,10 +247,31 @@ class NeSISetup:
             )
         public_key_path = private_key_path + ".pub"
 
+        # -----------------------------------------------------------------
+        # 1️⃣  Check for existing key pair
+        # -----------------------------------------------------------------
+        if os.path.isfile(private_key_path) and os.path.isfile(public_key_path):
+            while True:
+                answer = input(
+                    f"\nSSH key pair already exists at:\n"
+                    f"  private: {private_key_path}\n"
+                    f"  public : {public_key_path}\n"
+                    f"Use the existing keys? (y/n): "
+                ).strip().lower()
+                if answer.startswith('y'):
+                    logger.info("Re-using existing SSH key pair")
+                    return private_key_path, public_key_path
+                if answer.startswith('n'):
+                    logger.info("Generating a new SSH key pair (overwriting existing files)")
+                    break
+                print("Please answer 'y' or 'n'.")
+
+        # -----------------------------------------------------------------
+        # 2️⃣  Generate a new RSA key pair
+        # -----------------------------------------------------------------
         # Ensure the target directory exists
         os.makedirs(os.path.dirname(private_key_path), exist_ok=True)
 
-        # Generate RSA key
         private_key = paramiko.RSAKey.generate(bits=bits)
 
         # Write private key
