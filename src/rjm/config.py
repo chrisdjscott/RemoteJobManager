@@ -127,25 +127,32 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
         old_format = False
         if not "COMPONENTS" in config:
             old_format = True
-            logger.warning("Old format config file detected -- no COMPONENTS section -- defaulting to Globus")
-            config["COMPONENTS"] = {}
-            config["COMPONENTS"]["runner"] = "globus_compute_slurm_runner"
-            config["COMPONENTS"]["transferer"] = "globus_https_transferer"
+            logger.debug("Old format config file detected -- no COMPONENTS section -- defaulting to Globus")
+            config["COMPONENTS"] = {
+                "runner": "globus_compute_slurm_runner",
+                "transferer": "globus_https_transferer",
+            }
 
         if not "GLOBUS_TRANSFER" in config:
             old_format = True
-            logger.warning("Old format config file detected -- no GLOBUS_TRANSFER section -- attempting to fix")
-            config["GLOBUS_TRANSFER"] = config["GLOBUS"]
+            logger.debug("Old format config file detected -- no GLOBUS_TRANSFER section -- attempting to fix")
+            if "GLOBUS" in config:
+                logger.debug("Using GLOBUS config for GLOBUS_TRANSFER")
+                config["GLOBUS_TRANSFER"] = config["GLOBUS"]
 
         if not "GLOBUS_COMPUTE" in config:
             old_format = True
-            logger.warning("Old format config file detected -- no GLOBUS_COMPUTE section -- attempting to fix")
-            config["GLOBUS_COMPUTE"] = config["FUNCX"]
+            logger.debug("Old format config file detected -- no GLOBUS_COMPUTE section -- attempting to fix")
+            if "GLOBUS_COMPUTE" in config:
+                logger.debug("Using FUNCX config for GLOBUS_COMPUTE")
+                config["GLOBUS_COMPUTE"] = config["FUNCX"]
 
         if not "POLLING" in config:
             old_format = True
-            logger.warning("Old format config file detected -- no POLLING section -- attempting to fix")
-            config["POLLING"] = config["SLURM"]
+            logger.debug("Old format config file detected -- no POLLING section -- attempting to fix")
+            if "POLLING" in config:
+                logger.debug("Using SLURM config for POLLING")
+                config["POLLING"] = config["SLURM"]
 
         if old_format:
             logger.warning("Attempted to automatically update your old config file -- rerun `rjm_config` to avoid this")
