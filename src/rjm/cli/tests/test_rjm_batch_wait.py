@@ -34,6 +34,10 @@ def configobj():
         "uploads_file": "uploads.txt",
         "downloads_file": "downloads.txt",
     }
+    config["COMPONENTS"] = {
+        "runner": "globus_compute_slurm_runner",
+        "transferer": "globus_https_transferer",
+    }
 
     return config
 
