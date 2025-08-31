@@ -143,14 +143,14 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
         if not "GLOBUS_COMPUTE" in config:
             old_format = True
             logger.debug("Old format config file detected -- no GLOBUS_COMPUTE section -- attempting to fix")
-            if "GLOBUS_COMPUTE" in config:
+            if "FUNCX" in config:
                 logger.debug("Using FUNCX config for GLOBUS_COMPUTE")
                 config["GLOBUS_COMPUTE"] = config["FUNCX"]
 
         if not "POLLING" in config:
             old_format = True
             logger.debug("Old format config file detected -- no POLLING section -- attempting to fix")
-            if "POLLING" in config:
+            if "SLURM" in config:
                 logger.debug("Using SLURM config for POLLING")
                 config["POLLING"] = config["SLURM"]
 
