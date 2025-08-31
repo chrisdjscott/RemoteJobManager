@@ -255,7 +255,7 @@ class NeSISetup:
 
         # Write private key
         with open(private_key_path, 'w', encoding='utf-8') as private_file:
-            key.write_private_key(private_file)
+            private_key.write_private_key(private_file)
 
         # Write public key (OpenSSH format)
         public_key_str = f"{private_key.get_name()} {private_key.get_base64()}\n"
