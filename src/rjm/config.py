@@ -125,7 +125,11 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
 
         # check if the config file is old and raise error if so
         if not "COMPONENTS" in config:
-            raise RemoteJobConfigError("Old format config file - not loading it")
+            logger.warning("Old format config file detected -- defaulting to Globus")
+            config["COMPONENTS"] = {}
+            config["COMPONENTS"]["runner"] = "globus_compute_slurm_runner"
+            config["COMPONENTS"]["transferer"] = "globus_https_transferer"
+
     else:
         raise RemoteJobConfigError(f"Config file does not exist: {config_file}")
 
