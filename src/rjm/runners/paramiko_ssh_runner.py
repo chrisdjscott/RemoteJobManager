@@ -267,12 +267,17 @@ class ParamikoSSHRunner(RunnerBase):
 
         self._log(logging.DEBUG, f"Checking job status: {self._tmux_session_name}")
 
-        cmd = f"tmux has-session {self._tmux_session_name}"
+        cmd = f"tmux has-session -t \"{self._tmux_session_name}\""
+        self._log(logging.DEBUG, f"Command: {cmd}")
         stdin, stdout, stderr = self._ssh_client.exec_command(cmd)
 
         # Wait for command to complete
         exit_status = stdout.channel.recv_exit_status()
-        self._log(logging.DEBUG, f'tmux has-session exit code: {exit_status} ({stdout}) ({stderr})')
+        stdout_output = stdout.read().decode().strip()
+        stderr_output = stderr.read().decode().strip()
+        self._log(logging.DEBUG, f'tmux has-session exit code: {exit_status}')
+        self._log(logging.DEBUG, f"STDOUT: {stdout_output}")
+        self._log(logging.DEBUG, f"STDERR: {stderr_output}")
 
         if exit_status:
             job_finished = True
