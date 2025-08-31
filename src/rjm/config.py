@@ -124,11 +124,31 @@ def load_config(config_file=CONFIG_FILE_LOCATION):
         config.read(config_file)
 
         # check if the config file is old and raise error if so
+        old_format = False
         if not "COMPONENTS" in config:
-            logger.warning("Old format config file detected -- defaulting to Globus")
+            old_format = True
+            logger.warning("Old format config file detected -- no COMPONENTS section -- defaulting to Globus")
             config["COMPONENTS"] = {}
             config["COMPONENTS"]["runner"] = "globus_compute_slurm_runner"
             config["COMPONENTS"]["transferer"] = "globus_https_transferer"
+
+        if not "GLOBUS_TRANSFER" in config:
+            old_format = True
+            logger.warning("Old format config file detected -- no GLOBUS_TRANSFER section -- attempting to fix")
+            config["GLOBUS_TRANSFER"] = config["GLOBUS"]
+
+        if not "GLOBUS_COMPUTE" in config:
+            old_format = True
+            logger.warning("Old format config file detected -- no GLOBUS_COMPUTE section -- attempting to fix")
+            config["GLOBUS_COMPUTE"] = config["FUNCX"]
+
+        if not "POLLING" in config:
+            old_format = True
+            logger.warning("Old format config file detected -- no POLLING section -- attempting to fix")
+            config["POLLING"] = config["SLURM"]
+
+        if old_format:
+            logger.warning("Attempted to automatically update your old config file -- rerun `rjm_config` to avoid this")
 
     else:
         raise RemoteJobConfigError(f"Config file does not exist: {config_file}")
