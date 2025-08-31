@@ -110,7 +110,7 @@ CONFIG_OPTIONS = [  # default values must be strings or None
     {
         "section": "PARAMIKO",
         "name": "job_script",
-        "default": "run.sh",
+        "default": "run.sl",
         "help": "Name of the script to execute on the remote machine when starting a job",
     },
 ]
