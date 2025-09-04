@@ -14,6 +14,7 @@ from globus_sdk.services.gcs.data import GuestCollectionDocument
 from globus_sdk.scopes import TransferScopes
 
 from rjm import utils
+from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
 
 
 logger = logging.getLogger(__name__)
@@ -319,7 +320,7 @@ class NeSISetup:
         # -----------------------------------------------------------------
         # 2️⃣ Ask for the remote base path (default under /tmp)
         # -----------------------------------------------------------------
-        default_path = f"/tmp/{self._username}/rjm"
+        default_path = f"/home/{self._username}/.cache/rjm"
         remote_base = input(
             f"Enter remote base path for Paramiko (default [{default_path}]): "
         ).strip() or default_path
@@ -354,13 +355,27 @@ class NeSISetup:
         print("-" * 80)
         print(pub_key_contents)
         print("-" * 80)
+        print("Note: the key only needs to be copied once - if you")
+        print("are reusing an existing key and have already copied")
+        print("it across previously, you don't need to copy it again.")
+        print("-" * 80)
         print("After you have added the key, press ENTER to continue.")
         print("=" * 80 + "\n")
         # Wait for user confirmation
         input("Press ENTER when the public key has been added to the remote authorized_keys file...")
 
-        # TODO: confirm ssh access to remote_addr using paramiko runner and created private key file
-        # TODO: confirm write access to remote_base_path (or create remote_base_path if it doesn't exist)
+        # -----------------------------------------------------------------
+        # Test access and make sure the remote base path directory exists
+        # -----------------------------------------------------------------
+        print()
+        print("Opening connection to the remote machine...")
+        runner = ParamikoSSHRunner()
+        runner.setup()
+        print(f"Creating remote directory if needed ({self._remote_base_path})...")
+        runner.run_command(f"mkdir -p {self._remote_base_path}")
+        print(f"Testing write access to remote directory...")
+        runner.run_command(f"test -d {self._remote_base_path} && test -w {self._remote_base_path}")
+        print("Finished test")
 
     # --------------------------------------------------------------------- #
     # Helper to expose Paramiko configuration
