@@ -18,7 +18,6 @@ from rjm import __version__
 from rjm.errors import RemoteJobRunnerError
 from rjm.remote_job import RemoteJob
 from rjm import utils
-from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
 
 
 def make_parser():
@@ -151,7 +150,7 @@ def health_check():
         print()
         print("Using runner to check directory and file exist...")
         logger.debug("Using runner to check directory and file exist...")
-        if isinstance(r, ParamikoSSHRunner):
+        if type(r).__name__ == "ParamikoSSHRunner":
             result = _remote_health_check_paramiko(r, remote_dir, test_file_name, args.keep)
         else:
             run_function = r.run_function_with_retries if args.retries else r.run_function

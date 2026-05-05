@@ -10,10 +10,13 @@ from retry.api import retry_call
 from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
-from rjm.transferers import paramiko_sftp_transferer
 from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
-from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
-from rjm.errors import RemoteJobRunnerError
+from rjm.errors import RemoteJobRunnerError, RemoteJobConfigError
+
+
+_PARAMIKO_INSTALL_HINT = (
+    "paramiko is not installed; reinstall with 'pip install RemoteJobManager[ssh]'"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -57,13 +60,21 @@ class RemoteJob:
         # file transferer
         transferer_type = config.get("COMPONENTS", "transferer")
         if transferer_type == "paramiko_sftp_transferer":
-            self._transfer = paramiko_sftp_transferer.ParamikoSftpTransferer(config=config)
+            try:
+                from rjm.transferers.paramiko_sftp_transferer import ParamikoSftpTransferer
+            except ImportError as exc:
+                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+            self._transfer = ParamikoSftpTransferer(config=config)
         else:
             self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
         runner_type = config.get("COMPONENTS", "runner")
         if runner_type == "paramiko_ssh_runner":
+            try:
+                from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+            except ImportError as exc:
+                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
             self._runner = ParamikoSSHRunner(config=config)
         else:
             self._runner = GlobusComputeSlurmRunner(config=config)

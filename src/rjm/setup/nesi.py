@@ -6,7 +6,6 @@ import os
 import uuid
 import logging
 import tempfile
-import paramiko
 
 import globus_sdk
 from globus_sdk import GCSClient, TransferClient, DeleteData
@@ -14,7 +13,12 @@ from globus_sdk.services.gcs.data import GuestCollectionDocument
 from globus_sdk.scopes import TransferScopes
 
 from rjm import utils
-from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+from rjm.errors import RemoteJobConfigError
+
+
+_PARAMIKO_INSTALL_HINT = (
+    "paramiko is not installed; reinstall with 'pip install RemoteJobManager[ssh]'"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -241,6 +245,11 @@ class NeSISetup:
         bits: int = 2048
     ) -> tuple[str, str]:
         """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``."""
+        try:
+            import paramiko
+        except ImportError as exc:
+            raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+
         # Resolve the default location if the caller did not provide one
         if private_key_path is None:
             private_key_path = os.path.join(
@@ -369,6 +378,10 @@ class NeSISetup:
         # -----------------------------------------------------------------
         print()
         print("Opening connection to the remote machine...")
+        try:
+            from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+        except ImportError as exc:
+            raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
         runner = ParamikoSSHRunner()
         runner.setup()
         print(f"Creating remote directory if needed ({self._remote_base_path})...")
