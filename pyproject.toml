@@ -66,3 +66,6 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "*" = ["*.sh"]
+
+[tool.coverage.run]
+omit = ["**/tests/*"]

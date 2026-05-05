@@ -154,3 +154,5 @@ cython_debug/
 
 # setuptools_scm version file
 _version.py
+
+.envrc
