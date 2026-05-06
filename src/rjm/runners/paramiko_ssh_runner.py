@@ -429,7 +429,34 @@ class ParamikoSSHRunner(RunnerBase):
         :param files: list of files to calculate checksums of
         :param working_directory: directory to switch to first
 
-        :returns: dictionary with file names as keys and checksums as values
+        :returns: dictionary with file names as keys and checksums as values.
+            Files that do not exist on the remote have a value of None.
 
         """
-        raise NotImplementedError
+        self._log(logging.DEBUG, f"Calculating checksums for {len(files)} files in: {working_directory}")
+
+        checksums = {fn: None for fn in files}
+        if not files:
+            return checksums
+
+        quoted_files = " ".join(f"'{fn}'" for fn in files)
+        cmd = f"cd '{working_directory}' && sha256sum {quoted_files}"
+
+        stdin, stdout, stderr = self._ssh_client.exec_command(cmd)
+        stdout_output = stdout.read().decode()
+        # exit status is ignored on purpose: sha256sum returns nonzero when any
+        # file is missing, but stdout still contains valid lines for the rest
+
+        for line in stdout_output.splitlines():
+            parts = line.strip().split(None, 1)
+            if len(parts) != 2:
+                continue
+            checksum, fn = parts
+            fn = fn.lstrip("*")
+            if fn in checksums:
+                checksums[fn] = checksum
+
+        num_calculated = len([c for c in checksums.values() if c is not None])
+        self._log(logging.DEBUG, f"Calculated checksums for {num_calculated} of {len(files)} files")
+
+        return checksums
