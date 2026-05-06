@@ -1,6 +1,12 @@
 Troubleshooting on NeSI
 =======================
 
+The advice in this page applies to the **Globus backend**, which is the
+primary supported configuration. The Paramiko (SSH/SFTP) backend is
+experimental and has had little stability work; if it is failing, the most
+useful step is usually to confirm that you can SSH into the remote machine
+manually with the configured key and that ``tmux`` is available there.
+
 The NeSI platform occasionally experiences stability issues related the filesystems, Slurm, networking and Globus.
 RJM attempts to handle these issues by retrying commands that have failed but it is not always successful.
 

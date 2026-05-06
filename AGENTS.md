@@ -11,6 +11,8 @@ RemoteJobManager (RJM) is a Python package that offloads work to a remote HPC cl
 
 It is developed primarily for NeSI's Mahuika cluster but the runner and transferer abstractions allow other backends.
 
+**Support status:** the Globus stack is the primary supported configuration and receives the bulk of development, testing, and CI coverage. The Paramiko stack is best treated as experimental: it works but is sparsely tested, has had far less production use, and lacks features the Globus stack provides (for example, checksum verification on download). When making changes, prefer the Globus path; for paramiko-only changes, be conservative and avoid regressing the Globus stack.
+
 The typical workflow per local job directory:
 
 1. Read `rjm_uploads.txt`, upload listed files to a remote directory (Globus HTTPS or SFTP).

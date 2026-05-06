@@ -74,6 +74,51 @@ Auckland*.
 
 **Note:** you only need to run this script once per machine.
 
+Alternative: SSH (Paramiko) backend
+-----------------------------------
+
+.. warning::
+
+   The Paramiko (SSH/SFTP) backend is **experimental** and considerably less
+   tested than the Globus stack. The vast majority of development and
+   integration testing targets the Globus path. Use the Globus backend unless
+   you specifically need an SSH-based alternative.
+
+Instead of Globus Transfer and Globus Compute, RJM can use SSH for command
+execution and SFTP for file transfer. To use this backend, install the optional
+``ssh`` extra (which pulls in ``paramiko``):
+
+.. code-block:: bash
+
+    python -m pip install "RemoteJobManager[ssh] @ git+https://github.com/chrisdjscott/RemoteJobManager"
+
+Then run the configuration script with the ``-s`` (or ``--ssh``) flag:
+
+.. code-block:: bash
+
+   rjm_config --ssh
+
+This will:
+
+* prompt for the remote address (IP or DNS name) and remote base path
+* generate an SSH keypair under ``~/.rjm/`` (or reuse an existing one)
+* print the public key for you to append to ``~/.ssh/authorized_keys`` on the
+  remote machine
+* test SSH access and create the remote base path if it does not exist
+* write the ``[PARAMIKO]`` block to ``~/.rjm/rjm_config.ini`` and select the
+  paramiko runner and transferer in ``[COMPONENTS]``
+
+The Globus authentication step is skipped in this mode.
+
+Notes on the paramiko runner:
+
+* Jobs are launched in a detached ``tmux`` session on the remote, so ``tmux``
+  must be available on the remote machine.
+* Job completion is detected by a ``.rjm-succeeded`` sentinel file written by
+  RJM after the job script exits cleanly.
+* Slurm is not used by this backend; the configured ``job_script`` (default
+  ``run.sl``) is executed directly inside ``tmux``.
+
 Run a simple test
 -----------------
 
