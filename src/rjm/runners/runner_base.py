@@ -66,11 +66,7 @@ class RunnerBase:
 
     def check_directory_exists(self, directory_path):
         """Check the working directory exists"""
-        # sanity check the directory exists on the remote
-        dir_exists = self.run_function_with_retries(check_dir_exists, directory_path)
-        if not dir_exists:
-            self._log(logging.ERROR, f"The specified directory does not exist on remote: {directory_path}")
-            raise RemoteJobRunnerError(f"The specified directory does not exist on remote: {directory_path}")
+        raise NotImplementedError
 
     def run_function(self, function, *args, **kwargs):
         """Run the given function and pass back the return value"""
@@ -99,9 +95,3 @@ class RunnerBase:
 def path_join(path1, path2):
     import os.path
     return os.path.join(path1, path2)
-
-
-# function for checking directory exists on funcx endpoint
-def check_dir_exists(dirpath):
-    import os
-    return os.path.isdir(dirpath)

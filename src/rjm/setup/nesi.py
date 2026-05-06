@@ -1,6 +1,8 @@
+"""
+NeSI setup module for RJM.
+"""
 
 import os
-import time
 import uuid
 import logging
 import tempfile
@@ -11,6 +13,12 @@ from globus_sdk.services.gcs.data import GuestCollectionDocument
 from globus_sdk.scopes import TransferScopes
 
 from rjm import utils
+from rjm.errors import RemoteJobConfigError
+
+
+_PARAMIKO_INSTALL_HINT = (
+    "paramiko is not installed; reinstall with 'pip install RemoteJobManager[ssh]'"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -34,8 +42,14 @@ class NeSISetup:
         self._account = account
 
         # initialise values we are setting up
-        self._globus_id = None  # globus endpoint id
-        self._globus_path = None  # path to globus share
+        self._globus_id = None          # globus endpoint id
+        self._globus_path = None        # path to globus share
+        self._remote_base_path = None   # base path on the remote system for Paramiko
+
+        # Paramiko key paths (filled by create_ssh_keypair)
+        self._private_key_path = None
+        self._public_key_path = None
+        self._remote_address = None
 
     def get_globus_compute_config(self):
         """Return globus compute config values"""
@@ -51,7 +65,7 @@ class NeSISetup:
         print("Authorising Globus - this should open a browser where you need to authenticate with Globus and approve access")
         print("                     Globus is used by RJM to transfer files to and from NeSI")
         print("")
-        print("NOTE: If you are asked for a linked identity with NeSI Keycloak please do one of the following:")
+        print("NOTE: if you are asked for a linked identity with NeSI Keycloak please do one of the following:")
         print(f"      - If you already have a linked identity it should appear in the list like: '{self._username}@iam.nesi.org.nz'")
         print("        If so, please select it and follow the instructions to authenticate with your NeSI credentials if required")
         print("      - Otherwise, choose the option to 'Link an identity from NeSI Keycloak'")
@@ -205,7 +219,7 @@ class NeSISetup:
             )
             logger.debug(f"Collection document: {doc}")
 
-            # create Globus collection, report back endpoint id for config
+            # create the Globus collection, report back endpoint id for config
             response = client.create_collection(doc)
             endpoint_id = response.data["id"]
             logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
@@ -221,3 +235,180 @@ class NeSISetup:
         # also store the endpoint id and path
         self._globus_id = endpoint_id
         self._globus_path = guest_collection_dir
+
+    # --------------------------------------------------------------------- #
+    # SSH key‑pair handling
+    # --------------------------------------------------------------------- #
+    def create_ssh_keypair(
+        self,
+        private_key_path: str | None = None,
+        bits: int = 2048
+    ) -> tuple[str, str]:
+        """Generate an SSH key pair with Paramiko and store it under ``~/.rjm``."""
+        try:
+            import paramiko
+        except ImportError as exc:
+            raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+
+        # Resolve the default location if the caller did not provide one
+        if private_key_path is None:
+            private_key_path = os.path.join(
+                os.path.expanduser("~"), ".rjm", "paramiko_private_key"
+            )
+        public_key_path = private_key_path + ".pub"
+
+        # -----------------------------------------------------------------
+        # 1️⃣  Check for existing key pair
+        # -----------------------------------------------------------------
+        if os.path.isfile(private_key_path) and os.path.isfile(public_key_path):
+            while True:
+                answer = input(
+                    f"\nSSH key pair already exists at:\n"
+                    f"  private: {private_key_path}\n"
+                    f"  public : {public_key_path}\n"
+                    f"Use the existing keys? (y/n): "
+                ).strip().lower()
+                if answer.startswith('y'):
+                    logger.info("Re-using existing SSH key pair")
+                    return private_key_path, public_key_path
+                if answer.startswith('n'):
+                    logger.info("Generating a new SSH key pair (overwriting existing files)")
+                    break
+                print("Please answer 'y' or 'n'.")
+
+        # -----------------------------------------------------------------
+        # 2️⃣  Generate a new RSA key pair
+        # -----------------------------------------------------------------
+        # Ensure the target directory exists
+        os.makedirs(os.path.dirname(private_key_path), exist_ok=True)
+
+        private_key = paramiko.RSAKey.generate(bits=bits)
+
+        # Write private key
+        with open(private_key_path, 'w', encoding='utf-8') as private_file:
+            private_key.write_private_key(private_file)
+
+        # Write public key (OpenSSH format)
+        public_key_str = f"{private_key.get_name()} {private_key.get_base64()}\n"
+        with open(public_key_path, 'w', encoding='utf-8') as public_file:
+            public_file.write(public_key_str)
+
+        logger.info(
+            "Generated SSH key pair – private: %s, public: %s",
+            private_key_path,
+            public_key_path,
+        )
+
+        return private_key_path, public_key_path
+
+    # --------------------------------------------------------------------- #
+    # Paramiko (SSH) setup
+    # --------------------------------------------------------------------- #
+    def setup_paramiko(self):
+        """
+        Interactively set up the Paramiko runner:
+
+        * Ask the user for a base directory on the remote system where RJM
+          should operate.
+        * Generate an SSH key‑pair (using :meth:`create_ssh_keypair`).
+
+        The chosen base path is stored on the instance for later use and the
+        private/public key file paths are returned.
+        """
+        # -----------------------------------------------------------------
+        # 1️⃣ Ask for the remote machine address (IP or DNS name)
+        # -----------------------------------------------------------------
+        remote_addr = input(
+            "Enter remote address (IP or DNS name) for Paramiko: "
+        ).strip()
+        if not remote_addr:
+            raise ValueError("Remote address is required for Paramiko setup")
+        self._remote_address = remote_addr
+        logger.info("Paramiko remote address set to: %s", remote_addr)
+
+        # -----------------------------------------------------------------
+        # 2️⃣ Ask for the remote base path (default under /tmp)
+        # -----------------------------------------------------------------
+        default_path = f"/home/{self._username}/.cache/rjm"
+        remote_base = input(
+            f"Enter remote base path for Paramiko (default [{default_path}]): "
+        ).strip() or default_path
+
+        # Store for later use
+        self._remote_base_path = remote_base
+        logger.info("Paramiko remote base path set to: %s", remote_base)
+
+        # -----------------------------------------------------------------
+        # 3️⃣ Generate the SSH key pair (stores paths on the instance)
+        # -----------------------------------------------------------------
+        private_key, public_key = self.create_ssh_keypair()
+
+        # Store the paths on the instance for later retrieval
+        self._private_key_path = private_key
+        self._public_key_path = public_key
+
+        # -----------------------------------------------------------------
+        # Inform the user how to install the public key on the remote host
+        # -----------------------------------------------------------------
+        try:
+            with open(public_key, "r", encoding="utf-8") as pk_f:
+                pub_key_contents = pk_f.read().strip()
+        except Exception as exc:  # pragma: no cover – defensive
+            logger.error("Failed to read generated public key: %s", exc)
+            pub_key_contents = "<could not read public key>"
+
+        print("\n" + "=" * 80)
+        print("Public key generated for Paramiko access.")
+        print("Copy the following line and paste it into the")
+        print("~/.ssh/authorized_keys file on the remote machine:")
+        print("-" * 80)
+        print(pub_key_contents)
+        print("-" * 80)
+        print("Note: the key only needs to be copied once - if you")
+        print("are reusing an existing key and have already copied")
+        print("it across previously, you don't need to copy it again.")
+        print("-" * 80)
+        print("After you have added the key, press ENTER to continue.")
+        print("=" * 80 + "\n")
+        # Wait for user confirmation
+        input("Press ENTER when the public key has been added to the remote authorized_keys file...")
+
+        # -----------------------------------------------------------------
+        # Test access and make sure the remote base path directory exists
+        # -----------------------------------------------------------------
+        print()
+        print("Opening connection to the remote machine...")
+        try:
+            from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+        except ImportError as exc:
+            raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+        runner = ParamikoSSHRunner()
+        runner.setup()
+        print(f"Creating remote directory if needed ({self._remote_base_path})...")
+        runner.run_command(f"mkdir -p {self._remote_base_path}")
+        print(f"Testing write access to remote directory...")
+        runner.run_command(f"test -d {self._remote_base_path} && test -w {self._remote_base_path}")
+        print("Finished test")
+
+    # --------------------------------------------------------------------- #
+    # Helper to expose Paramiko configuration
+    # --------------------------------------------------------------------- #
+    def get_paramiko_config(self):
+        """
+        Return the three Paramiko configuration values that RJM needs.
+
+        Returns
+        -------
+        dict
+            {
+                "private_key_file": <path to private key>,
+                "remote_user":      <username used for SSH>,
+                "remote_base_path": <base directory on the remote system>
+            }
+        """
+        return {
+            "private_key_file": self._private_key_path,
+            "remote_user": self._username,
+            "remote_base_path": self._remote_base_path,
+            "remote_address": self._remote_address,
+        }

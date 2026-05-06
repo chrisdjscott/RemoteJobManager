@@ -38,7 +38,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
         self._setup_done = False
 
         # the Globus Compute endpoint on the remote machine
-        self._endpoint = self._config.get("FUNCX", "remote_endpoint")
+        self._endpoint = self._config.get("GLOBUS_COMPUTE", "remote_endpoint")
 
         # globus compute login manager
         self._login_manager = CustomLoginManager()
@@ -52,9 +52,9 @@ class GlobusComputeSlurmRunner(RunnerBase):
         self._slurm_script = self._config.get("SLURM", "slurm_script")
 
         # how often to poll for Slurm job completion
-        self._poll_interval = self._config.getint("SLURM", "poll_interval")
-        self._warmup_poll_interval = self._config.getint("SLURM", "warmup_poll_interval")
-        self._warmup_duration = self._config.getint("SLURM", "warmup_duration")
+        self._poll_interval = self._config.getint("POLLING", "poll_interval")
+        self._warmup_poll_interval = self._config.getint("POLLING", "warmup_poll_interval")
+        self._warmup_duration = self._config.getint("POLLING", "warmup_duration")
 
         # Slurm job id
         self._jobid = None
@@ -87,6 +87,10 @@ class GlobusComputeSlurmRunner(RunnerBase):
     def get_globus_scopes(self):
         """If any Globus scopes are required, override this method and return them in a list"""
         return self._login_manager.get_scopes()
+
+    def setup(self, globus_cli, runner=None):
+        """Set up the transferer"""
+        return self.setup_globus_auth(globus_cli, runner=runner)
 
     def setup_globus_auth(self, globus_cli, runner=None):
         """Do any Globus auth setup here, if required"""
@@ -297,6 +301,14 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         return started
 
+    def check_directory_exists(self, directory_path):
+        """Check the working directory exists"""
+        # sanity check the directory exists on the remote
+        dir_exists = self.run_function_with_retries(check_dir_exists, directory_path)
+        if not dir_exists:
+            self._log(logging.ERROR, f"The specified directory does not exist on remote: {directory_path}")
+            raise RemoteJobRunnerError(f"The specified directory does not exist on remote: {directory_path}")
+
     def wait(self, polling_interval=None, warmup_polling_interval=None, warmup_duration=None):
         """
         Wait for the Slurm job to finish
@@ -418,7 +430,8 @@ class GlobusComputeSlurmRunner(RunnerBase):
         :param remote_jobs: list of remote jobs to check
 
         :returns: tuple of lists of RemoteJobs containing:
-            - finished jobs
+            - successful jobs
+            - failed jobs
             - unfinished jobs
 
         """
@@ -711,3 +724,9 @@ class CustomLoginManager(LoginManager):
 
         # return the selected authoriser
         return authorisers[resource_server]
+
+
+# function for checking directory exists on funcx endpoint
+def check_dir_exists(dirpath):
+    import os
+    return os.path.isdir(dirpath)

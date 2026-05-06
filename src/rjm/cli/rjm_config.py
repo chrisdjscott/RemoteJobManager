@@ -32,6 +32,8 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', required=False,
                         help="level of log verbosity (setting the level here overrides the config file)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
+    parser.add_argument('-s', '--ssh', action='store_true',
+                        help='Generate an SSH key pair (stored under ~/.rjm) for use with the Paramiko runner. When this option is chosen, Globus Transfer/Compute setup is skipped.')
     parser.add_argument('-w', '--where-config', action="store_true", help="Print location of the config file and exit")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
@@ -46,6 +48,9 @@ def nesi_setup():
     # command line args
     parser = make_parser()
     args = parser.parse_args()
+    # Determine whether Globus setup should be performed.
+    # If SSH option is chosen, we skip Globus (mutually exclusive behavior).
+    no_globus = args.ssh
 
     if args.where_config:
         # print location of config file and exit
@@ -68,61 +73,121 @@ def nesi_setup():
     logger = logging.getLogger(__name__)
     logger.info(f"Running rjm_config v{__version__}")
 
-    print()
-    print("="*120)
-    print()
-    print("This is an interactive script to configure RJM for accessing NeSI. "
-          "You will be required to enter information along the way, including your NeSI username and project code.")
-    print()
-    print("="*120)
-    print()
-    print("At times either a browser window will be automatically opened, or you will be asked to copy a link and open it "
-          "in a browser, where you will be asked to authenticate and allow RJM to have access. "
-          "Please ensure the default browser on your system is set to a modern and reasonably up to date browser.")
-    print()
-    print("="*120)
-    print()
-    print("In some situations a new link will be opened in your browser immediately after you authenticated the last one, "
-          "which can be easy to miss, so if it looks like nothing is happening, please check your browser window for a pending authentication.")
-    print()
-    print("="*120)
-    print()
+    if not no_globus:
+        print()
+        print("="*120)
+        print()
+        print("This is an interactive script to configure RJM for accessing NeSI. "
+              "You will be required to enter information along the way, including your NeSI username and project code.")
+        print()
+        print("="*120)
+        print()
+        print("At times either a browser window will be automatically opened, or you will be asked to copy a link and open it "
+              "in a browser, where you will be asked to authenticate and allow RJM to have access. "
+              "Please ensure the default browser on your system is set to a modern and reasonably up to date browser.")
+        print()
+        print("="*120)
+        print()
+        print("In some situations a new link will be opened in your browser immediately after you authenticated the last one, "
+              "which can be easy to miss, so if it looks like nothing is happening, please check your browser window for a pending authentication.")
+        print()
+        print("="*120)
+        print()
 
-    # get extra info from user
-    username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
-    account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
-    print("="*120)
+        # get extra info from user
+        username = input(f"Enter NeSI username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
+        account = input("Enter NeSI project code or press enter to accept default (you must belong to it) [uoa00106]: ").strip() or "uoa00106"
+        print("="*120)
+
+    else:
+        print()
+        print("="*120)
+        print()
+        print("This is an interactive script to configure RJM for accessing a remote machine via SSH. "
+              "You will be required to enter information along the way, including your username on the remote machine.")
+        print()
+        print("="*120)
+        print()
+
+        # get extra info from user
+        username = input(f"Enter remote username or press enter to accept default [{getpass.getuser()}]: ").strip() or getpass.getuser()
+        account = None
+        print("="*120)
 
     # create the setup object
     nesi = NeSISetup(username, account)
 
-    # do the globus setup first because it is more interactive
-    nesi.setup_globus_transfer()
+    # do the globus setup unless the user asked to skip it
+    if not no_globus:
+        # This step is interactive and may open a browser
+        nesi.setup_globus_transfer()
+
+    # If the user asked for an SSH key‑pair, generate it now via the new helper
+    if args.ssh:
+        # This will prompt for the remote base path and create the key pair
+        nesi.setup_paramiko()
+        paramiko_cfg = nesi.get_paramiko_config()
 
     # write values to config file
-    req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS_REQUIRED)
+    req_opts = copy.deepcopy(config_helper.CONFIG_OPTIONS)
 
-    # get config values
-    globus_ep, globus_path = nesi.get_globus_transfer_config()
-    funcx_ep = nesi.get_globus_compute_config()
+    # get config values (only if globus setup was performed)
+    if not no_globus:
+        globus_ep, globus_path = nesi.get_globus_transfer_config()
+        funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults
     done_globus_ep = False
     done_globus_path = False
     done_funcx_ep = False
+
+    # Populate overrides – Globus overrides are applied only when Globus was run.
+    # Paramiko overrides are applied only when the SSH option was chosen.
     for optd in req_opts:
-        if optd["section"] == "GLOBUS" and optd["name"] == "remote_endpoint":
-            optd["override"] = globus_ep
-            done_globus_ep = True
-        elif optd["section"] == "GLOBUS" and optd["name"] == "remote_path":
-            optd["override"] = globus_path
-            done_globus_path = True
-        elif optd["section"] == "FUNCX" and optd["name"] == "remote_endpoint":
-            optd["override"] = funcx_ep
-            done_funcx_ep = True
-    assert done_globus_ep
-    assert done_globus_path
-    assert done_funcx_ep
+        # ----- Globus overrides (only when Globus setup was run) -----
+        if not no_globus:
+            if optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_endpoint":
+                optd["override"] = globus_ep
+                done_globus_ep = True
+            elif optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_path":
+                optd["override"] = globus_path
+                done_globus_path = True
+            elif optd["section"] == "GLOBUS_COMPUTE" and optd["name"] == "remote_endpoint":
+                optd["override"] = funcx_ep
+                done_funcx_ep = True
+
+            # ----- set the transferer and runner based on whether ssh option was chosen or not
+            if optd["section"] == "COMPONENTS":
+                if optd["name"] == "runner":
+                    optd["override"] = "globus_compute_slurm_runner"
+                elif optd["name"] == "transferer":
+                    optd["override"] = "globus_https_transferer"
+
+        # ----- Paramiko overrides (only when SSH key pair was generated) -----
+        if args.ssh:
+            if optd["section"] == "PARAMIKO":
+                if optd["name"] == "private_key_file":
+                    optd["override"] = paramiko_cfg["private_key_file"]
+                elif optd["name"] == "remote_user":
+                    optd["override"] = paramiko_cfg["remote_user"]
+                elif optd["name"] == "remote_base_path":
+                    optd["override"] = paramiko_cfg["remote_base_path"]
+                elif optd["name"] == "remote_address":
+                    # Store the remote machine address entered during Paramiko setup
+                    optd["override"] = paramiko_cfg["remote_address"]
+
+            # ----- set the transferer and runner based on whether ssh option was chosen or not
+            if optd["section"] == "COMPONENTS":
+                if optd["name"] == "runner":
+                    optd["override"] = "paramiko_ssh_runner"
+                elif optd["name"] == "transferer":
+                    optd["override"] = "paramiko_sftp_transferer"
+
+    # sanity checks – only required when Globus overrides were attempted
+    if not no_globus:
+        assert done_globus_ep
+        assert done_globus_path
+        assert done_funcx_ep
 
     # backup current config if any
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
@@ -131,15 +196,17 @@ def nesi_setup():
         print("="*120)
 
     # call method to set config file
-    config_helper.do_configuration(required_options=req_opts, accept_defaults=True)
+    config_helper.do_configuration(config_options=req_opts)
 
     print("="*120)
     print("Configuration file has been updated")
     print("="*120)
-    print("Running authenticate next...")
 
-    # force fresh authentication
-    do_authentication(force=True, verbose=True)
+    # Run authentication only if Globus steps were not skipped
+    if not no_globus:
+        print("Running authenticate next...")
+        # force fresh authentication
+        do_authentication(force=True, verbose=True)
 
     print("="*120)
     print("You should be ready to start using rjm now")

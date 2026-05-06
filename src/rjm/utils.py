@@ -58,12 +58,16 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
 
     # check if specific levels are set in log file
     if os.path.exists(config_helper.CONFIG_FILE_LOCATION):
-        config = config_helper.load_config()
-        if "LOGGING" in config:
-            for logger_name, level_name in config.items("LOGGING"):
-                level = getattr(logging, level_name, None)
-                if level is not None:
-                    logging.getLogger(logger_name).setLevel(level)
+        try:
+            config = config_helper.load_config()
+        except config_helper.RemoteJobConfigError:
+            pass
+        else:
+            if "LOGGING" in config:
+                for logger_name, level_name in config.items("LOGGING"):
+                    level = getattr(logging, level_name, None)
+                    if level is not None:
+                        logging.getLogger(logger_name).setLevel(level)
 
     # command line overrides rjm log level
     if log_level is not None:
@@ -73,9 +77,10 @@ def setup_logging(log_name=None, log_file=None, log_level=None, cli_extra=False)
         if level is not None:
             logging.getLogger("rjm").setLevel(level)
             if cli_extra:
-                # same level for globus
+                # same level for globus and paramiko
                 logging.getLogger("globus").setLevel(level)
                 logging.getLogger("globus_compute_sdk").setLevel(level)
+                logging.getLogger("paramiko").setLevel(level)
 
 
 def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,

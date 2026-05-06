@@ -21,6 +21,18 @@ def do_authentication(force=False, verbose=False, retry=True):
         sys.stderr.write("ERROR: configuration file must be created with rjm_configure before running rjm_authenticate" + os.linesep)
         sys.exit(1)
 
+    # Load the configuration
+    config = config_helper.load_config()
+    runner = config.get("COMPONENTS", "runner")
+    transferer = config.get("COMPONENTS", "transferer")
+
+    # Disallow paramiko SSH runner and SFTP transferer for authentication
+    if runner == "paramiko_ssh_runner" and transferer == "paramiko_sftp_transferer":
+        logger.debug("Authentication not required for paramiko SSH")
+        if verbose:
+            print("RJM authentication not required for paramiko SSH")
+        return
+
     # delete token file if exists
     if force:
         if os.path.isfile(utils.TOKEN_FILE_LOCATION):

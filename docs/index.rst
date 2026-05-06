@@ -6,20 +6,31 @@
 Welcome to RemoteJobManager's documentation!
 ============================================
 
-RemoteJobManager (RJM) provides an API to offload work to a remote system. It uses
-Globus to transfer files and funcX to execute commands on the remote machine,
-but could be extended to use other similar mechanisms (e.g. Slurm API). It has
-been developed for use on NeSI's HPC platform (Slurm cluster with Globus support).
+RemoteJobManager (RJM) provides an API to offload work to a remote system. It
+has been developed for use on NeSI's Mahuika HPC cluster (Slurm) and supports
+two interchangeable backends:
 
-Some "one-time setup" and installation and configuration of RJM are required
-before using the tool.
+* **Globus stack (default and primary)**: file transfer over HTTPS via a Globus
+  guest collection, plus Globus Compute (formerly funcX) to invoke commands and
+  Slurm jobs on the remote machine.
+* **Paramiko stack (experimental)**: SSH for command execution and SFTP for
+  file transfer using a locally generated keypair. This backend exists as an
+  alternative for environments where Globus is not available, but it is far
+  less well tested than the Globus stack and should be considered experimental.
+  Most development effort targets the Globus path.
+
+The runner and transferer abstractions allow other backends to be added.
+
+Some installation and configuration of RJM are required before using the tool.
 
 
 .. toctree::
    :maxdepth: 1
 
    getting_started_nesi
-   command_line_interface
+   installation
+   configuration
+   using_rjm
    troubleshooting_on_nesi
    api
 

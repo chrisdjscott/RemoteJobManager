@@ -11,7 +11,12 @@ from rjm import utils
 from rjm import config as config_helper
 from rjm.transferers import globus_https_transferer
 from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
-from rjm.errors import RemoteJobRunnerError
+from rjm.errors import RemoteJobRunnerError, RemoteJobConfigError
+
+
+_PARAMIKO_INSTALL_HINT = (
+    "paramiko is not installed; reinstall with 'pip install RemoteJobManager[ssh]'"
+)
 
 
 logger = logging.getLogger(__name__)
@@ -53,10 +58,26 @@ class RemoteJob:
         self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(config)
 
         # file transferer
-        self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
+        transferer_type = config.get("COMPONENTS", "transferer")
+        if transferer_type == "paramiko_sftp_transferer":
+            try:
+                from rjm.transferers.paramiko_sftp_transferer import ParamikoSftpTransferer
+            except ImportError as exc:
+                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+            self._transfer = ParamikoSftpTransferer(config=config)
+        else:
+            self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
 
         # remote runner
-        self._runner = GlobusComputeSlurmRunner(config=config)
+        runner_type = config.get("COMPONENTS", "runner")
+        if runner_type == "paramiko_ssh_runner":
+            try:
+                from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+            except ImportError as exc:
+                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+            self._runner = ParamikoSSHRunner(config=config)
+        else:
+            self._runner = GlobusComputeSlurmRunner(config=config)
 
     def files_uploaded(self):
         """Return whether files have been uploaded"""
@@ -217,11 +238,11 @@ class RemoteJob:
 
         # setup runner
         self._log(logging.DEBUG, "Setting up globus auth for runner")
-        self._runner.setup_globus_auth(globus_cli, runner=runner)
+        self._runner.setup(globus_cli, runner=runner)
 
         # setup transferer
         self._log(logging.DEBUG, "Setting up globus auth for transferer")
-        self._transfer.setup_globus_auth(globus_cli, transfer=transfer)
+        self._transfer.setup(globus_cli, transfer=transfer)
 
     def cleanup(self):
         """
@@ -381,6 +402,13 @@ class RemoteJob:
                                        delay=self._retry_delay, max_delay=self._retry_max_delay)
             self.set_run_completed(success=run_succeeded)
             self._save_state()
+
+    def check_job_status(self):
+        """
+        Check whether the job has finished and return a string with the state of the job
+
+        """
+        return self._runner.check_job_status()
 
     def run_cancel(self):
         """Cancel the run."""

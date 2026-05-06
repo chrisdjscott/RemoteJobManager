@@ -4,7 +4,6 @@ import os
 import time
 import concurrent.futures
 import urllib.parse
-import hashlib
 import platform
 
 import globus_sdk
@@ -18,7 +17,6 @@ from rjm.errors import RemoteJobTransfererError
 
 DOWNLOAD_CHUNK_SIZE = 8000000
 DOWNLOAD_SUFFIX = '.rjm'
-FILE_CHUNK_SIZE = 8000000
 REQUESTS_TIMEOUT = 30
 
 logger = logging.getLogger(__name__)
@@ -34,8 +32,8 @@ class GlobusHttpsTransferer(TransfererBase):
         super(GlobusHttpsTransferer, self).__init__(config=config)
 
         # the Globus endpoint for the remote guest collection
-        self._remote_endpoint = self._config.get("GLOBUS", "remote_endpoint")
-        self._remote_base_path = self._config.get("GLOBUS", "remote_path")
+        self._remote_endpoint = self._config.get("GLOBUS_TRANSFER", "remote_endpoint")
+        self._remote_base_path = self._config.get("GLOBUS_TRANSFER", "remote_path")
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
 
         # retry params
@@ -63,6 +61,10 @@ class GlobusHttpsTransferer(TransfererBase):
         ]
 
         return required_scopes
+
+    def setup(self, globus_cli, transfer=None):
+        """Set up the transferer"""
+        return self.setup_globus_auth(globus_cli, transfer=transfer)
 
     def setup_globus_auth(self, globus_cli, transfer=None):
         """Setting up Globus authentication."""
@@ -279,18 +281,6 @@ class GlobusHttpsTransferer(TransfererBase):
         return retry_call(self._download_file, fargs=(filename, checksum),
                           tries=self._retry_tries, backoff=self._retry_backoff,
                           delay=self._retry_delay, max_delay=self._retry_max_delay)
-
-    def _calculate_checksum(self, filename):
-        """
-        Calculate the checksum of the given file
-
-        """
-        with open(filename, 'rb') as fh:
-            checksum = hashlib.sha256()
-            while chunk := fh.read(FILE_CHUNK_SIZE):
-                checksum.update(chunk)
-
-        return checksum.hexdigest()
 
     def _download_file(self, filename: str, checksum: str):
         """

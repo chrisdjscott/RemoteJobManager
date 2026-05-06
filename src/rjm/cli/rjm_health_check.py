@@ -15,6 +15,7 @@ from datetime import datetime
 import tempfile
 
 from rjm import __version__
+from rjm.errors import RemoteJobRunnerError
 from rjm.remote_job import RemoteJob
 from rjm import utils
 
@@ -26,7 +27,7 @@ def make_parser():
     parser.add_argument('-ll', '--loglevel', default="critical",
                         help="level of log verbosity (default: %(default)s)",
                         choices=['debug', 'info', 'warn', 'error', 'critical'])
-    parser.add_argument('-le', '--logextra', action='store_true', help='Also log funcx and globus at the chosen loglevel')
+    parser.add_argument('-le', '--logextra', action='store_true', help='Also log globus and paramiko at the chosen loglevel')
     parser.add_argument('-k', '--keep', action="store_true",
                         help="Keep health check files on remote system, i.e. do not delete them after completing the check (default=%(default)s)")
     parser.add_argument('-r', '--retries', action='store_true', help='Allow retries on function failures')
@@ -52,6 +53,53 @@ def _remote_health_check(remote_dir, remote_file, keep):
         # everything worked if we got this far, so delete the remote file and directory
         os.unlink(full_path_file)
         os.rmdir(remote_dir)
+
+
+def _remote_health_check_paramiko(runner, remote_dir, remote_file, keep):
+    """
+    Verify that a remote directory and a file inside it exist when using
+    ParamikoSSHRunner. Checks are performed via runner.run_command with POSIX test commands.
+    Returns None on success or an error string on failure.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Check directory exists
+    cmd_dir = f"test -d '{remote_dir}'"
+    logger.debug("Testing for remote directory existence: {remote_dir}")
+    try:
+        runner.run_command(cmd_dir, background=False, retries=False)
+    except RemoteJobRunnerError as exc:
+        logger.error(f"Remote directory does not exist: '{remote_dir}'")
+        raise exc
+    else:
+        logger.debug("Remote directory exists")
+
+    # Check file exists
+    remote_path = os.path.join(remote_dir, remote_file)
+    cmd_file = f"test -f '{remote_path}'"
+    logger.debug(f"Testing remote file exists: {remote_path}")
+    try:
+        runner.run_command(cmd_file, background=False, retries=False)
+    except RemoteJobRunnerError as exc:
+        logger.error(f"Remote file does not exist: '{remote_path}'")
+        raise exc
+    else:
+        logger.debug("Remote file exists")
+
+    # Optional cleanup
+    if not keep:
+        # remove file
+        cmd_rm = f"rm -f '{remote_path}'"
+        try:
+            runner.run_command(cmd_rm, background=False, retries=False)
+        except RemoteJobRunnerError as exc:
+            logger.warning(f"Failed to delete remote file '{remote_path}' ({exc})")
+        # remove directory
+        cmd_rmdir = f"rmdir '{remote_dir}'"
+        try:
+            runner.run_command(cmd_rmdir, background=False, retries=False)
+        except RemoteJobRunnerError as exc:
+            logger.warning(f"Failed to delete remote direcotry '{remote_dir} ({exc})")
 
 
 def health_check():
@@ -102,8 +150,11 @@ def health_check():
         print()
         print("Using runner to check directory and file exist...")
         logger.debug("Using runner to check directory and file exist...")
-        run_function = r.run_function_with_retries if args.retries else r.run_function
-        result = run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
+        if type(r).__name__ == "ParamikoSSHRunner":
+            result = _remote_health_check_paramiko(r, remote_dir, test_file_name, args.keep)
+        else:
+            run_function = r.run_function_with_retries if args.retries else r.run_function
+            result = run_function(_remote_health_check, remote_dir, test_file_name, args.keep)
         if result is None:
             print("Finished checking directory and file exist")
             logger.debug("Finished checking directory and file exist")
