@@ -5,11 +5,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Welcome to RemoteJobManager&#39;s documentation! &#8212; RemoteJobManager 0.19.2.dev1+g1ee853fa0 documentation</title>
+    <title>Welcome to RemoteJobManager&#39;s documentation! &#8212; RemoteJobManager 0.19.2.dev67+g9ce620524 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
     <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
-    <script src="_static/documentation_options.js?v=7325f255"></script>
+    <script src="_static/documentation_options.js?v=fd5936bd"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="genindex.html" />
@@ -34,16 +34,27 @@
             
   <section id="welcome-to-remotejobmanager-s-documentation">
 <h1>Welcome to RemoteJobManager's documentation!<a class="headerlink" href="#welcome-to-remotejobmanager-s-documentation" title="Link to this heading">¶</a></h1>
-<p>RemoteJobManager (RJM) provides an API to offload work to a remote system. It uses
-Globus to transfer files and funcX to execute commands on the remote machine,
-but could be extended to use other similar mechanisms (e.g. Slurm API). It has
-been developed for use on NeSI's HPC platform (Slurm cluster with Globus support).</p>
-<p>Some &quot;one-time setup&quot; and installation and configuration of RJM are required
-before using the tool.</p>
+<p>RemoteJobManager (RJM) provides an API to offload work to a remote system. It
+has been developed for use on NeSI's Mahuika HPC cluster (Slurm) and supports
+two interchangeable backends:</p>
+<ul class="simple">
+<li><p><strong>Globus stack (default and primary)</strong>: file transfer over HTTPS via a Globus
+guest collection, plus Globus Compute (formerly funcX) to invoke commands and
+Slurm jobs on the remote machine.</p></li>
+<li><p><strong>Paramiko stack (experimental)</strong>: SSH for command execution and SFTP for
+file transfer using a locally generated keypair. This backend exists as an
+alternative for environments where Globus is not available, but it is far
+less well tested than the Globus stack and should be considered experimental.
+Most development effort targets the Globus path.</p></li>
+</ul>
+<p>The runner and transferer abstractions allow other backends to be added.</p>
+<p>Some installation and configuration of RJM are required before using the tool.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting_started_nesi.html">Getting started on NeSI</a></li>
-<li class="toctree-l1"><a class="reference internal" href="command_line_interface.html">Command line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_rjm.html">Using RJM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting_on_nesi.html">Troubleshooting on NeSI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>
@@ -86,7 +97,9 @@ before using the tool.</p>
 <script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="getting_started_nesi.html">Getting started on NeSI</a></li>
-<li class="toctree-l1"><a class="reference internal" href="command_line_interface.html">Command line interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="using_rjm.html">Using RJM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="troubleshooting_on_nesi.html">Troubleshooting on NeSI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
 </ul>

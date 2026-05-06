@@ -9,6 +9,7 @@ rjm.runners.globus\_compute\_slurm\_runner
    .. autosummary::
    
       cancel_slurm_job
+      check_dir_exists
       submit_slurm_job
    
    .. rubric:: Classes

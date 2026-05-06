@@ -8,7 +8,6 @@ rjm.runners.runner\_base
 
    .. autosummary::
    
-      check_dir_exists
       path_join
    
    .. rubric:: Classes

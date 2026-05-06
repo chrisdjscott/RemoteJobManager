@@ -11,5 +11,6 @@ rjm.runners
    :recursive:
 
    globus_compute_slurm_runner
+   paramiko_ssh_runner
    runner_base
    tests

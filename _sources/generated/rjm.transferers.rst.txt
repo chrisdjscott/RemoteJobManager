@@ -11,5 +11,6 @@ rjm.transferers
    :recursive:
 
    globus_https_transferer
+   paramiko_sftp_transferer
    tests
    transferer_base
