@@ -38,6 +38,97 @@ jobs:
       - name: Run tests
         run: pytest
 
+  paramiko-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install package with ssh extra
+        run: python -m pip install -e .[dev,ssh]
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      - name: Ensure SSH server is running on localhost
+        run: |
+          sudo systemctl start ssh || sudo service ssh start
+          ss -tlnp | grep ':22 ' || (echo "sshd not listening on :22" && exit 1)
+
+      - name: Generate keypair and authorise it for localhost
+        run: |
+          mkdir -p ~/.rjm ~/.ssh
+          ssh-keygen -t rsa -b 2048 -m PEM -f ~/.rjm/paramiko_private_key -N "" -C "rjm-ci"
+          cat ~/.rjm/paramiko_private_key.pub >> ~/.ssh/authorized_keys
+          chmod 700 ~/.ssh
+          chmod 600 ~/.ssh/authorized_keys
+          ssh-keyscan -H localhost >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Smoke-test SSH and tmux
+        run: |
+          ssh -i ~/.rjm/paramiko_private_key -o StrictHostKeyChecking=no \
+            "$USER@localhost" 'echo ok && tmux -V'
+
+      - name: Write rjm_config.ini for paramiko stack
+        run: |
+          mkdir -p "$HOME/rjm-ci-jobs"
+          cat > ~/.rjm/rjm_config.ini <<EOF
+          [COMPONENTS]
+          runner = paramiko_ssh_runner
+          transferer = paramiko_sftp_transferer
+
+          [PARAMIKO]
+          private_key_file = $HOME/.rjm/paramiko_private_key
+          remote_address = localhost
+          remote_user = $USER
+          remote_base_path = $HOME/rjm-ci-jobs
+          job_script = run.sh
+
+          [POLLING]
+          poll_interval = 1
+          warmup_poll_interval = 1
+          warmup_duration = 1
+
+          [FILES]
+          uploads_file = rjm_uploads.txt
+          downloads_file = rjm_downloads.txt
+          EOF
+          cat ~/.rjm/rjm_config.ini
+
+      - name: Submit the example batch
+        run: rjm_batch_submit -f localdirs.txt -ll debug --logextra
+        working-directory: ./examples/paramiko_integration
+        timeout-minutes: 5
+
+      - name: Give tmux a moment to finish before polling
+        run: sleep 5
+
+      - name: Wait for the batch and download outputs
+        run: rjm_batch_wait -f localdirs.txt -ll debug --logextra
+        working-directory: ./examples/paramiko_integration
+        timeout-minutes: 10
+
+      - name: Verify the downloaded output file
+        run: |
+          test -f examples/paramiko_integration/job1/output.txt
+          grep -q "hello from paramiko" examples/paramiko_integration/job1/output.txt
+          cat examples/paramiko_integration/job1/output.txt
+
+      - name: Show remote_job.json on failure
+        if: failure()
+        run: cat examples/paramiko_integration/job1/remote_job.json || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf "$HOME/rjm-ci-jobs"
+          rm -f ~/.rjm/rjm_config.ini ~/.rjm/paramiko_private_key ~/.rjm/paramiko_private_key.pub
+
   pyinstaller:
     runs-on: windows-latest
     steps:

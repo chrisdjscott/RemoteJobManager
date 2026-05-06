@@ -14,9 +14,9 @@ It is developed primarily for NeSI's Mahuika cluster but the runner and transfer
 The typical workflow per local job directory:
 
 1. Read `rjm_uploads.txt`, upload listed files to a remote directory (Globus HTTPS or SFTP).
-2. Submit a Slurm script (default `run.sl`) on the remote (via a Globus Compute function or via SSH).
-3. Poll until the Slurm job finishes (with a faster "warmup" polling interval at first).
-4. Read `rjm_downloads.txt` and download outputs (with checksum verification).
+2. Start the job script on the remote. The Globus stack submits a Slurm script (default `run.sl`) via a Globus Compute function and polls `sacct`. The paramiko stack runs the job script (configured via `[PARAMIKO]:job_script`, default `run.sl`) inside a detached `tmux` session over SSH and polls with `tmux has-session`; success is signalled by a `.rjm-succeeded` sentinel file written after the script exits cleanly.
+3. Poll until the job finishes (the Globus stack uses a faster "warmup" polling interval at first).
+4. Read `rjm_downloads.txt` and download outputs (with checksum verification on the Globus stack).
 
 State for each job is persisted in `remote_job.json` inside the local job directory so workflows can be resumed.
 
@@ -33,7 +33,7 @@ State for each job is persisted in `remote_job.json` inside the local job direct
     - `runner_base.py`: `RunnerBase` interface (`make_remote_directory`, `start`, `wait`, `cancel`, scope/auth hooks). `check_directory_exists` is abstract; subclasses must implement it.
     - `globus_compute_slurm_runner.py`: default runner. Submits Slurm via `sbatch`, polls `sacct`. Owns the Globus Compute helpers `path_join` and `check_dir_exists`.
     - `globus_compute_native_runner.py`: alternative runner that runs natively on the compute endpoint (no Slurm).
-    - `paramiko_ssh_runner.py`: runner that opens an SSH session with `paramiko` and submits/queries Slurm jobs over the channel.
+    - `paramiko_ssh_runner.py`: runner that opens an SSH session with `paramiko`, spawns the configured job script in a detached `tmux` session, and polls with `tmux has-session`. Does not use Slurm; success is detected by the presence of a `.rjm-succeeded` sentinel file in the working directory.
   - `transferers/`
     - `transferer_base.py`: `TransfererBase` interface. Hosts shared `_calculate_checksum` and `FILE_CHUNK_SIZE`. `download_files` accepts `(filenames, *args, **kwargs)`. `setup(*args, **kwargs)` is a no-op default.
     - `globus_https_transferer.py`: HTTPS uploads/downloads against a Globus guest collection.
