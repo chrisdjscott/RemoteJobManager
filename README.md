@@ -18,7 +18,8 @@ section of the config file:
   file transfer, using a locally generated keypair. Jobs are launched in a
   detached `tmux` session on the remote and completion is signalled by a
   `.rjm-succeeded` sentinel file. This backend is sparsely tested and lacks
-  some features of the Globus stack (for example, checksum-verified downloads).
+  some features of the Globus stack (for example, job queuing via Slurm;
+  all work runs directly under `tmux` without a scheduler).
   Use the Globus backend unless you specifically need an SSH-based alternative.
 
 ## How a job runs

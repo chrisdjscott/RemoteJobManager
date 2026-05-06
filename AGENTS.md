@@ -11,14 +11,14 @@ RemoteJobManager (RJM) is a Python package that offloads work to a remote HPC cl
 
 It is developed primarily for NeSI's Mahuika cluster but the runner and transferer abstractions allow other backends.
 
-**Support status:** the Globus stack is the primary supported configuration and receives the bulk of development, testing, and CI coverage. The Paramiko stack is best treated as experimental: it works but is sparsely tested, has had far less production use, and lacks features the Globus stack provides (for example, checksum verification on download). When making changes, prefer the Globus path; for paramiko-only changes, be conservative and avoid regressing the Globus stack.
+**Support status:** the Globus stack is the primary supported configuration and receives the bulk of development, testing, and CI coverage. The Paramiko stack is best treated as experimental: it works but is sparsely tested, has had far less production use, and lacks features the Globus stack provides (for example, job queuing via Slurm; all work runs directly under `tmux` without a scheduler). When making changes, prefer the Globus path; for paramiko-only changes, be conservative and avoid regressing the Globus stack.
 
 The typical workflow per local job directory:
 
 1. Read `rjm_uploads.txt`, upload listed files to a remote directory (Globus HTTPS or SFTP).
 2. Start the job script on the remote. The Globus stack submits a Slurm script (default `run.sl`) via a Globus Compute function and polls `sacct`. The paramiko stack runs the job script (configured via `[PARAMIKO]:job_script`, default `run.sl`) inside a detached `tmux` session over SSH and polls with `tmux has-session`; success is signalled by a `.rjm-succeeded` sentinel file written after the script exits cleanly.
 3. Poll until the job finishes (the Globus stack uses a faster "warmup" polling interval at first).
-4. Read `rjm_downloads.txt` and download outputs (with checksum verification on the Globus stack).
+4. Read `rjm_downloads.txt` and download outputs (both stacks verify checksums on download).
 
 State for each job is persisted in `remote_job.json` inside the local job directory so workflows can be resumed.
 
