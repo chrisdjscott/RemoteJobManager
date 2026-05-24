@@ -163,6 +163,10 @@ def nesi_setup():
                 elif optd["name"] == "transferer":
                     optd["override"] = "globus_https_transferer"
 
+            # ----- persist the NeSI project code as the default Slurm account
+            if optd["section"] == "SLURM" and optd["name"] == "account":
+                optd["override"] = account
+
         # ----- Paramiko overrides (only when SSH key pair was generated) -----
         if args.ssh:
             if optd["section"] == "PARAMIKO":

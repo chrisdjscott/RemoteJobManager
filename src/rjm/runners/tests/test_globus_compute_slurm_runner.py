@@ -367,6 +367,100 @@ def test_check_slurm_job_statuses_missing(mocker):
     assert "01234" not in status_dict
 
 
+def _write_slurm_script(tmpdir, contents, name="run.sl"):
+    script_path = os.path.join(str(tmpdir), name)
+    with open(script_path, "w") as fh:
+        fh.write(contents)
+    return script_path
+
+
+def test_runner_slurm_account_missing(runner):
+    assert runner._slurm_account is None
+
+
+def test_runner_slurm_account_blank(mocker, configobj):
+    configobj["SLURM"]["account"] = "   "
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+    runner = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
+    assert runner._slurm_account is None
+
+
+def test_runner_slurm_account_set(mocker, configobj):
+    configobj["SLURM"]["account"] = "uoa00106"
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+    runner = globus_compute_slurm_runner.GlobusComputeSlurmRunner()
+    assert runner._slurm_account == "uoa00106"
+
+
+def test_submit_slurm_job_no_account(mocker, tmpdir):
+    _write_slurm_script(tmpdir, "#!/bin/bash\n#SBATCH --time=01:00:00\nrun something\n")
+    mocked = mocker.patch(
+        'subprocess.run',
+        return_value=MockedSubprocessReturn(0, "Submitted batch job 1234567"),
+    )
+
+    returncode, output = globus_compute_slurm_runner.submit_slurm_job(
+        "run.sl", submit_dir=str(tmpdir), account=None,
+    )
+
+    assert returncode == 0
+    assert output == "Submitted batch job 1234567"
+    cmd = mocked.call_args.args[0]
+    assert "--account" not in cmd
+
+
+def test_submit_slurm_job_account_injected(mocker, tmpdir):
+    _write_slurm_script(tmpdir, "#!/bin/bash\n#SBATCH --time=01:00:00\nrun something\n")
+    mocked = mocker.patch(
+        'subprocess.run',
+        return_value=MockedSubprocessReturn(0, "Submitted batch job 1234567"),
+    )
+
+    returncode, output = globus_compute_slurm_runner.submit_slurm_job(
+        "run.sl", submit_dir=str(tmpdir), account="uoa00106",
+    )
+
+    assert returncode == 0
+    cmd = mocked.call_args.args[0]
+    assert '--account="uoa00106"' in cmd
+
+
+def test_submit_slurm_job_account_in_script_long(mocker, tmpdir):
+    _write_slurm_script(
+        tmpdir,
+        "#!/bin/bash\n#SBATCH --account=other\n#SBATCH --time=01:00:00\nrun something\n",
+    )
+    mocked = mocker.patch(
+        'subprocess.run',
+        return_value=MockedSubprocessReturn(0, "Submitted batch job 1234567"),
+    )
+
+    globus_compute_slurm_runner.submit_slurm_job(
+        "run.sl", submit_dir=str(tmpdir), account="uoa00106",
+    )
+
+    cmd = mocked.call_args.args[0]
+    assert "uoa00106" not in cmd
+
+
+def test_submit_slurm_job_account_in_script_short(mocker, tmpdir):
+    _write_slurm_script(
+        tmpdir,
+        "#!/bin/bash\n#SBATCH -A other\n#SBATCH --time=01:00:00\nrun something\n",
+    )
+    mocked = mocker.patch(
+        'subprocess.run',
+        return_value=MockedSubprocessReturn(0, "Submitted batch job 1234567"),
+    )
+
+    globus_compute_slurm_runner.submit_slurm_job(
+        "run.sl", submit_dir=str(tmpdir), account="uoa00106",
+    )
+
+    cmd = mocked.call_args.args[0]
+    assert "uoa00106" not in cmd
+
+
 @pytest.mark.parametrize("config_vals,user_vals,expected_vals", [
     ([MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION], [None, None, None], [MIN_POLLING_INTERVAL, MIN_WARMUP_POLLING_INTERVAL, MAX_WARMUP_DURATION]),
     ([MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10], [None, None, None], [MIN_POLLING_INTERVAL+10, MIN_WARMUP_POLLING_INTERVAL+10, MAX_WARMUP_DURATION-10]),
