@@ -21,8 +21,15 @@ rjm.runners.tests.test\_globus\_compute\_slurm\_runner
       test_make_remote_directory_list
       test_make_remote_directory_single
       test_reset_globus_compute_client
+      test_runner_slurm_account_blank
+      test_runner_slurm_account_missing
+      test_runner_slurm_account_set
       test_start_fail
       test_start_succeed
+      test_submit_slurm_job_account_in_script_long
+      test_submit_slurm_job_account_in_script_short
+      test_submit_slurm_job_account_injected
+      test_submit_slurm_job_no_account
       test_wait_completed_failed
       test_wait_completed_success
       test_wait_fail
