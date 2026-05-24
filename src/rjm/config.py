@@ -54,6 +54,12 @@ CONFIG_OPTIONS = [  # default values must be strings or None
         "help": "Name of the Slurm script that will be included in the uploaded files",
     },
     {
+        "section": "SLURM",
+        "name": "account",
+        "default": None,
+        "help": "Slurm account to pass to sbatch via --account (leave unset to rely on the account specified inside the Slurm script)",
+    },
+    {
         "section": "POLLING",
         "name": "warmup_poll_interval",
         "default": "10",

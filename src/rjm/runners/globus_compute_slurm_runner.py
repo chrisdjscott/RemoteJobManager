@@ -51,6 +51,9 @@ class GlobusComputeSlurmRunner(RunnerBase):
         # the name of the Slurm script
         self._slurm_script = self._config.get("SLURM", "slurm_script")
 
+        # optional default Slurm account to pass via --account
+        self._slurm_account = self._config.get("SLURM", "account", fallback="").strip() or None
+
         # how often to poll for Slurm job completion
         self._poll_interval = self._config.getint("POLLING", "poll_interval")
         self._warmup_poll_interval = self._config.getint("POLLING", "warmup_poll_interval")
@@ -279,10 +282,13 @@ class GlobusComputeSlurmRunner(RunnerBase):
 
         """
         self._log(logging.DEBUG, f"Submitting Slurm script: {self._slurm_script}")
+        if self._slurm_account:
+            self._log(logging.DEBUG, f"Default Slurm account from config: {self._slurm_account}")
         returncode, stdout = self.run_function(
             submit_slurm_job,
             self._slurm_script,
             submit_dir=working_directory,
+            account=self._slurm_account,
         )
         self._log(logging.DEBUG, f'returncode = {returncode}; output = "{stdout}"')
 
@@ -566,11 +572,12 @@ def _calculate_checksums(files, working_directory):
 
 
 # function that submits a job to Slurm (assumes submit script and other required inputs were uploaded via Globus)
-def submit_slurm_job(submit_script, submit_dir=None):
+def submit_slurm_job(submit_script, submit_dir=None, account=None):
     # catch all errors due to problem with exceptions being wrapped in parsl class
     # and parsl may not be installed on host (particularly windows)
     try:
         import os
+        import re
         import subprocess
 
         # if submit_dir is specified, it must exist
@@ -585,9 +592,27 @@ def submit_slurm_job(submit_script, submit_dir=None):
         if not os.path.exists(submit_script_path):
             return 1, f"submit_script does not exist: '{submit_script_path}'"
 
+        # only inject --account when an account is configured and the script
+        # itself does not already specify one via a #SBATCH directive
+        account_arg = ""
+        if account:
+            account_re = re.compile(r'(?:--account\b|\s-A\b)')
+            script_has_account = False
+            with open(submit_script_path, 'r') as fh:
+                for line in fh:
+                    stripped = line.lstrip()
+                    if stripped.startswith('#SBATCH') and account_re.search(stripped[len('#SBATCH'):]):
+                        script_has_account = True
+                        break
+            if not script_has_account:
+                account_arg = f'--account="{account}" '
+
         # submit the Slurm job and return the job id
-        p = subprocess.run(f'module purge > /dev/null 2>&1 && sbatch "{submit_script}"', shell=True, stdout=subprocess.PIPE,
-                           stderr=subprocess.STDOUT, universal_newlines=True, check=False, cwd=submit_dir)
+        p = subprocess.run(
+            f'module purge > /dev/null 2>&1 && sbatch {account_arg}"{submit_script}"',
+            shell=True, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, universal_newlines=True, check=False, cwd=submit_dir,
+        )
 
         return p.returncode, p.stdout.strip()
 
