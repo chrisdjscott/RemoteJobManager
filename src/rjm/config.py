@@ -133,16 +133,17 @@ def is_paramiko_stack(config):
     return runner == "paramiko_ssh_runner" and transferer == "paramiko_sftp_transferer"
 
 
+def get_project_sections(config):
+    """Return the names of the [PROJECT:<code>] sections, in config file order"""
+    return [section for section in config.sections() if section.startswith(PROJECT_SECTION_PREFIX)]
+
+
 def get_projects(config):
     """
     Return the project codes configured in [PROJECT:<code>] sections, in config file order
 
     """
-    return [
-        section[len(PROJECT_SECTION_PREFIX):]
-        for section in config.sections()
-        if section.startswith(PROJECT_SECTION_PREFIX)
-    ]
+    return [section[len(PROJECT_SECTION_PREFIX):] for section in get_project_sections(config)]
 
 
 def resolve_project(config, project):
@@ -171,20 +172,37 @@ def resolve_project(config, project):
 
 
 def load_or_make_config(config_file=CONFIG_FILE_LOCATION):
-    """Load the config file if it exists or create an empty config object"""
-    try:
-        config = load_config(config_file=config_file)
+    """
+    Load the config file if it exists or create an empty config object
+
+    The file is read without validation so that existing values are kept when
+    reconfiguring from an outdated config file.
+
+    """
+    config = configparser.ConfigParser()
+    if os.path.exists(config_file):
+        config.read(config_file)
         logger.debug(f"Loaded config from: {config_file}")
-
-    except RemoteJobConfigError:
-        if not os.path.isdir(os.path.dirname(CONFIG_FILE_LOCATION)):
-            os.makedirs(os.path.dirname(CONFIG_FILE_LOCATION))
-
-        # create empty config object
-        config = configparser.ConfigParser()
+    else:
+        os.makedirs(os.path.dirname(config_file), exist_ok=True)
         logger.debug("Created empty config object")
 
     return config
+
+
+def save_config(config, config_file=CONFIG_FILE_LOCATION):
+    """Write the config object to the config file"""
+    with open(config_file, 'w') as cf:
+        config.write(cf)
+    logger.debug(f"Written config file to: {config_file}")
+
+
+def add_project(config, project, remote_endpoint, remote_path):
+    """Add a [PROJECT:<code>] section for the given project's guest collection"""
+    config[f"{PROJECT_SECTION_PREFIX}{project}"] = {
+        "remote_endpoint": remote_endpoint,
+        "remote_path": remote_path,
+    }
 
 
 def _process_option(config, optd):
@@ -225,12 +243,15 @@ def _process_option(config, optd):
         config[section][name] = value
 
 
-def do_configuration(config_options=CONFIG_OPTIONS):
+def do_configuration(config_options=CONFIG_OPTIONS, projects=None, config_file=CONFIG_FILE_LOCATION):
     """
     Run through configuration steps
 
     :param config_options: optional, the list of config options, see config.CONFIG_OPTIONS
         for the expected format and defaults
+    :param projects: optional, mapping of project code to (remote_endpoint, remote_path);
+        when given, these replace any existing project sections
+    :param config_file: optional, the config file to write
 
     """
     logger.debug("Configuring RJM...")
@@ -238,16 +259,20 @@ def do_configuration(config_options=CONFIG_OPTIONS):
 
     # load config file if it already exists
     logger.debug("Load existing config or make a new config object")
-    config = load_or_make_config()
+    config = load_or_make_config(config_file=config_file)
 
     # loop over the options, asking user for input
     logger.debug("Processing config options")
     for optd in config_options:
         _process_option(config, optd)
 
-    # store configuration
-    with open(CONFIG_FILE_LOCATION, 'w') as cf:
-        config.write(cf)
+    # replace the project sections; [GLOBUS_TRANSFER] is superseded by them
+    if projects is not None:
+        for section in get_project_sections(config) + ["GLOBUS_TRANSFER"]:
+            config.remove_section(section)
+        for project, (remote_endpoint, remote_path) in projects.items():
+            add_project(config, project, remote_endpoint, remote_path)
 
-    logger.debug(f"Written config file to: {CONFIG_FILE_LOCATION}")
-    print(f"Written config file to: {CONFIG_FILE_LOCATION}")
+    # store configuration
+    save_config(config, config_file=config_file)
+    print(f"Written config file to: {config_file}")

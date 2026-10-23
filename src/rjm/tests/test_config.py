@@ -138,3 +138,55 @@ def test_resolve_project_none_configured():
     config = configparser.ConfigParser()
     with pytest.raises(RemoteJobConfigError, match="No projects are configured"):
         config_helper.resolve_project(config, "uoa12345")
+
+
+def test_load_or_make_config_keeps_legacy_values(tmp_path):
+    config_file = tmp_path / "rjm_config.ini"
+    config_file.write_text("[GLOBUS_TRANSFER]\nremote_endpoint = abc\n\n[RETRY]\ntries = 9\n")
+
+    config = config_helper.load_or_make_config(config_file=str(config_file))
+
+    assert config.get("RETRY", "tries") == "9"
+
+
+def test_load_or_make_config_missing(tmp_path):
+    config_file = tmp_path / "newdir" / "rjm_config.ini"
+
+    config = config_helper.load_or_make_config(config_file=str(config_file))
+
+    assert config.sections() == []
+    assert (tmp_path / "newdir").is_dir()
+
+
+def test_do_configuration_replaces_projects(tmp_path):
+    config_file = tmp_path / "rjm_config.ini"
+    config_file.write_text(
+        "[GLOBUS_TRANSFER]\nremote_endpoint = abc\nremote_path = /old\n\n"
+        "[PROJECT:uoa99999]\nremote_endpoint = stale\nremote_path = /stale\n\n"
+        "[RETRY]\ntries = 9\n"
+    )
+
+    config_helper.do_configuration(
+        config_options=[],
+        projects={"uoa00106": ("ep1", "/path1"), "nesi12345": ("ep2", "/path2")},
+        config_file=str(config_file),
+    )
+
+    written = configparser.ConfigParser()
+    written.read(config_file)
+    assert config_helper.get_projects(written) == ["uoa00106", "nesi12345"]
+    assert written.get("PROJECT:nesi12345", "remote_endpoint") == "ep2"
+    assert written.get("PROJECT:nesi12345", "remote_path") == "/path2"
+    assert "GLOBUS_TRANSFER" not in written
+    assert written.get("RETRY", "tries") == "9"
+
+
+def test_do_configuration_keeps_projects(tmp_path):
+    config_file = tmp_path / "rjm_config.ini"
+    config_file.write_text("[PROJECT:uoa00106]\nremote_endpoint = ep1\nremote_path = /path1\n")
+
+    config_helper.do_configuration(config_options=[], config_file=str(config_file))
+
+    written = configparser.ConfigParser()
+    written.read(config_file)
+    assert config_helper.get_projects(written) == ["uoa00106"]
