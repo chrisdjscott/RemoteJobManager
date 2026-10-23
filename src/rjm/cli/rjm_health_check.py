@@ -7,8 +7,12 @@ It will test that:
 - a file can be uploaded to the remote machine
 - a command can be executed on the remote machine
 
+With the Globus stack the checks are run for every configured project (or only the
+project selected with -p).
+
 """
 import os
+import sys
 import logging
 import argparse
 from datetime import datetime
@@ -18,6 +22,7 @@ from rjm import __version__
 from rjm.errors import RemoteJobRunnerError
 from rjm.remote_job import RemoteJob
 from rjm import utils
+from rjm import config as config_helper
 
 
 def make_parser():
@@ -31,6 +36,8 @@ def make_parser():
     parser.add_argument('-k', '--keep', action="store_true",
                         help="Keep health check files on remote system, i.e. do not delete them after completing the check (default=%(default)s)")
     parser.add_argument('-r', '--retries', action='store_true', help='Allow retries on function failures')
+    parser.add_argument('-p', '--projectcode',
+                        help="only check this NeSI project (default: check every configured project; not used with paramiko)")
     parser.add_argument("-v", '--version', action='version', version='%(prog)s ' + __version__)
 
     return parser
@@ -102,22 +109,13 @@ def _remote_health_check_paramiko(runner, remote_dir, remote_file, keep):
             logger.warning(f"Failed to delete remote direcotry '{remote_dir} ({exc})")
 
 
-def health_check():
-    # command line arguments
-    parser = make_parser()
-    args = parser.parse_args()
-
-    # setup logging
-    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
-
+def _check_project(project, args):
+    """Run the checks against the remote machine for one project (None for paramiko)"""
     logger = logging.getLogger(__name__)
-
-    print(f"Running RJM health check v{__version__}...")
-    logger.debug(f"Running RJM health check v{__version__}...")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # create remote job object
-        rj = RemoteJob()
+        rj = RemoteJob(project=project)
         rj.setup(tmpdir)
         t = rj.get_transferer()
         r = rj.get_runner()
@@ -162,7 +160,58 @@ def health_check():
             logger.error(f"Error checking directory and file exist: {result}")
             raise RuntimeError(f"Error checking directory and file exist: {result}")
 
+
+def health_check(args=None):
+    # command line arguments
+    parser = make_parser()
+    args = parser.parse_args(args)
+
+    # setup logging
+    utils.setup_logging(log_file=args.logfile, log_level=args.loglevel, cli_extra=args.logextra)
+
+    logger = logging.getLogger(__name__)
+
+    print(f"Running RJM health check v{__version__}...")
+    logger.debug(f"Running RJM health check v{__version__}...")
+
+    # the projects to check; the paramiko stack has no projects and is checked once
+    config = config_helper.load_config()
+    if config_helper.is_paramiko_stack(config):
+        projects = [None]
+    elif args.projectcode is not None:
+        projects = [config_helper.resolve_project(config, args.projectcode)]
+    else:
+        projects = config_helper.get_projects(config)
+
+    # run the checks for each project, carrying on to the next project after a failure
+    failed = []
+    for project in projects:
+        if project is not None:
+            print()
+            print("="*80)
+            print(f"Checking project: {project}")
+            print("="*80)
+        try:
+            _check_project(project, args)
+        except Exception as exc:
+            logger.exception(f"Health check failed for project {project}")
+            print()
+            print(f"ERROR: health check failed: {exc}")
+            failed.append(project)
+
+    # report the outcome
     print()
+    if projects != [None]:
+        print("Summary:")
+        for project in projects:
+            print(f"    {project}: {'FAILED' if project in failed else 'OK'}")
+        print()
+
+    if failed:
+        print("Health check failed, see errors above")
+        logger.debug("Health check failed")
+        sys.exit(1)
+
     print("If there were no errors above it looks like basic functionality is good")
     logger.debug("If there were no errors above it looks like basic functionality is good")
     print()
