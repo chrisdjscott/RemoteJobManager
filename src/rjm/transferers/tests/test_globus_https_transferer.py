@@ -19,7 +19,7 @@ class AuthoriserMock:
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
-    config["GLOBUS_TRANSFER"] = {
+    config["PROJECT:uoa12345"] = {
         "remote_endpoint": "qwerty",
         "remote_path": "asdfg",
     }
@@ -49,7 +49,7 @@ def configobj():
 @pytest.fixture
 def tf(mocker, configobj):
     mocker.patch('rjm.config.load_config', return_value=configobj)
-    tf = GlobusHttpsTransferer()
+    tf = GlobusHttpsTransferer(project="uoa12345")
 
     return tf
 

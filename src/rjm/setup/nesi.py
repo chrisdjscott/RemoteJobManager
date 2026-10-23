@@ -34,16 +34,18 @@ class NeSISetup:
     """
     Runs setup steps specific to NeSI.
 
-    This includes setting up a Globus guest collection on the NeSI Globus data transfer endpoint.
+    This includes setting up a Globus guest collection for each project on the NeSI Globus data transfer endpoint.
+
+    :param username: NeSI username
+    :param projects: list of NeSI project codes (not required for Paramiko setup)
 
     """
-    def __init__(self, username, account):
+    def __init__(self, username, projects=None):
         self._username = username
-        self._account = account
+        self._projects = projects
 
         # initialise values we are setting up
-        self._globus_id = None          # globus endpoint id
-        self._globus_path = None        # path to globus share
+        self._collections = {}          # project code -> (globus endpoint id, path to globus share)
         self._remote_base_path = None   # base path on the remote system for Paramiko
 
         # Paramiko key paths (filled by create_ssh_keypair)
@@ -56,8 +58,8 @@ class NeSISetup:
         return GLOBUS_COMPUTE_NESI_ENDPOINT
 
     def get_globus_transfer_config(self):
-        """Return globus transfer config values"""
-        return self._globus_id, self._globus_path
+        """Return mapping of project code to (guest collection endpoint id, guest collection path)"""
+        return self._collections
 
     def _handle_globus_auth(self, token_file, request_scopes, authoriser_scopes, by_scopes=True, require_nesi_identity=True):
         """Login to globus and return authoriser"""
@@ -112,28 +114,35 @@ class NeSISetup:
 
         logger.debug("Remote write permissions confirmed")
 
-    def setup_globus_transfer(self):
-        """
-        Sets up globus transfer:
-
-        1. Create a directory for the guest collection
-        2. Create a guest collection to share the directory
-        3. Report back the endpoint id and url for managing the new guest collection
-
-        """
-        print("Setting up Globus Transfer, please wait...")
-
-        # select directory for sharing
-        guest_collection_dir = f"/nesi/nobackup/{self._account}/{self._username}/rjm-jobs"
+    def _select_collection_dir(self, project):
+        """Ask the user for the directory to share for the given project"""
+        guest_collection_dir = f"/nesi/nobackup/{project}/{self._username}/rjm-jobs"
         print("="*120)
-        print(f"Creating Globus guest collection at:\n    {guest_collection_dir}")
+        print(f"Creating Globus guest collection for project {project} at:\n    {guest_collection_dir}")
         response = input("Press enter to accept the above location or specify an alternative here: ").strip()
         if len(response):
             if response.startswith("/nesi/nobackup"):
                 guest_collection_dir = response
             else:
                 raise ValueError("Valid guest collection directories must start with '/nesi/nobackup'")
-        logger.info(f"Guest collection directory: {guest_collection_dir}")
+        logger.info(f"Guest collection directory for {project}: {guest_collection_dir}")
+
+        return guest_collection_dir
+
+    def setup_globus_transfer(self):
+        """
+        Sets up globus transfer for each project:
+
+        1. Select a directory to share for each project
+        2. Authenticate with Globus once
+        3. Create each directory and a guest collection to share it
+        4. Report back the endpoint id and url for managing each new guest collection
+
+        """
+        print("Setting up Globus Transfer, please wait...")
+
+        # select directories for sharing
+        collection_dirs = {project: self._select_collection_dir(project) for project in self._projects}
         print("Continuing, please wait...")
 
         # request globus scopes for creating collection and transfer client
@@ -162,8 +171,8 @@ class NeSISetup:
             print("if so, a link might be opened in your browser automatically)...")
             try:
                 transfer_client = TransferClient(authorizer=authorisers[TransferScopes.all])
-                logger.debug(f"Attempting to list NeSI filesystem: {guest_collection_dir}")
-                response = transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
+                logger.debug("Attempting to list NeSI filesystem")
+                transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
 
             except globus_sdk.TransferAPIError as err:
                 logger.debug(f"Caught TransferAPIError... {err.info}")
@@ -175,24 +184,10 @@ class NeSISetup:
                 logger.debug(f"Consent required scopes: {consent_required_scopes}")
                 authorisers = self._handle_globus_auth(tmp_token_file, consent_required_scopes, [TransferScopes.all], by_scopes=False)
                 transfer_client = TransferClient(authorizer=authorisers["transfer.api.globus.org"])
-                logger.debug(f"Attempting to list NeSI filesystem after consents: {guest_collection_dir}")
-                response = transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
+                logger.debug("Attempting to list NeSI filesystem after consents")
+                transfer_client.operation_ls(GLOBUS_NESI_COLLECTION, path="/")
 
             # we should now have a working transfer client
-
-            # create the directory, if it succeeds all good, if it fails due to already existing we need to check access if ok eg by making a subdir (we could always do that to be safe)
-            print("Creating remote directory for transferring files to, please wait...")
-            logger.debug(f"Attempting to create remote directory: {guest_collection_dir}")
-            try:
-                response = transfer_client.operation_mkdir(GLOBUS_NESI_COLLECTION, path=guest_collection_dir)
-            except globus_sdk.TransferAPIError as err:
-                if err.code == "ExternalError.MkdirFailed.Exists":
-                    logger.debug("Directory already exists; confirming write access")
-                    self._confirm_remote_write_permissions(transfer_client, guest_collection_dir)
-                else:
-                    raise
-
-            print("Setting up the directory with Globus for RJM access, please wait...")
 
             # GCS client
             client = GCSClient(GLOBUS_NESI_GCS_ADDRESS, authorizer=gcs_authoriser)
@@ -208,33 +203,55 @@ class NeSISetup:
                 print(cred)
                 raise exc
 
-            # collection document specifying options for new guest collection
-            doc = GuestCollectionDocument(
-                mapped_collection_id=GLOBUS_NESI_COLLECTION,
-                user_credential_id=user_cred["id"],
-                collection_base_path=guest_collection_dir,
-                display_name="RJM_jobs",
-                public=False,
-                enable_https=True,
-            )
-            logger.debug(f"Collection document: {doc}")
+            # create a guest collection for each project
+            for project, guest_collection_dir in collection_dirs.items():
+                endpoint_id = self._create_guest_collection(
+                    transfer_client, client, user_cred, project, guest_collection_dir,
+                )
+                self._collections[project] = (endpoint_id, guest_collection_dir)
 
-            # create the Globus collection, report back endpoint id for config
-            response = client.create_collection(doc)
-            endpoint_id = response.data["id"]
-            logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
+    def _create_guest_collection(self, transfer_client, gcs_client, user_cred, project, guest_collection_dir):
+        """Create the directory and a guest collection sharing it, returning the endpoint id"""
+        # create the directory, if it succeeds all good, if it fails due to already existing we need to check access if ok eg by making a subdir (we could always do that to be safe)
+        print(f"Creating remote directory for project {project}, please wait...")
+        logger.debug(f"Attempting to create remote directory: {guest_collection_dir}")
+        try:
+            transfer_client.operation_mkdir(GLOBUS_NESI_COLLECTION, path=guest_collection_dir)
+        except globus_sdk.TransferAPIError as err:
+            if err.code == "ExternalError.MkdirFailed.Exists":
+                logger.debug("Directory already exists; confirming write access")
+                self._confirm_remote_write_permissions(transfer_client, guest_collection_dir)
+            else:
+                raise
+
+        print("Setting up the directory with Globus for RJM access, please wait...")
+
+        # collection document specifying options for new guest collection
+        doc = GuestCollectionDocument(
+            mapped_collection_id=GLOBUS_NESI_COLLECTION,
+            user_credential_id=user_cred["id"],
+            collection_base_path=guest_collection_dir,
+            display_name=f"RJM_jobs_{project}",
+            public=False,
+            enable_https=True,
+        )
+        logger.debug(f"Collection document: {doc}")
+
+        # create the Globus collection, report back endpoint id for config
+        response = gcs_client.create_collection(doc)
+        endpoint_id = response.data["id"]
+        logger.debug(f"Created Globus Guest Collection with Endpoint ID: {endpoint_id}")
 
         # report endpoint id for configuring rjm
         print("="*120)
+        print(f"Project: {project}")
         print(f"Globus guest collection endpoint id: '{endpoint_id}'")
         print(f"Globus guest collection endpoint path: '{guest_collection_dir}'")
         print("You can manage the endpoint you just created online at:")
         print(f"    https://app.globus.org/file-manager/collections/{endpoint_id}/overview")
         print("="*120)
 
-        # also store the endpoint id and path
-        self._globus_id = endpoint_id
-        self._globus_path = guest_collection_dir
+        return endpoint_id
 
     # --------------------------------------------------------------------- #
     # SSH key‑pair handling

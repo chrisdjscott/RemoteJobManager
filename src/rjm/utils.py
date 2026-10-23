@@ -104,6 +104,32 @@ def handle_globus_auth(scopes, token_file=TOKEN_FILE_LOCATION,
     return cli
 
 
+def get_all_globus_scopes(config):
+    """
+    Return the Globus scopes needed to run jobs under every configured project
+
+    Includes the transfer scope, the HTTPS scope of each project's guest
+    collection and the Globus Compute scopes. Returns an empty list for the
+    paramiko stack, which does not use Globus.
+
+    """
+    if config_helper.is_paramiko_stack(config):
+        return []
+
+    # imported here to avoid a circular import: the runner base imports utils
+    from rjm.runners.globus_compute_slurm_runner import CustomLoginManager
+
+    scopes = [TRANSFER_SCOPE]
+    for project in config_helper.get_projects(config):
+        section = f"{config_helper.PROJECT_SECTION_PREFIX}{project}"
+        endpoint = config.get(section, "remote_endpoint")
+        scopes.append(HTTPS_SCOPE.format(endpoint_id=endpoint))
+
+    scopes.extend(CustomLoginManager().get_scopes())
+
+    return scopes
+
+
 def pretty_size_from_bytes(size_bytes):
     """Scale size in bytes"""
     if size_bytes == 0:

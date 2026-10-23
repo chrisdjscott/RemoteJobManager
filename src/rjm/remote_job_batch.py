@@ -8,16 +8,9 @@ from datetime import datetime
 from collections import defaultdict
 
 from rjm import utils
-from rjm.errors import RemoteJobBatchError, RemoteJobConfigError
-from rjm.remote_job import RemoteJob
-from rjm.runners.globus_compute_slurm_runner import GlobusComputeSlurmRunner
-from rjm.transferers.globus_https_transferer import GlobusHttpsTransferer
+from rjm.errors import RemoteJobBatchError
+from rjm.remote_job import RemoteJob, make_components, read_saved_project
 from rjm import config as config_helper
-
-
-_PARAMIKO_INSTALL_HINT = (
-    "paramiko is not installed; reinstall with 'pip install RemoteJobManager[ssh]'"
-)
 
 
 logger = logging.getLogger(__name__)
@@ -30,40 +23,43 @@ class RemoteJobBatch:
     """
     def __init__(self):
         self._remote_jobs = []
+        self._runner = None
+        self._transfer = None
+        self._project = None
 
-        # Load configuration to decide which components to use
-        config = config_helper.load_config()
-
-        # Choose runner based on config COMPONENTS.runner
-        runner_type = config.get("COMPONENTS", "runner")
-        if runner_type == "paramiko_ssh_runner":
-            try:
-                from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
-            except ImportError as exc:
-                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
-            self._runner = ParamikoSSHRunner(config=config)
-        else:
-            self._runner = GlobusComputeSlurmRunner(config=config)
-
-        # Choose transferer based on config COMPONENTS.transferer
-        transferer_type = config.get("COMPONENTS", "transferer")
-        if transferer_type == "paramiko_sftp_transferer":
-            try:
-                from rjm.transferers.paramiko_sftp_transferer import ParamikoSftpTransferer
-            except ImportError as exc:
-                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
-            self._transfer = ParamikoSftpTransferer(config=config)
-        else:
-            self._transfer = GlobusHttpsTransferer(config=config)
-
-    def setup(self, remote_jobs_file: str, force: bool = False):
+    def setup(self, remote_jobs_file: str, force: bool = False, project=None):
         """Setup the runner"""
         # timestamp to use when creating remote directories
         self._timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
 
-        # Globus auth
-        scopes = self._runner.get_globus_scopes()
-        scopes.extend(self._transfer.get_globus_scopes())
+        # read the list of local directories
+        local_dirs = self._read_jobs_file(remote_jobs_file)
+        logger.info(f"Loaded {len(local_dirs)} local directories from {remote_jobs_file}")
+
+        # load the config
+        config = config_helper.load_config()
+
+        # when no project was given (e.g. wait, or resuming a submit), use the
+        # project the jobs were submitted under; all jobs in a batch must share
+        # one project. With force the saved state is discarded, so it is ignored.
+        if project is None and not force and not config_helper.is_paramiko_stack(config):
+            saved_projects = {read_saved_project(local_dir) for local_dir in local_dirs}
+            saved_projects.discard(None)
+            if len(saved_projects) > 1:
+                raise RemoteJobBatchError(
+                    "Jobs in this batch were submitted under multiple projects: "
+                    + ", ".join(sorted(saved_projects))
+                )
+            project = saved_projects.pop() if saved_projects else None
+
+        # create the shared runner and transferer
+        self._runner, self._transfer, self._project = make_components(config, project=project)
+        if self._project is not None:
+            logger.info(f"Using project: {self._project}")
+
+        # Globus auth: request scopes for every configured project, so a newly
+        # added project triggers a single login here rather than mid-run
+        scopes = utils.get_all_globus_scopes(config)
         if len(scopes):
             globus_cli = utils.handle_globus_auth(scopes)
         else:
@@ -72,12 +68,10 @@ class RemoteJobBatch:
         self._runner.setup(globus_cli)
         self._transfer.setup(globus_cli)
 
-        # read the list of local directories and create RemoteJobs
-        local_dirs = self._read_jobs_file(remote_jobs_file)
-        logger.info(f"Loaded {len(local_dirs)} local directories from {remote_jobs_file}")
+        # create the RemoteJobs
         self._remote_jobs = []
         for local_dir in local_dirs:
-            rj = RemoteJob(timestamp=self._timestamp)
+            rj = RemoteJob(timestamp=self._timestamp, project=self._project)
             self._remote_jobs.append(rj)
             rj.setup(local_dir, force=force, runner=self._runner, transfer=self._transfer)
 

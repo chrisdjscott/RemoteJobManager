@@ -25,22 +25,22 @@ State for each job is persisted in `remote_job.json` inside the local job direct
 ## Repository layout
 
 - `src/rjm/` package root.
-  - `remote_job.py`: `RemoteJob` orchestrates one job (upload, run, wait, download, state persistence).
-  - `remote_job_batch.py`: `RemoteJobBatch` drives many `RemoteJob`s concurrently (shared runner/transferer, Globus auth done once).
-  - `config.py`: ini-based config at `~/.rjm/rjm_config.ini`. `CONFIG_OPTIONS` defines the schema; each entry carries its `section`, `name`, `default`, and prompt metadata. `load_config` migrates legacy section names (`GLOBUS` → `GLOBUS_TRANSFER`, `FUNCX` → `GLOBUS_COMPUTE`, `SLURM` polling keys → `POLLING`) in-memory and warns the user to rerun `rjm_config`.
-  - `utils.py`: logging setup, Globus auth via `fair_research_login`, retry defaults, helpers. Tolerates `RemoteJobConfigError` from `load_config`. Token file lives at `~/.rjm/rjm_tokens.json`.
+  - `remote_job.py`: `RemoteJob` orchestrates one job (upload, run, wait, download, state persistence). `make_components(config, project)` is the single place the runner and transferer are constructed. The job's project is saved in `remote_job.json`; `read_saved_project` reads it back.
+  - `remote_job_batch.py`: `RemoteJobBatch` drives many `RemoteJob`s concurrently (shared runner/transferer, Globus auth done once). Components are built in `setup(remote_jobs_file, force, project)`, not `__init__`, because wait/cancel take the project from saved job state. One project per batch.
+  - `config.py`: ini-based config at `~/.rjm/rjm_config.ini`. `CONFIG_OPTIONS` defines the schema; each entry carries its `section`, `name`, `default`, and prompt metadata. Per-project `[PROJECT:<code>]` sections are not in `CONFIG_OPTIONS`; helpers `get_projects`, `resolve_project`, `add_project` and `is_paramiko_stack` handle them. `load_config` raises `RemoteJobConfigError` when the Globus stack has no project sections.
+  - `utils.py`: logging setup, Globus auth via `fair_research_login`, retry defaults, helpers. `get_all_globus_scopes(config)` returns the scopes for every configured project (used by `do_authentication` and batch auth). Tolerates `RemoteJobConfigError` from `load_config`. Token file lives at `~/.rjm/rjm_tokens.json`.
   - `auth.py`: `do_authentication()` used by `rjm_authenticate` and after `rjm_config`. Short-circuits without performing Globus auth when `[COMPONENTS]` selects the paramiko runner and transferer.
   - `errors.py`: custom exception types.
   - `runners/`
     - `runner_base.py`: `RunnerBase` interface (`make_remote_directory`, `start`, `wait`, `cancel`, scope/auth hooks). `check_directory_exists` is abstract; subclasses must implement it.
-    - `globus_compute_slurm_runner.py`: default runner. Submits Slurm via `sbatch`, polls `sacct`. Owns the Globus Compute helpers `path_join` and `check_dir_exists`.
+    - `globus_compute_slurm_runner.py`: default runner. Submits Slurm via `sbatch` (always with `--account=<project>`, warning when the script's `#SBATCH` account differs), polls `sacct`. Owns the Globus Compute helpers `path_join` and `check_dir_exists`.
     - `globus_compute_native_runner.py`: alternative runner that runs natively on the compute endpoint (no Slurm).
     - `paramiko_ssh_runner.py`: runner that opens an SSH session with `paramiko`, spawns the configured job script in a detached `tmux` session, and polls with `tmux has-session`. Does not use Slurm; success is detected by the presence of a `.rjm-succeeded` sentinel file in the working directory.
   - `transferers/`
     - `transferer_base.py`: `TransfererBase` interface. Hosts shared `_calculate_checksum` and `FILE_CHUNK_SIZE`. `download_files` accepts `(filenames, *args, **kwargs)`. `setup(*args, **kwargs)` is a no-op default.
-    - `globus_https_transferer.py`: HTTPS uploads/downloads against a Globus guest collection.
+    - `globus_https_transferer.py`: HTTPS uploads/downloads against the selected project's Globus guest collection.
     - `paramiko_sftp_transferer.py`: SFTP uploads/downloads over the paramiko SSH connection.
-  - `setup/nesi.py`: `NeSISetup` creates a Globus guest collection on Mahuika and resolves the Globus Compute endpoint id. Used by `rjm_config`. Also exposes `setup_paramiko()` to generate an SSH keypair and write the `[PARAMIKO]` config block.
+  - `setup/nesi.py`: `NeSISetup` logs in to Globus once and creates a Globus guest collection per project on Mahuika (`get_globus_transfer_config()` returns `{code: (endpoint, path)}`), and resolves the Globus Compute endpoint id. Used by `rjm_config`. Also exposes `setup_paramiko()` to generate an SSH keypair and write the `[PARAMIKO]` config block.
   - `cli/`: thin argparse entry points wired up in `pyproject.toml`. Each one parses args, calls `utils.setup_logging`, and delegates to the package code.
   - `tests/`, `runners/tests/`, `transferers/tests/`, `cli/tests/`, `setup/tests/`: `pytest` unit tests, mocked with `pytest-mock` and `responses`.
 - `docs/`: Sphinx documentation (RST). User-facing docs live here, including `getting_started_nesi.rst` and `command_line_interface.rst`.
@@ -52,13 +52,13 @@ State for each job is persisted in `remote_job.json` inside the local job direct
 
 Defined in `pyproject.toml` under `[project.scripts]`:
 
-- `rjm_config`: interactive NeSI setup. Default mode creates a Globus guest collection, writes config, and runs Globus auth. With `-s/--ssh`, skips the Globus interactive flow and runs `NeSISetup.setup_paramiko()` to generate a keypair and write `[PARAMIKO]` config.
+- `rjm_config`: interactive NeSI setup. Default mode asks for comma separated project codes, creates a Globus guest collection per project, writes config (replacing all `[PROJECT:*]` sections), and runs Globus auth. `-a/--add-project <code>` adds one project to an existing Globus config. With `-s/--ssh`, skips the Globus interactive flow and runs `NeSISetup.setup_paramiko()` to generate a keypair and write `[PARAMIKO]` config.
 - `rjm_authenticate`: refresh/replace Globus tokens.
-- `rjm_batch_submit`: upload + start for a list of local job directories.
-- `rjm_batch_wait`: wait + download for that list.
-- `rjm_batch_run`: submit then wait in one step.
-- `rjm_batch_cancel`: cancel a batch.
-- `rjm_health_check`: basic round-trip check against the configured endpoints. Branches on the runner type and uses raw SSH `test`/`rm`/`rmdir` when the paramiko runner is selected.
+- `rjm_batch_submit`: upload + start for a list of local job directories. `-p/--projectcode` selects the project (required when several are configured).
+- `rjm_batch_wait`: wait + download for that list. Project comes from saved job state.
+- `rjm_batch_run`: submit then wait in one step. Takes `-p/--projectcode`.
+- `rjm_batch_cancel`: cancel a batch. Project comes from saved job state; directories without state are skipped.
+- `rjm_health_check`: basic round-trip check against the configured endpoints, run per project (or only `-p`) with a summary and non-zero exit on any failure. Branches on the runner type and uses raw SSH `test`/`rm`/`rmdir` when the paramiko runner is selected.
 - `rjm_restart`: rerun NeSI setup against an existing install.
 
 Each CLI script takes `-f <localjobdirfile>` (a text file listing local job directories, one per line), plus logging flags `-l`, `-ll`, `-le`. `--force` ignores prior state in `remote_job.json`. With `--logextra`, paramiko's logger level is raised alongside the Globus loggers.
@@ -68,17 +68,17 @@ Each CLI script takes `-f <localjobdirfile>` (a text file listing local job dire
 - File: `~/.rjm/rjm_config.ini` (location exported as `config.CONFIG_FILE_LOCATION`).
 - Sections:
   - `COMPONENTS` (`runner`, `transferer`): selects backend. Globus stack uses `globus_compute_slurm_runner` + `globus_https_transferer`; SSH stack uses `paramiko_ssh_runner` + `paramiko_sftp_transferer`.
-  - `GLOBUS_TRANSFER` (`remote_endpoint`, `remote_path`): Globus guest collection details.
-  - `GLOBUS_COMPUTE` (`remote_endpoint`): Globus Compute endpoint id.
+  - `PROJECT:<code>` (`remote_endpoint`, `remote_path`): one per NeSI project, holding that project's Globus guest collection details. Written by `rjm_config`, not `CONFIG_OPTIONS`. The project code is also the Slurm account.
+  - `GLOBUS_COMPUTE` (`remote_endpoint`): Globus Compute endpoint id, shared by all projects.
   - `PARAMIKO` (`private_key_file`, `remote_address`, `remote_user`, `remote_base_path`, `job_script`): paramiko backend config.
   - `POLLING` (`poll_interval`, `warmup_poll_interval`, `warmup_duration`): polling cadence shared across runners.
   - `SLURM` (`slurm_script`): Slurm script filename for runners that submit via `sbatch`.
   - `FILES` (`uploads_file`, `downloads_file`), `RETRY` (`override_defaults`, `tries`, `backoff`, `delay`, `max_delay`), `LOGGING` (per-logger overrides).
 - `POLLING:poll_interval` is clamped to a minimum (see `MIN_POLLING_INTERVAL` in `globus_compute_slurm_runner.py`).
-- `load_config` migrates legacy section names in-memory and logs a warning telling the user to rerun `rjm_config`. The shim only fires through `load_config`; callers building a `ConfigParser` directly must use the new names.
+- `load_config` raises `RemoteJobConfigError` (telling the user to rerun `rjm_config`) when the Globus stack has no `[PROJECT:*]` sections. Legacy section names are not migrated. `load_or_make_config` reads the file without validation so a reconfigure keeps existing values.
 - Tokens cached at `~/.rjm/rjm_tokens.json` via `fair_research_login.JSONTokenStorage` (Globus stack only).
 
-When adding a new config option, append an entry to `CONFIG_OPTIONS` in `src/rjm/config.py` (with `section`, `name`, `default`, and prompt metadata) and document it in `docs/configuration.rst`. `do_configuration(config_options=CONFIG_OPTIONS)` is non-interactive; the CLI is expected to feed all values via `override`.
+When adding a new config option, append an entry to `CONFIG_OPTIONS` in `src/rjm/config.py` (with `section`, `name`, `default`, and prompt metadata) and document it in `docs/configuration.rst`. `do_configuration(config_options=CONFIG_OPTIONS, projects=None)` is non-interactive; the CLI is expected to feed all values via `override`, and passing `projects` replaces the `[PROJECT:*]` sections.
 
 ## Development
 

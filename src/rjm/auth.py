@@ -4,7 +4,6 @@ import sys
 import logging
 
 from rjm import utils
-from rjm.remote_job import RemoteJob
 from rjm import config as config_helper
 
 
@@ -23,11 +22,9 @@ def do_authentication(force=False, verbose=False, retry=True):
 
     # Load the configuration
     config = config_helper.load_config()
-    runner = config.get("COMPONENTS", "runner")
-    transferer = config.get("COMPONENTS", "transferer")
 
     # Disallow paramiko SSH runner and SFTP transferer for authentication
-    if runner == "paramiko_ssh_runner" and transferer == "paramiko_sftp_transferer":
+    if config_helper.is_paramiko_stack(config):
         logger.debug("Authentication not required for paramiko SSH")
         if verbose:
             print("RJM authentication not required for paramiko SSH")
@@ -40,22 +37,17 @@ def do_authentication(force=False, verbose=False, retry=True):
                 print(f"Deleting existing token file to force reauthentication: {utils.TOKEN_FILE_LOCATION}")
             os.unlink(utils.TOKEN_FILE_LOCATION)
 
-    # create the remote job object and get Globus scopes
-    try:
-        rj = RemoteJob()
-    except Exception as exc:
-        logger.exception("Failed to create RemoteJob")
-        sys.stderr.write(f"ERROR: failed to create RemoteJob: {exc}" + os.linesep)
-        sys.exit(1)
-
     if verbose:
         print("===============================================================================")
         print("Requesting Globus authentication - will open link in web browser if required...")
         print("===============================================================================")
 
+    # request scopes for the transferer, the runner and every configured project
+    scopes = utils.get_all_globus_scopes(config)
+
     # TODO: run this in separate thread with timeout and fail if not completed in time
     try:
-        rj.do_globus_auth()
+        utils.handle_globus_auth(scopes)
     except Exception as exc:
         if retry and os.path.isfile(utils.TOKEN_FILE_LOCATION):
             logger.exception("Authentication failed, retrying")

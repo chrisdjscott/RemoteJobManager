@@ -22,6 +22,57 @@ _PARAMIKO_INSTALL_HINT = (
 logger = logging.getLogger(__name__)
 
 
+def make_components(config, project=None):
+    """
+    Construct the runner and transferer selected by the config
+
+    :param config: the loaded config object
+    :param project: project code to use for the Globus stack; resolved from
+        the config when None. The paramiko stack ignores it.
+    :returns: tuple of (runner, transferer, project)
+
+    """
+    if not config_helper.is_paramiko_stack(config):
+        project = config_helper.resolve_project(config, project)
+
+    # file transferer
+    transferer_type = config.get("COMPONENTS", "transferer")
+    if transferer_type == "paramiko_sftp_transferer":
+        try:
+            from rjm.transferers.paramiko_sftp_transferer import ParamikoSftpTransferer
+        except ImportError as exc:
+            raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+        transfer = ParamikoSftpTransferer(config=config)
+    else:
+        transfer = globus_https_transferer.GlobusHttpsTransferer(config=config, project=project)
+
+    # remote runner
+    runner_type = config.get("COMPONENTS", "runner")
+    if runner_type == "paramiko_ssh_runner":
+        try:
+            from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
+        except ImportError as exc:
+            raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
+        runner = ParamikoSSHRunner(config=config)
+    else:
+        runner = GlobusComputeSlurmRunner(config=config, project=project)
+
+    return runner, transfer, project
+
+
+def read_saved_project(local_dir):
+    """
+    Return the project code saved in a job's state file, or None if not saved
+
+    """
+    state_file = os.path.join(local_dir, RemoteJob.STATE_FILE)
+    if os.path.exists(state_file):
+        with open(state_file) as fh:
+            state_dict = json.load(fh)
+        return state_dict.get("project")
+    return None
+
+
 class RemoteJob:
     """
     A remote job is based on a local directory.
@@ -33,7 +84,7 @@ class RemoteJob:
     """
     STATE_FILE = "remote_job.json"
 
-    def __init__(self, timestamp=None):
+    def __init__(self, timestamp=None, project=None):
         self._local_path = None
         self._remote_full_path = None
         self._remote_basename = None
@@ -57,27 +108,8 @@ class RemoteJob:
         self._downloads_file = config.get("FILES", "downloads_file")
         self._retry_tries, self._retry_backoff, self._retry_delay, self._retry_max_delay = utils.get_retry_values_from_config(config)
 
-        # file transferer
-        transferer_type = config.get("COMPONENTS", "transferer")
-        if transferer_type == "paramiko_sftp_transferer":
-            try:
-                from rjm.transferers.paramiko_sftp_transferer import ParamikoSftpTransferer
-            except ImportError as exc:
-                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
-            self._transfer = ParamikoSftpTransferer(config=config)
-        else:
-            self._transfer = globus_https_transferer.GlobusHttpsTransferer(config=config)
-
-        # remote runner
-        runner_type = config.get("COMPONENTS", "runner")
-        if runner_type == "paramiko_ssh_runner":
-            try:
-                from rjm.runners.paramiko_ssh_runner import ParamikoSSHRunner
-            except ImportError as exc:
-                raise RemoteJobConfigError(_PARAMIKO_INSTALL_HINT) from exc
-            self._runner = ParamikoSSHRunner(config=config)
-        else:
-            self._runner = GlobusComputeSlurmRunner(config=config)
+        # create the runner and transferer, resolving the project for the Globus stack
+        self._runner, self._transfer, self._project = make_components(config, project=project)
 
     def files_uploaded(self):
         """Return whether files have been uploaded"""
@@ -266,6 +298,13 @@ class RemoteJob:
                 state_dict = json.load(fh)
             self._log(logging.DEBUG, f"Loading state: {state_dict}")
 
+            saved_project = state_dict.get("project")
+            if saved_project is not None and self._project is not None and saved_project != self._project:
+                raise RemoteJobConfigError(
+                    f"Job was previously run under project '{saved_project}' but project "
+                    f"'{self._project}' was requested (use --force to restart under a different project)"
+                )
+
             self._remote_full_path = state_dict["remote_directory"]
             self._remote_basename = state_dict["remote_basename"]
             self._uploaded = state_dict["uploaded"]
@@ -293,6 +332,7 @@ class RemoteJob:
 
             else:
                 state_dict = {
+                    "project": self._project,
                     "remote_directory": self._remote_full_path,
                     "remote_basename": self._remote_basename,
                     "uploaded": self._uploaded,

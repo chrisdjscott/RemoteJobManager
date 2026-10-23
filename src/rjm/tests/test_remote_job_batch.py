@@ -1,19 +1,22 @@
 
 import os
 import configparser
+import json
 import time
 
 import pytest
 
 from rjm import remote_job_batch
+from rjm import utils
 from rjm.remote_job_batch import RemoteJobBatch
-from rjm.remote_job import RemoteJob
+from rjm.remote_job import RemoteJob, make_components
+from rjm.errors import RemoteJobBatchError, RemoteJobConfigError
 
 
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
-    config["GLOBUS_TRANSFER"] = {
+    config["PROJECT:uoa12345"] = {
         "remote_endpoint": "qwerty",
         "remote_path": "asdfg",
     }
@@ -50,6 +53,7 @@ def rjb(mocker, configobj):
     mocker.patch('rjm.config.load_config', return_value=configobj)
     rjb = RemoteJobBatch()
     rjb._timestamp = "timestamp"
+    rjb._runner, rjb._transfer, rjb._project = make_components(configobj)
 
     return rjb
 
@@ -206,3 +210,99 @@ def test_calc_wait_time(input_vals, current_time, expected_val, mocker):
     wait_time = remote_job_batch._calc_wait_time(input_vals[0], input_vals[1], input_vals[2], input_vals[3])
 
     assert wait_time == expected_val
+
+
+def _write_state_file(local_dir, project=None):
+    state = {
+        "remote_directory": "/remote/dir",
+        "remote_basename": "dir",
+        "uploaded": True,
+        "run_started": True,
+        "run_succeeded": True,
+        "run_failed": False,
+        "downloaded": False,
+        "cancelled": False,
+    }
+    if project is not None:
+        state["project"] = project
+    with open(os.path.join(str(local_dir), "remote_job.json"), "w") as fh:
+        json.dump(state, fh)
+
+
+def _mock_globus(mocker):
+    mocker.patch('rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.get_globus_scopes')
+    mocker.patch('rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.setup_globus_auth')
+    mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.get_globus_scopes')
+    mocker.patch('rjm.transferers.globus_https_transferer.GlobusHttpsTransferer.setup_globus_auth')
+    return mocker.patch('rjm.utils.handle_globus_auth')
+
+
+def test_setup_uses_saved_project(mocker, configobj, tmp_path):
+    configobj["PROJECT:uoa00106"] = {"remote_endpoint": "zxcvb", "remote_path": "other"}
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+    mocked_auth = _mock_globus(mocker)
+
+    localdir = tmp_path / "jobdir"
+    localdir.mkdir()
+    _write_state_file(localdir, project="uoa00106")
+    dirsfile = tmp_path / "dirs.txt"
+    dirsfile.write_text(str(localdir) + os.linesep)
+
+    rjb = RemoteJobBatch()
+    rjb.setup(str(dirsfile))
+
+    assert rjb._project == "uoa00106"
+    # batch auth requests the HTTPS scope of every configured project
+    auth_scopes = mocked_auth.call_args.args[0]
+    assert utils.HTTPS_SCOPE.format(endpoint_id="qwerty") in auth_scopes
+    assert utils.HTTPS_SCOPE.format(endpoint_id="zxcvb") in auth_scopes
+
+
+def test_setup_force_ignores_saved_project(mocker, configobj, tmp_path):
+    configobj["PROJECT:uoa00106"] = {"remote_endpoint": "zxcvb", "remote_path": "other"}
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+    _mock_globus(mocker)
+
+    localdir = tmp_path / "jobdir"
+    localdir.mkdir()
+    _write_state_file(localdir, project="uoa00106")
+    dirsfile = tmp_path / "dirs.txt"
+    dirsfile.write_text(str(localdir) + os.linesep)
+
+    rjb = RemoteJobBatch()
+    with pytest.raises(RemoteJobConfigError, match="Multiple projects"):
+        rjb.setup(str(dirsfile), force=True)
+
+
+def test_setup_mixed_projects_error(mocker, configobj, tmp_path):
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+    _mock_globus(mocker)
+
+    localdir1 = tmp_path / "jobdir1"
+    localdir1.mkdir()
+    _write_state_file(localdir1, project="uoa12345")
+    localdir2 = tmp_path / "jobdir2"
+    localdir2.mkdir()
+    _write_state_file(localdir2, project="uoa00106")
+    dirsfile = tmp_path / "dirs.txt"
+    dirsfile.write_text(os.linesep.join([str(localdir1), str(localdir2)]) + os.linesep)
+
+    rjb = RemoteJobBatch()
+    with pytest.raises(RemoteJobBatchError, match="multiple projects"):
+        rjb.setup(str(dirsfile))
+
+
+def test_setup_fallback_single_project(mocker, configobj, tmp_path):
+    mocker.patch('rjm.config.load_config', return_value=configobj)
+    _mock_globus(mocker)
+
+    localdir = tmp_path / "jobdir"
+    localdir.mkdir()
+    _write_state_file(localdir)  # pre-upgrade state file without a project
+    dirsfile = tmp_path / "dirs.txt"
+    dirsfile.write_text(str(localdir) + os.linesep)
+
+    rjb = RemoteJobBatch()
+    rjb.setup(str(dirsfile))
+
+    assert rjb._project == "uoa12345"

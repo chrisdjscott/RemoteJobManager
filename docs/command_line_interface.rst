@@ -11,6 +11,12 @@ listing local job directories, one per line. Logging is controlled with
 ``-l`` (logfile), ``-ll`` (loglevel), and ``-le`` (per-logger overrides).
 ``--force`` ignores any prior state stored in ``remote_job.json``.
 
+With the Globus stack, ``rjm_batch_submit`` and ``rjm_batch_run`` take
+``-p <projectcode>`` to select the NeSI project for the batch (required when
+more than one project is configured). ``rjm_batch_wait`` and
+``rjm_batch_cancel`` use the project saved when the jobs were submitted. See
+:doc:`configuration` for details.
+
 rjm_config
 ----------
 
@@ -20,6 +26,8 @@ rjm_config
 By default this configures the Globus stack. Pass ``-s`` / ``--ssh`` to
 configure the experimental Paramiko (SSH/SFTP) backend instead, in which
 case the Globus interactive flow and Globus authentication are skipped.
+Pass ``-a`` / ``--add-project <code>`` to create a guest collection for one
+more NeSI project and add it to the existing configuration.
 
 .. argparse::
    :module: rjm.cli.rjm_config
@@ -42,7 +50,10 @@ rjm_health_check
 ----------------
 
 Round-trip check against the configured remote: uploads a small file,
-runs a simple command, and cleans up. Works against both backends.
+runs a simple command, and cleans up. Works against both backends. With the
+Globus stack the check runs for every configured project (or only the one
+given with ``-p``), prints a summary per project and exits with a non-zero
+status if any project failed.
 
 .. argparse::
    :module: rjm.cli.rjm_health_check

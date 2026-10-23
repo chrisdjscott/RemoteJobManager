@@ -10,7 +10,7 @@ from rjm.cli import rjm_batch_wait
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
-    config["GLOBUS_TRANSFER"] = {
+    config["PROJECT:uoa12345"] = {
         "remote_endpoint": "qwerty",
         "remote_path": "asdfg",
     }

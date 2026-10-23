@@ -5,14 +5,14 @@ import json
 
 import pytest
 
-from rjm.remote_job import RemoteJob
-from rjm.errors import RemoteJobRunnerError
+from rjm.remote_job import RemoteJob, make_components
+from rjm.errors import RemoteJobRunnerError, RemoteJobConfigError
 
 
 @pytest.fixture
 def configobj():
     config = configparser.ConfigParser()
-    config["GLOBUS_TRANSFER"] = {
+    config["PROJECT:uoa12345"] = {
         "remote_endpoint": "qwerty",
         "remote_path": "asdfg",
     }
@@ -53,12 +53,34 @@ def rj(mocker, configobj):
     return rj
 
 
+def test_make_components_resolves_single_project(configobj):
+    runner, transfer, project = make_components(configobj)
+    assert project == "uoa12345"
+    assert transfer._remote_endpoint == "qwerty"
+    assert transfer._remote_base_path == "asdfg"
+    assert runner._slurm_account == "uoa12345"
+
+
+def test_make_components_explicit_project(configobj):
+    configobj["PROJECT:uoa00106"] = {"remote_endpoint": "zxcvb", "remote_path": "other"}
+    runner, transfer, project = make_components(configobj, project="uoa00106")
+    assert project == "uoa00106"
+    assert transfer._remote_endpoint == "zxcvb"
+    assert runner._slurm_account == "uoa00106"
+
+
+def test_make_components_multiple_projects_require_selection(configobj):
+    configobj["PROJECT:uoa00106"] = {"remote_endpoint": "zxcvb", "remote_path": "other"}
+    with pytest.raises(RemoteJobConfigError, match="select one"):
+        make_components(configobj)
+
+
 def test_run_start_restarts_fail(rj, mocker):
     mocker.patch('time.sleep')
     rj._uploaded = True
     mocked = mocker.patch(
         'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
-        return_value=(1, "mocking failure")
+        return_value=(1, "mocking failure", None)
     )
     with pytest.raises(RemoteJobRunnerError):
         rj.run_start()
@@ -72,9 +94,9 @@ def test_run_start_restarts_succeed(rj, mocker):
     mocked = mocker.patch(
         'rjm.runners.globus_compute_slurm_runner.GlobusComputeSlurmRunner.run_function',
         side_effect=[
-            (1, "mocking failure"),
-            (2, "mocking failure"),
-            (0, "Submitted batch job 1234567"),
+            (1, "mocking failure", None),
+            (2, "mocking failure", None),
+            (0, "Submitted batch job 1234567", None),
         ],
     )
 
@@ -154,6 +176,7 @@ def test_save_state(rj, tmpdir, mocker):
     assert rj._run_failed == state_dict["run_failed"]
     assert rj._downloaded == state_dict["downloaded"]
     assert rj._cancelled == state_dict["cancelled"]
+    assert state_dict["project"] == "uoa12345"
     assert state_dict["runner"] == runner_state
     assert state_dict["transfer"] == transferer_state
 
@@ -191,10 +214,13 @@ def test_save_state_no_state_file(rj):
     rj._save_state()
 
 
-@pytest.mark.parametrize("force", [(True,), (False,)])
+@pytest.mark.parametrize("force", [True, False])
 def test_load_state(rj, mocker, tmpdir, force):
     state_file = tmpdir / "state.json"
     state_dict = {
+        "project": "uoa12345",
+        "remote_directory": "/remote/dir",
+        "remote_basename": "dir",
         "uploaded": True,
         "run_started": True,
         "run_succeeded": False,
@@ -241,6 +267,29 @@ def test_load_state(rj, mocker, tmpdir, force):
         assert rj._run_failed == state_dict["run_failed"]
         assert rj._downloaded == state_dict["downloaded"]
         assert rj._cancelled == state_dict["cancelled"]
+        assert rj._remote_full_path == state_dict["remote_directory"]
+        assert rj._remote_basename == state_dict["remote_basename"]
+
+
+def test_load_state_project_mismatch(rj, tmpdir):
+    state_file = tmpdir / "state.json"
+    state_dict = {
+        "project": "uoa00106",
+        "remote_directory": "/remote/dir",
+        "remote_basename": "dir",
+        "uploaded": True,
+        "run_started": True,
+        "run_succeeded": False,
+        "run_failed": True,
+        "downloaded": False,
+        "cancelled": False,
+    }
+    with open(state_file, 'w') as fh:
+        json.dump(state_dict, fh, indent=4)
+    rj._state_file = state_file
+
+    with pytest.raises(RemoteJobConfigError, match="uoa00106"):
+        rj._load_state(False)
 
 
 def test_write_stderr_not_needed(rj, tmpdir):
