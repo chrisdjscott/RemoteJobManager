@@ -28,7 +28,8 @@ Prerequisites for running the setup script
 In order to proceed with the setup you will need the following:
 
 * NeSI credentials (username, first and second factor passwords)
-* NeSI project code that you belong to (e.g. uoa00106)
+* NeSI project code(s) that you belong to (e.g. uoa00106); you can enter
+  several, separated by commas
 * Globus account (https://app.globus.org/)
 
   - You can usually sign up with your institutional credentials (e.g.
@@ -55,8 +56,8 @@ Run the NeSI setup script (once per machine)
 Running the NeSI setup script with no arguments (:code:`rjm_config`) will
 do the following:
 
-* create a "Globus Guest Collection" in your NeSI nobackup directory, which will
-  be used to transfer files to and from NeSI
+* create a "Globus Guest Collection" in your NeSI nobackup directory for each
+  project code you enter, which will be used to transfer files to and from NeSI
 * set the NeSI Globus Compute Multi-User endpoint id
 * write configutation values from the above steps into the RJM config file on
   your local machine
@@ -72,7 +73,10 @@ need to authenticate with NeSI (first and sector factor) and with Globus, which
 can usually be done using your institutional credentials, e.g. *The University of
 Auckland*.
 
-**Note:** you only need to run this script once per machine.
+**Note:** you only need to run this script once per machine. To add another
+project later, run :code:`rjm_config --add-project <code>`. If you configure
+more than one project, pass ``-p <code>`` to :code:`rjm_batch_submit` (see
+:doc:`configuration`).
 
 Alternative: SSH (Paramiko) backend
 -----------------------------------
@@ -126,7 +130,8 @@ Health check script
 ~~~~~~~~~~~~~~~~~~~
 
 The health check script tests that basic functionality is working by uploading
-a file to NeSI and executing a simple command.
+a file to NeSI and executing a simple command. It checks every configured
+project; use ``-p <code>`` to check only one.
 
 .. code-block:: bash
 
@@ -145,6 +150,9 @@ Clone the repository and run the example simulation using the steps below:
    cd RemoteJobManager/examples/nonmem
    rjm_batch_submit -f localdirs.txt -ll info
    rjm_batch_wait -f localdirs.txt -ll info
+
+If you configured more than one project, add ``-p <code>`` to the
+:code:`rjm_batch_submit` command.
 
 **Note:** for the above to work you need to either make sure the RJM executables
 are in your PATH or provide the full path to them.

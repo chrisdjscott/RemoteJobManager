@@ -61,7 +61,8 @@ rjm_config              # Globus backend (default)
 rjm_config --ssh        # Paramiko/SSH backend (experimental)
 ```
 
-The Globus path creates a Globus guest collection on NeSI, sets the NeSI
+The Globus path creates a Globus guest collection on NeSI for each NeSI
+project code you enter (comma separated), sets the NeSI
 managed Globus Compute endpoint, writes `~/.rjm/rjm_config.ini`, and obtains
 the required Globus tokens (cached at `~/.rjm/rjm_tokens.json`). The SSH path
 generates a keypair under `~/.rjm/`, prints the public key to add to
@@ -70,6 +71,8 @@ the config file.
 
 You will need a [Globus account](https://app.globus.org/) (and NeSI
 credentials, if NeSI is your remote) to complete the Globus setup.
+
+To add another NeSI project later, run `rjm_config --add-project <code>`.
 
 ## Usage
 
@@ -87,6 +90,13 @@ rjm_batch_wait   -f localdirs.txt -ll info
 
 # or in a single step:
 rjm_batch_run    -f localdirs.txt -ll info
+```
+
+With more than one NeSI project configured, select the project when submitting
+(`rjm_batch_wait` and `rjm_batch_cancel` use the project saved with each job):
+
+```bash
+rjm_batch_submit -f localdirs.txt -p uoa00106
 ```
 
 Each local job directory needs an `rjm_uploads.txt` (files to upload) and an
