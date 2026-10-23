@@ -45,3 +45,25 @@ def test_get_retry_values_from_config(config_vals, expected_vals):
     assert t == expected_vals[0]
     assert b == expected_vals[1]
     assert d == expected_vals[2]
+
+
+def test_get_all_globus_scopes():
+    config = configparser.ConfigParser()
+    config["PROJECT:uoa12345"] = {"remote_endpoint": "qwerty", "remote_path": "asdfg"}
+    config["PROJECT:uoa00106"] = {"remote_endpoint": "zxcvb", "remote_path": "other"}
+    config["COMPONENTS"] = {"runner": "globus_compute_slurm_runner", "transferer": "globus_https_transferer"}
+
+    scopes = utils.get_all_globus_scopes(config)
+
+    assert utils.TRANSFER_SCOPE in scopes
+    assert utils.HTTPS_SCOPE.format(endpoint_id="qwerty") in scopes
+    assert utils.HTTPS_SCOPE.format(endpoint_id="zxcvb") in scopes
+    # the Globus Compute scopes are included alongside the project scopes
+    assert len(scopes) > 3
+
+
+def test_get_all_globus_scopes_paramiko():
+    config = configparser.ConfigParser()
+    config["COMPONENTS"] = {"runner": "paramiko_ssh_runner", "transferer": "paramiko_sftp_transferer"}
+
+    assert utils.get_all_globus_scopes(config) == []

@@ -37,22 +37,24 @@ def make_parser():
     parser.add_argument('-d', '--remotedir', help=not_used_help)
     parser.add_argument('-j', '--jobtype', help=not_used_help)
     parser.add_argument('-m', '--mem', help=not_used_help)
-    parser.add_argument('-p', '--projectcode', help=not_used_help)
     parser.add_argument('-w', '--walltime', help=not_used_help)
+
+    parser.add_argument('-p', '--projectcode',
+                        help="NeSI project code to run the jobs under (defaults to the only configured project)")
 
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
 
 
-def batch_submit():
+def batch_submit(args=None):
     """
     Upload files and start running for the given local directory
 
     """
     # command line args
     parser = make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # setup logging
     log_name = None if args.defaultlogname else "batch_submit"
@@ -64,7 +66,7 @@ def batch_submit():
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
-    rjb.setup(args.localjobdirfile, force=args.force)
+    rjb.setup(args.localjobdirfile, force=args.force, project=args.projectcode)
 
     # upload files and start
     rjb.upload_and_start()

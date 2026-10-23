@@ -1,10 +1,11 @@
 
+import os
 import argparse
 import logging
 
 from rjm import __version__
 from rjm import utils
-from rjm.remote_job import RemoteJob
+from rjm.remote_job import RemoteJob, read_saved_project
 from rjm.cli import read_local_dirs_file
 
 
@@ -29,14 +30,14 @@ def make_parser():
     return parser
 
 
-def batch_cancel():
+def batch_cancel(args=None):
     """
     Cancel all jobs
 
     """
     # command line args
     parser = make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # setup
     utils.setup_logging(log_name="batch_cancel", log_file=args.logfile, log_level=args.loglevel)
@@ -48,7 +49,13 @@ def batch_cancel():
 
     # loop over local directories
     for local_dir in local_dirs:
-        rj = RemoteJob()
+        # a job without saved state was never started, so there is nothing to cancel
+        if not os.path.exists(os.path.join(local_dir, RemoteJob.STATE_FILE)):
+            logger.warning(f"No saved state for {local_dir}, nothing to cancel")
+            continue
+
+        # cancel uses the project the job was submitted under
+        rj = RemoteJob(project=read_saved_project(local_dir))
         rj.setup(local_dir)
         rj.run_cancel()
 

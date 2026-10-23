@@ -32,7 +32,7 @@ class GlobusComputeSlurmRunner(RunnerBase):
     The default Globus Compute endpoint running on the login node is sufficient.
 
     """
-    def __init__(self, config=None):
+    def __init__(self, config=None, project=None):
         super(GlobusComputeSlurmRunner, self).__init__(config=config)
 
         self._setup_done = False
@@ -51,8 +51,8 @@ class GlobusComputeSlurmRunner(RunnerBase):
         # the name of the Slurm script
         self._slurm_script = self._config.get("SLURM", "slurm_script")
 
-        # optional default Slurm account to pass via --account
-        self._slurm_account = self._config.get("SLURM", "account", fallback="").strip() or None
+        # the Slurm account is the project code
+        self._slurm_account = project
 
         # how often to poll for Slurm job completion
         self._poll_interval = self._config.getint("POLLING", "poll_interval")
@@ -283,14 +283,20 @@ class GlobusComputeSlurmRunner(RunnerBase):
         """
         self._log(logging.DEBUG, f"Submitting Slurm script: {self._slurm_script}")
         if self._slurm_account:
-            self._log(logging.DEBUG, f"Default Slurm account from config: {self._slurm_account}")
-        returncode, stdout = self.run_function(
+            self._log(logging.DEBUG, f"Slurm account from project: {self._slurm_account}")
+        returncode, stdout, script_account = self.run_function(
             submit_slurm_job,
             self._slurm_script,
             submit_dir=working_directory,
             account=self._slurm_account,
         )
         self._log(logging.DEBUG, f'returncode = {returncode}; output = "{stdout}"')
+
+        if self._slurm_account is not None and script_account is not None and script_account != self._slurm_account:
+            self._log(
+                logging.WARNING,
+                f"Slurm script specifies account '{script_account}' but the job will be charged to project account '{self._slurm_account}'",
+            )
 
         if returncode == 0:
             # success
@@ -583,29 +589,32 @@ def submit_slurm_job(submit_script, submit_dir=None, account=None):
         # if submit_dir is specified, it must exist
         if submit_dir is not None:
             if not os.path.exists(submit_dir):
-                return 1, f"working directory does not exist: '{submit_dir}'"
+                return 1, f"working directory does not exist: '{submit_dir}'", None
             submit_script_path = os.path.join(submit_dir, submit_script)
         else:
             submit_script_path = submit_script
 
         # submit script must also exist
         if not os.path.exists(submit_script_path):
-            return 1, f"submit_script does not exist: '{submit_script_path}'"
+            return 1, f"submit_script does not exist: '{submit_script_path}'", None
 
-        # only inject --account when an account is configured and the script
-        # itself does not already specify one via a #SBATCH directive
-        account_arg = ""
-        if account:
-            account_re = re.compile(r'(?:--account\b|\s-A\b)')
-            script_has_account = False
-            with open(submit_script_path, 'r') as fh:
-                for line in fh:
-                    stripped = line.lstrip()
-                    if stripped.startswith('#SBATCH') and account_re.search(stripped[len('#SBATCH'):]):
-                        script_has_account = True
+        # find the account set in the script's #SBATCH directives, if any, so
+        # the caller can warn when it differs from the account passed below;
+        # command-line options take precedence over #SBATCH directives
+        script_account = None
+        account_re = re.compile(r'(?:--account(?:=|\s+)|\s-A\s*)["\']?([^\s"\']+)')
+        with open(submit_script_path, 'r') as fh:
+            for line in fh:
+                stripped = line.lstrip()
+                if stripped.startswith('#SBATCH'):
+                    match = account_re.search(stripped[len('#SBATCH'):])
+                    if match:
+                        script_account = match.group(1)
                         break
-            if not script_has_account:
-                account_arg = f'--account="{account}" '
+
+        # always pass the account on the command line so the job is charged
+        # to the requested project regardless of any #SBATCH directive
+        account_arg = f'--account="{account}" ' if account else ""
 
         # submit the Slurm job and return the job id
         p = subprocess.run(
@@ -614,11 +623,11 @@ def submit_slurm_job(submit_script, submit_dir=None, account=None):
             stderr=subprocess.STDOUT, universal_newlines=True, check=False, cwd=submit_dir,
         )
 
-        return p.returncode, p.stdout.strip()
+        return p.returncode, p.stdout.strip(), script_account
 
     except Exception as exc:
         # return nonzero code and string representation of the exception
-        return 1, repr(exc)
+        return 1, repr(exc), None
 
 
 # function to cancel a Slurm job

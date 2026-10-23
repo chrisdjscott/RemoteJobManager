@@ -133,12 +133,9 @@ def nesi_setup():
 
     # get config values (only if globus setup was performed)
     if not no_globus:
-        globus_ep, globus_path = nesi.get_globus_transfer_config()
         funcx_ep = nesi.get_globus_compute_config()
 
     # modify dict to set values as defaults
-    done_globus_ep = False
-    done_globus_path = False
     done_funcx_ep = False
 
     # Populate overrides – Globus overrides are applied only when Globus was run.
@@ -146,13 +143,7 @@ def nesi_setup():
     for optd in req_opts:
         # ----- Globus overrides (only when Globus setup was run) -----
         if not no_globus:
-            if optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_endpoint":
-                optd["override"] = globus_ep
-                done_globus_ep = True
-            elif optd["section"] == "GLOBUS_TRANSFER" and optd["name"] == "remote_path":
-                optd["override"] = globus_path
-                done_globus_path = True
-            elif optd["section"] == "GLOBUS_COMPUTE" and optd["name"] == "remote_endpoint":
+            if optd["section"] == "GLOBUS_COMPUTE" and optd["name"] == "remote_endpoint":
                 optd["override"] = funcx_ep
                 done_funcx_ep = True
 
@@ -162,10 +153,6 @@ def nesi_setup():
                     optd["override"] = "globus_compute_slurm_runner"
                 elif optd["name"] == "transferer":
                     optd["override"] = "globus_https_transferer"
-
-            # ----- persist the NeSI project code as the default Slurm account
-            if optd["section"] == "SLURM" and optd["name"] == "account":
-                optd["override"] = account
 
         # ----- Paramiko overrides (only when SSH key pair was generated) -----
         if args.ssh:
@@ -189,8 +176,6 @@ def nesi_setup():
 
     # sanity checks – only required when Globus overrides were attempted
     if not no_globus:
-        assert done_globus_ep
-        assert done_globus_path
         assert done_funcx_ep
 
     # backup current config if any

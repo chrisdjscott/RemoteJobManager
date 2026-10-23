@@ -12,6 +12,7 @@ from retry.api import retry_call
 
 from rjm.transferers.transferer_base import TransfererBase
 from rjm import utils
+from rjm import config as config_helper
 from rjm.errors import RemoteJobTransfererError
 
 
@@ -28,12 +29,13 @@ class GlobusHttpsTransferer(TransfererBase):
     using HTTPS.
 
     """
-    def __init__(self, config=None):
+    def __init__(self, config=None, project=None):
         super(GlobusHttpsTransferer, self).__init__(config=config)
 
         # the Globus endpoint for the remote guest collection
-        self._remote_endpoint = self._config.get("GLOBUS_TRANSFER", "remote_endpoint")
-        self._remote_base_path = self._config.get("GLOBUS_TRANSFER", "remote_path")
+        project_section = f"{config_helper.PROJECT_SECTION_PREFIX}{project}"
+        self._remote_endpoint = self._config.get(project_section, "remote_endpoint")
+        self._remote_base_path = self._config.get(project_section, "remote_path")
         self._https_scope = utils.HTTPS_SCOPE.format(endpoint_id=self._remote_endpoint)
 
         # retry params

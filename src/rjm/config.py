@@ -16,6 +16,9 @@ CONFIG_FILE_LOCATION = os.path.join(
     "rjm_config.ini"
 )
 
+# per-project sections are named [PROJECT:<code>]
+PROJECT_SECTION_PREFIX = "PROJECT:"
+
 CONFIG_OPTIONS = [  # default values must be strings or None
     {
         "section": "COMPONENTS",
@@ -30,18 +33,6 @@ CONFIG_OPTIONS = [  # default values must be strings or None
         "help": "Enter the runner implementation that should be used",
     },
     {
-        "section": "GLOBUS_TRANSFER",
-        "name": "remote_endpoint",
-        "default": None,
-        "help": "Enter the endpoint id of the Globus guest collection on the remote machine",
-    },
-    {
-        "section": "GLOBUS_TRANSFER",
-        "name": "remote_path",
-        "default": None,
-        "help": "Enter the absolute path to the root of the Globus guest collection on the remote machine",
-    },
-    {
         "section": "GLOBUS_COMPUTE",
         "name": "remote_endpoint",
         "default": None,
@@ -52,12 +43,6 @@ CONFIG_OPTIONS = [  # default values must be strings or None
         "name": "slurm_script",
         "default": "run.sl",
         "help": "Name of the Slurm script that will be included in the uploaded files",
-    },
-    {
-        "section": "SLURM",
-        "name": "account",
-        "default": None,
-        "help": "Slurm account to pass to sbatch via --account (leave unset to rely on the account specified inside the Slurm script)",
     },
     {
         "section": "POLLING",
@@ -124,49 +109,65 @@ CONFIG_OPTIONS = [  # default values must be strings or None
 
 def load_config(config_file=CONFIG_FILE_LOCATION):
     """Load the config file and return the configparser object"""
-    # load the config
-    if os.path.exists(config_file):
-        config = configparser.ConfigParser()
-        config.read(config_file)
-
-        # check if the config file is old and raise error if so
-        old_format = False
-        if not "COMPONENTS" in config:
-            old_format = True
-            logger.debug("Old format config file detected -- no COMPONENTS section -- defaulting to Globus")
-            config["COMPONENTS"] = {
-                "runner": "globus_compute_slurm_runner",
-                "transferer": "globus_https_transferer",
-            }
-
-        if not "GLOBUS_TRANSFER" in config:
-            old_format = True
-            logger.debug("Old format config file detected -- no GLOBUS_TRANSFER section -- attempting to fix")
-            if "GLOBUS" in config:
-                logger.debug("Using GLOBUS config for GLOBUS_TRANSFER")
-                config["GLOBUS_TRANSFER"] = config["GLOBUS"]
-
-        if not "GLOBUS_COMPUTE" in config:
-            old_format = True
-            logger.debug("Old format config file detected -- no GLOBUS_COMPUTE section -- attempting to fix")
-            if "FUNCX" in config:
-                logger.debug("Using FUNCX config for GLOBUS_COMPUTE")
-                config["GLOBUS_COMPUTE"] = config["FUNCX"]
-
-        if not "POLLING" in config:
-            old_format = True
-            logger.debug("Old format config file detected -- no POLLING section -- attempting to fix")
-            if "SLURM" in config:
-                logger.debug("Using SLURM config for POLLING")
-                config["POLLING"] = config["SLURM"]
-
-        if old_format:
-            logger.warning("Attempted to automatically update your old config file -- rerun `rjm_config` to avoid this")
-
-    else:
+    if not os.path.exists(config_file):
         raise RemoteJobConfigError(f"Config file does not exist: {config_file}")
 
+    config = configparser.ConfigParser()
+    config.read(config_file)
+
+    # the Globus stack needs at least one project section; the paramiko stack
+    # is single-project and does not use them
+    if not is_paramiko_stack(config) and not get_projects(config):
+        raise RemoteJobConfigError(
+            "No [PROJECT:<code>] sections found in the config file -- "
+            "rerun `rjm_config` to configure the NeSI project code(s) to use"
+        )
+
     return config
+
+
+def is_paramiko_stack(config):
+    """Return True when the config selects the paramiko runner and transferer"""
+    runner = config.get("COMPONENTS", "runner", fallback="globus_compute_slurm_runner")
+    transferer = config.get("COMPONENTS", "transferer", fallback="globus_https_transferer")
+    return runner == "paramiko_ssh_runner" and transferer == "paramiko_sftp_transferer"
+
+
+def get_projects(config):
+    """
+    Return the project codes configured in [PROJECT:<code>] sections, in config file order
+
+    """
+    return [
+        section[len(PROJECT_SECTION_PREFIX):]
+        for section in config.sections()
+        if section.startswith(PROJECT_SECTION_PREFIX)
+    ]
+
+
+def resolve_project(config, project):
+    """
+    Return the project code that a job should run under
+
+    :param config: the loaded config object
+    :param project: project code requested by the caller, or None to use the
+        only configured project
+
+    """
+    projects = get_projects(config)
+    if not projects:
+        raise RemoteJobConfigError("No projects are configured -- rerun `rjm_config`")
+    if project is None:
+        if len(projects) == 1:
+            return projects[0]
+        raise RemoteJobConfigError(
+            f"Multiple projects are configured, select one: {', '.join(projects)}"
+        )
+    if project not in projects:
+        raise RemoteJobConfigError(
+            f"Project '{project}' is not configured (configured projects: {', '.join(projects)})"
+        )
+    return project
 
 
 def load_or_make_config(config_file=CONFIG_FILE_LOCATION):
@@ -201,12 +202,6 @@ def _process_option(config, optd):
     try:
         value = config[section][name]
         logger.debug(f"Found existing config value: {value}")
-
-        # special case - we want to make the default the minimum
-        if section == "SLURM" and name == "poll_interval":
-            if value < default:
-                value = default
-                logger.debug(f"Forcing default minimum value for SLURM:poll_interval: {value}")
 
     except KeyError:
         value = default

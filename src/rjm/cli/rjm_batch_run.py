@@ -38,19 +38,21 @@ def make_parser():
                         help=f"job status polling interval in seconds during the warmup period (minimum is {MIN_WARMUP_POLLING_INTERVAL})")
     parser.add_argument('-d', '--warmupdurationsec', type=int,
                         help=f"Warmup period duration for job status polling (maximum is {MAX_WARMUP_DURATION})")
+    parser.add_argument('-p', '--projectcode',
+                        help="NeSI project code to run the jobs under (defaults to the only configured project)")
     parser.add_argument('-v', '--version', action="version", version='%(prog)s ' + __version__)
 
     return parser
 
 
-def batch_run():
+def batch_run(args=None):
     """
     Upload files and start running for the given local directory
 
     """
     # command line args
     parser = make_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
     # setup logging
     utils.setup_logging(log_name="batch_run", log_file=args.logfile, log_level=args.loglevel)
@@ -61,7 +63,7 @@ def batch_run():
 
     # create the object for managing a batch of remote jobs
     rjb = RemoteJobBatch()
-    rjb.setup(args.localjobdirfile, force=args.force)
+    rjb.setup(args.localjobdirfile, force=args.force, project=args.projectcode)
 
     # upload files and start
     rjb.upload_and_start()
